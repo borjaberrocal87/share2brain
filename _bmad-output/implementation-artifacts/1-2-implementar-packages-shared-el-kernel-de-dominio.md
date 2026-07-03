@@ -4,7 +4,7 @@ baseline_commit: 55845f2
 
 # Story 1.2: Implement packages/shared — the domain kernel
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
