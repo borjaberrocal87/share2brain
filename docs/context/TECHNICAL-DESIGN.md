@@ -226,7 +226,7 @@ El paquete del que todos dependen y que no depende de nadie. Sus cuatro responsa
 ```
 1. loadConfig()                    → valida Hivly.config.yml
 2. Inicializar cliente discord.js  → conectar al Gateway con permisos mínimos
-3. Inicializar ioredis             → conectar a Redis
+3. Inicializar node-redis          → conectar a Redis
 4. Registrar event listeners       → messageCreate, messageUpdate, messageDelete
 5. Ejecutar Backfiller             → fetch mensajes históricos por canal
    └─ Para cada mensaje: XADD hivly:discord:messages
@@ -288,9 +288,9 @@ Para messageDelete:
 
 ```
 1. loadConfig()
-2. Conectar a PostgreSQL (Drizzle) y Redis (ioredis)
+2. Conectar a PostgreSQL (Drizzle) y Redis (node-redis)
 3. Upsert channel_permissions desde config.access_control.channel_permissions
-4. Inicializar express-session con connect-redis
+4. Inicializar express-session con connect-redis (usando la misma instancia node-redis que se abrió en el paso 2)
 5. Registrar middleware: auth, RBAC expansion, rate-limit
 6. Registrar routes
 7. Escuchar en :3000 (red interna Docker)
@@ -533,7 +533,7 @@ flowchart TD
 | `hivly:discord:messages` | bot | `hivly:indexer` | workers/indexer | Indexar mensajes nuevos |
 | `hivly:discord:messages:updated` | bot | `hivly:sync` | workers/sync | Re-indexar mensajes editados |
 | `hivly:discord:messages:deleted` | bot | `hivly:sync` | workers/sync | Purgar mensajes borrados |
-| `hivly:knowledge:events` | workers/bot | `hivly:notifier` | notifier *(deferred)* | Notificaciones al operador |
+| `hivly:knowledge:events` *(planned — Epic 6)* | workers/bot | `hivly:notifier` | notifier *(deferred)* | Notificaciones al operador |
 
 ### Schema mínimo de cada mensaje de stream
 
@@ -1013,7 +1013,7 @@ docker compose up -d
 | Discord client | discord.js | 14.26 | Gateway + REST Discord API |
 | Validación | zod | 4.4 | Zod v4 (API diferente a v3 en algunos puntos) |
 | Sesiones | express-session + connect-redis | 1.x + 9.0 | Sesiones en Redis, no en PostgreSQL |
-| Redis client | ioredis | 5.x | Streams + sesiones |
+| Redis client | node-redis (`redis`) | 6.x | Streams + sesiones |
 | DB | PostgreSQL + pgvector | 17 + 0.8.2 | pgvector 0.8.2 corrige CVE-2026-3172 |
 | Cache/Streams | Redis | 8 | |
 | Reverse proxy | nginx | 1.27 mainline | |
@@ -1026,7 +1026,7 @@ docker compose up -d
 
 Esta sección explica el **por qué** de las decisiones clave. El qué está en el spine.
 
-### AD-1 — Tres procesos separados (no uno)
+### AD-1 — Tres procesos separados (actualmente; futuro notifier planeado)
 
 El Bot hace backfill de miles de mensajes al arrancar. Si viviera en el mismo proceso que el Backend, ese backfill bloquearía el event loop y degradaría la API durante el arranque. Separar los procesos significa que el Bot puede estar procesando 10.000 mensajes históricos mientras el agente responde preguntas sin ningún impacto.
 

@@ -21,7 +21,7 @@ companions: []
 
 `packages/shared` es el kernel de dominio: contiene el schema de base de datos (Drizzle), los contratos de API (Zod schemas), el cargador de configuración y los tipos compartidos. Los servicios (`bot`, `backend`, `workers`, `web`) son adaptadores que dependen de `shared` pero **nunca entre sí**.
 
-La ingestión de conocimiento es **event-driven**: el Bot publica eventos a Redis Streams con semántica at-least-once; los Workers los consumen vía consumer groups con ACK explícito. El Backend solo lee resultados del pipeline (PostgreSQL + pgvector); nunca escribe en los streams ni en las tablas de ingestión.
+La ingestión de conocimiento es **event-driven**: el Bot publica eventos de mensajes de Discord a Redis Streams con semántica at-least-once; los Workers los consumen vía consumer groups con ACK explícito. Un futuro stream `knowledge:events` (Epic 6) podría añadir a los Workers como productores. El Backend solo lee resultados del pipeline (PostgreSQL + pgvector); nunca escribe en los streams ni en las tablas de ingestión.
 
 ```mermaid
 graph TD
@@ -40,11 +40,11 @@ graph TD
 
 ## Invariants & Rules
 
-### AD-1 — Tres procesos de runtime independientes
+### AD-1 — Tres procesos de runtime independientes (actualmente)
 
 - **Binds:** packages/bot, packages/backend, packages/workers
 - **Prevents:** que un backfill de Discord sature la API REST; que un crash del Bot detenga el Agent Runtime; acoplamiento de ciclos de vida entre ingestión y servicio
-- **Rule:** Bot, Backend y Workers son tres procesos Node.js separados, cada uno con su propio `package.json`, `Dockerfile` y entrada en `docker-compose.yml`. Ningún proceso importa código de otro paquete de servicio — solo de `packages/shared`.
+- **Rule:** Bot, Backend y Workers son tres procesos Node.js separados, cada uno con su propio `package.json`, `Dockerfile` y entrada en `docker-compose.yml`. Ningún proceso importa código de otro paquete de servicio — solo de `packages/shared`. Un futuro proceso notifier está planeado pero no construido aún.
 
 ### AD-2 — Monorepo npm workspaces con kernel compartido
 
@@ -98,7 +98,7 @@ graph TD
 
 - **Binds:** packages/backend (middleware de autenticación), packages/shared (schema Drizzle)
 - **Prevents:** un lookup a PostgreSQL por cada request autenticado; ambigüedad sobre si la tabla `sessions` del PRD existe o no
-- **Rule:** `express-session` usa `connect-redis` como store. La cookie httpOnly contiene solo el session ID. Los datos de sesión (`{ userId, discordRoles }`) viven en Redis con TTL. La tabla `sessions` referenciada en el PRD DEBE NOT incluirse en el schema Drizzle — Redis es la única fuente de verdad de sesiones. Revocación inmediata: borrar la key Redis del session ID. `connect-redis` usa `ioredis` como cliente Redis (el mismo cliente que usan los workers para Streams, exportado desde `packages/shared`).
+- **Rule:** `express-session` usa `connect-redis` como store. La cookie httpOnly contiene solo el session ID. Los datos de sesión (`{ userId, discordRoles }`) viven en Redis con TTL. La tabla `sessions` referenciada en el PRD DEBE NOT incluirse en el schema Drizzle — Redis es la única fuente de verdad de sesiones. Revocación inmediata: borrar la key Redis del session ID. `connect-redis` usa **`node-redis` (`redis`)** como cliente Redis — el cliente único del proyecto, el mismo que usan los workers para Streams. `connect-redis@9` soporta node-redis nativamente (dejó de soportar ioredis); node-redis es además el cliente recomendado para Redis 8.
 
 ### AD-11 — Agent Runtime con LangGraph StateGraph
 
@@ -116,14 +116,14 @@ graph TD
 
 - **Binds:** packages/bot (producer), packages/workers (consumers), packages/shared (tipos de eventos)
 - **Prevents:** que el Bot publique en una key y los Workers lean de otra; consumer groups con nombres incompatibles que producen estado de stream irrecuperable
-- **Rule:** Los stream keys, consumer groups y el schema mínimo de campos de cada evento son invariantes. El Bot publica SOLO a estos keys; los Workers consumen SOLO de estos groups:
+- **Rule:** Los stream keys, consumer groups y el schema mínimo de campos de cada evento son invariantes. El Bot publica a los keys de Discord; los Workers consumen de los groups de indexación. Un futuro stream `knowledge:events` (Epic 6) podría añadir a los Workers como productores y un notifier como consumidor:
 
 | Stream key | Producer | Consumer group | Consumer |
 |---|---|---|---|
 | `hivly:discord:messages` | bot | `hivly:indexer` | workers/indexer |
 | `hivly:discord:messages:updated` | bot | `hivly:sync` | workers/sync |
 | `hivly:discord:messages:deleted` | bot | `hivly:sync` | workers/sync |
-| `hivly:knowledge:events` | workers | `hivly:notifier` | notifier (deferred) |
+| `hivly:knowledge:events` *(planned — Epic 6)* | workers/bot | `hivly:notifier` | notifier *(deferred)* |
 
 Campos mínimos obligatorios en cada mensaje de stream: `messageId` (snowflake string), `channelId` (string), `guildId` (string), `timestamp` (ISO 8601). Los tipos de evento están definidos en `packages/shared/src/types/events.ts`. Los Workers hacen ACK (`XACK`) solo tras procesar con éxito; no hacen ACK si el procesamiento falla (permite reintento automático por otro consumer del mismo group).
 
@@ -160,7 +160,7 @@ Campos mínimos obligatorios en cada mensaje de stream: `messageId` (snowflake s
 | zod | 4.4 |
 | express-session | 1.x |
 | connect-redis | 9.0 |
-| ioredis | 5.x |
+| node-redis (`redis`) | 6.x |
 | PostgreSQL | 17 |
 | pgvector | 0.8.2 |
 | Redis | 8 |

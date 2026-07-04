@@ -21,7 +21,7 @@ _Authoritative sources: `docs/context/ARCHITECTURE-SPINE.md` (invariants AD-1…
 ## Technology Stack & Versions
 
 **Runtime & language:** Node.js 24 LTS · TypeScript 6.0 (strict) · npm-workspaces monorepo.
-**Backend:** Express 5.2 · @langchain/langgraph 1.4 + @langchain/core 1.2 · drizzle-orm 0.45 + drizzle-kit 0.31 · discord.js 14.26 · zod 4.4 · express-session 1.x + connect-redis 9.0 · ioredis 5.x.
+**Backend:** Express 5.2 · @langchain/langgraph 1.4 + @langchain/core 1.2 · drizzle-orm 0.45 + drizzle-kit 0.31 · discord.js 14.26 · zod 4.4 · express-session 1.x + connect-redis 9.0 · node-redis (`redis`) 6.x.
 **Frontend:** React 19.2 · Vite 8.1 (static SPA, no SSR).
 **Data & infra:** PostgreSQL 17 + pgvector 0.8.2 · Redis 8 · nginx 1.27 · Docker Compose 2 (7 services).
 **Testing:** Vitest (unit/integration) · Playwright (e2e). Embeddings: `text-embedding-3-small` (1536 dims).

@@ -9,13 +9,13 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { createApp } from './app.js';
-import { openTestClients, type TestClients } from './test-helpers.js';
+import { buildTestAppOptions, openTestClients, type TestClients } from './test-helpers.js';
 
 describe('GET /health (integration)', () => {
   let clients: TestClients;
 
-  beforeAll(() => {
-    clients = openTestClients();
+  beforeAll(async () => {
+    clients = await openTestClients();
   });
 
   afterAll(async () => {
@@ -23,7 +23,7 @@ describe('GET /health (integration)', () => {
   });
 
   it('returns 200 healthy with both dependencies connected against real DB + Redis', async () => {
-    const app = createApp(clients.db, clients.redis);
+    const app = createApp(clients.db, clients.redis, buildTestAppOptions());
 
     const res = await request(app).get('/health');
 

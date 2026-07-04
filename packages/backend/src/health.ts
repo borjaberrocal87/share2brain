@@ -6,7 +6,8 @@
 import { sql, type Database } from '@hivly/shared/db';
 import { HealthResponseSchema, type HealthResponse } from '@hivly/shared/schemas';
 import type { Request, Response } from 'express';
-import type { Redis } from 'ioredis';
+
+import type { RedisClient } from './infrastructure/redis.js';
 
 /** Max time a single dependency probe may take before it counts as disconnected. */
 const PROBE_TIMEOUT_MS = 2000;
@@ -42,7 +43,7 @@ async function probe(check: () => Promise<unknown>): Promise<'connected' | 'disc
 /** Probe both gating dependencies and derive the overall status + HTTP code. */
 export async function computeHealth(
   db: Database,
-  redis: Redis,
+  redis: RedisClient,
 ): Promise<{ statusCode: number; body: HealthResponse }> {
   const [database, redis_] = await Promise.all([
     probe(() => db.execute(sql`select 1`)),
@@ -60,7 +61,7 @@ export async function computeHealth(
 }
 
 /** Express handler factory bound to the shared startup db/redis clients. */
-export function createHealthHandler(db: Database, redis: Redis) {
+export function createHealthHandler(db: Database, redis: RedisClient) {
   return async (_req: Request, res: Response): Promise<void> => {
     const { statusCode, body } = await computeHealth(db, redis);
     res.status(statusCode).json(body);

@@ -71,7 +71,7 @@ The system follows **Hexagonal (Shared Kernel) + Event-Driven Ingest**. All inva
 | Discord client | discord.js | 14.26 |
 | Validation | zod | 4.4 |
 | Sessions | express-session + connect-redis | 1.x + 9.0 |
-| Redis client | ioredis (streams + sessions) | 5.x |
+| Redis client | node-redis (`redis`) (streams + sessions) | 6.x |
 | Cache/Streams | Redis | 8 |
 | Reverse proxy | nginx | 1.27 |
 | Containers | Docker Compose | 2 |
@@ -806,7 +806,7 @@ Rules:
 ## Authentication & RBAC
 
 - **Discord OAuth2** login (`identify`, `guilds.members.read`); verify guild membership; store only `{ userId, discordRoles }` in the Redis session (AD-10).
-- **Sessions in Redis** via `express-session` + `connect-redis`; httpOnly cookie holds only the session ID; revoke by deleting the Redis key. `connect-redis` receives the same `ioredis` instance used for streams via its `client` option — there is a single Redis client for both concerns.
+- **Sessions in Redis** via `express-session` + `connect-redis`; httpOnly cookie holds only the session ID; revoke by deleting the Redis key. `connect-redis` receives the same **`node-redis`** instance used for streams via its `client` option — there is a single Redis client for both concerns. (node-redis, not ioredis: `connect-redis@9` dropped ioredis support and node-redis is the recommended client for Redis 8.)
 - **RBAC** middleware runs on every `/api/*` request (except auth/health): expand `session.discordRoles` → `allowedChannelIds` by joining `channel_permissions` **per request** (not cached in the session), so a config/permission change takes effect immediately (AD-12). Inject `req.allowedChannelIds` for handlers and the agent.
 - `channel_permissions` is materialized from `Hivly.config.yml` via upsert at Backend startup, before accepting requests.
 

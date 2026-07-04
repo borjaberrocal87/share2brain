@@ -33,3 +33,8 @@
 
 - Respetar `prefers-color-scheme` — el tema oscuro se fuerza sin consultar la preferencia del SO. La lógica de detección y toggle persistente con `localStorage` está planificada para Story 2.2, donde tiene sentido añadirlo.
 - `@media (prefers-reduced-motion: reduce)` — las 6 animaciones no tienen variante reduced-motion. Válido para accesibilidad pero aplica a todo el sistema de diseño, no solo a esta story.
+
+## Deferred from: code review of 2-3-backend-discord-oauth2-y-sesiones-en-redis (2026-07-04)
+
+- No 429 retry logic for Discord rate limits — unlikely at current scale; add retry with `Retry-After` header parsing if rate limits become frequent
+- Error message leakage in logs — `console.error('[auth] callback failed:', ...)` may log Discord API error details; adopt structured logging with redaction in a future observability story

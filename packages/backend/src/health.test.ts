@@ -1,5 +1,5 @@
 import type { Database } from '@hivly/shared/db';
-import type { Redis } from 'ioredis';
+import type { RedisClient } from './infrastructure/redis.js';
 import { describe, expect, it, vi } from 'vitest';
 
 import { computeHealth } from './health.js';
@@ -10,8 +10,8 @@ function fakeDb(execute: () => Promise<unknown>): Database {
 }
 
 /** Minimal redis double: only `ping` is exercised by the probe. */
-function fakeRedis(ping: () => Promise<unknown>): Redis {
-  return { ping: vi.fn(ping) } as unknown as Redis;
+function fakeRedis(ping: () => Promise<unknown>): RedisClient {
+  return { ping: vi.fn(ping) } as unknown as RedisClient;
 }
 
 describe('computeHealth', () => {

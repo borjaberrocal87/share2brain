@@ -31,7 +31,7 @@ alwaysApply: true
 
 For detailed standards and guidelines specific to different areas of the project, refer to:
 
-- [Backend Standards](./backend-standards.md) — monorepo services (`bot`, `backend`, `workers`), Drizzle/pgvector patterns, LangGraph agent, Redis Streams, API design, testing and security.
+- [Backend Standards](./backend-standards.md) — monorepo services (`shared`, `web`, `bot`, `backend`, `workers`), Drizzle/pgvector patterns, LangGraph agent, Redis Streams, API design, DDD principles, SOLID+DRY, testing and security.
 - [Frontend Standards](./frontend-standards.md) — Vite + React SPA, Zod-inferred API types, SSE chat client, UI/UX and testing.
 - [Documentation Standards](./documentation-standards.md) — technical documentation structure, formatting, and maintenance guidelines, including AI standards like this document.
 - [Story Execution Mandatory Steps](./bmad-story-mandatory-steps.md) — required checklist and verification gate when planning (epics/stories) and executing stories with the BMAD Method skills.
