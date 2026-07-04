@@ -41,9 +41,11 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-06-30
-last_updated: 2026-07-03
+last_updated: 2026-07-04
+
+# story 1-3 → done (code review passed and patches applied)
 project: hivly
-# story 1-2 → ready-for-dev (bmad-create-story)
+# story 1-3 → review (bmad-dev-story)
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
@@ -53,7 +55,7 @@ development_status:
   epic-1: in-progress
   1-1-inicializar-el-repositorio-y-la-estructura-del-monorepo: done
   1-2-implementar-packages-shared-el-kernel-de-dominio: done
-  1-3-docker-compose-servicios-base-y-endpoint-health: backlog
+  1-3-docker-compose-servicios-base-y-endpoint-health: done
   epic-1-retrospective: optional
 
   # ── Épico 2: Acceso y Autenticación ─────────────────────────────────────────

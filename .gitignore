@@ -3,6 +3,8 @@ node_modules/
 .env
 .env.*
 !.env.example
+# Operator-specific behavior config; only the .example is tracked (AD-8).
+Hivly.config.yml
 *.log
 .DS_Store
 *.tsbuildinfo

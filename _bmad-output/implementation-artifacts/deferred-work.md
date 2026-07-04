@@ -15,3 +15,11 @@
 - `.env.example.*` variants not tracked by `.gitignore` negation — edge case, team can add rules if needed
 - No root `tsconfig.json` (only `tsconfig.base.json`) — by design; each package extends base directly
 - Multiple scaffold-appropriate omissions: no `.d.ts` generation, no type-aware ESLint rules, no structured logging format, no vitest workspace config
+
+## Deferred from: code review of 1-3-docker-compose-servicios-base-y-endpoint-health (2026-07-04)
+
+- DB/Redis connections created before HTTP listens — lazy redis + pool pattern mitigate this; not a real issue in practice
+- Missing Hivly.config.yml crashes containers — standard Docker behavior for missing bind mounts; documented in Dev Notes
+- No integration test for health handler — unit tests cover logic; HTTP-level tests can be added in a later story
+- redis maxRetriesPerRequest: 1 is aggressive — tuning parameter; 503 on transient Redis outage is acceptable
+- Timeout test not explicitly covered — promise that never resolves not tested; both paths fall into the same catch of probe()

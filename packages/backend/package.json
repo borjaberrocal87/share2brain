@@ -4,11 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/main.ts",
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@hivly/shared": "*"
+    "@hivly/shared": "*",
+    "express": "^5.2.0",
+    "ioredis": "^5.4.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0"
   }
 }

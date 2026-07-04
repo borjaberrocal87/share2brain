@@ -1,0 +1,24 @@
+# One-shot migrator image (AD-9). Build context MUST be the repo root: it needs
+# the root drizzle.config.ts plus packages/shared (schema + generated SQL in
+# src/db/migrations). drizzle-kit is a devDependency of @hivly/shared, installed
+# by `npm ci`. `drizzle-kit migrate` is idempotent — it skips already-applied
+# migrations via the journal, so re-running the container is safe.
+FROM node:24-alpine
+
+WORKDIR /app
+
+# Manifests first so `npm ci` is cached until a dependency actually changes.
+COPY package.json package-lock.json ./
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/backend/package.json ./packages/backend/
+COPY packages/bot/package.json ./packages/bot/
+COPY packages/workers/package.json ./packages/workers/
+COPY packages/web/package.json ./packages/web/
+RUN npm ci
+
+# drizzle.config.ts (root) + the shared schema & migrations it points at.
+COPY tsconfig.base.json drizzle.config.ts ./
+COPY packages/shared ./packages/shared
+
+# Reads DATABASE_URL from the environment and applies pending SQL, then exits 0.
+CMD ["npx", "drizzle-kit", "migrate"]

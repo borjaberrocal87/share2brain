@@ -5,7 +5,7 @@
 #
 # This file holds BEHAVIOR only (channels, models, RBAC, knowledge tuning,
 # rate limits). Secrets (tokens, API keys, DB/Redis URLs) live ONLY in `.env`
-# and are referenced here as ${ENV_VAR}. Never mix the two (AD Consistency
+# and are referenced here as ${...} placeholders. Never mix the two (AD Consistency
 # Conventions). Validated by `loadConfig()` in `@hivly/shared`; the service
 # aborts on invalid/missing keys before opening any connection.
 

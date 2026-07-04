@@ -1,0 +1,125 @@
+# Hivly — full stack (AC1: exactly 7 services).
+#   postgres, redis ─→ migrator (one-shot) ─→ bot, workers, backend ─→ nginx
+#
+# Secrets come from .env (env_file); in-container hostnames override the
+# localhost URLs via `environment:` (containers reach postgres/redis by service
+# name, never localhost). Behavior config is mounted read-only at
+# /app/Hivly.config.yml. Images are pinned — never :latest.
+
+services:
+  # ── Data stores ────────────────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: hivly
+      POSTGRES_USER: hivly
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # Dev-only host exposure, bound to loopback. nginx is the only public port.
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hivly -d hivly"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── One-shot migrator (AD-9) ─────────────────────────────────────────────────
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrator
+    command: npx drizzle-kit migrate
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://hivly:${POSTGRES_PASSWORD}@postgres:5432/hivly
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Never restart — it applies migrations once and exits 0.
+    restart: "no"
+
+  # ── Application services ────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: packages/backend/Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://hivly:${POSTGRES_PASSWORD}@postgres:5432/hivly
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ./Hivly.config.yml:/app/Hivly.config.yml:ro
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  bot:
+    build:
+      context: .
+      dockerfile: packages/bot/Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://hivly:${POSTGRES_PASSWORD}@postgres:5432/hivly
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ./Hivly.config.yml:/app/Hivly.config.yml:ro
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  workers:
+    build:
+      context: .
+      dockerfile: packages/workers/Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://hivly:${POSTGRES_PASSWORD}@postgres:5432/hivly
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ./Hivly.config.yml:/app/Hivly.config.yml:ro
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Edge: the only host-exposed service (AD-7) ──────────────────────────────
+  # Built from packages/web/Dockerfile: the SPA dist + nginx.conf are baked into
+  # nginx:1.27-alpine, so no separate web service or shared volume is needed.
+  nginx:
+    build:
+      context: .
+      dockerfile: packages/web/Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

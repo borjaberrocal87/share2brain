@@ -9,6 +9,11 @@ import * as schema from './schema.js';
 export * from './schema.js';
 export { schema };
 
+// Re-exported so services can build raw queries (e.g. the `/health` probe
+// `db.execute(sql\`select 1\`)`) without importing drizzle-orm directly — they
+// depend only on @hivly/shared (AD-2).
+export { sql } from 'drizzle-orm';
+
 /** The typed Drizzle database handle, bound to the full Hivly schema. */
 export type Database = NodePgDatabase<typeof schema>;
 
