@@ -5,10 +5,9 @@
 // arrive in later epics.
 import { loadConfig } from '@hivly/shared';
 import { createDatabase, type Database } from '@hivly/shared/db';
-import express from 'express';
 import { Redis } from 'ioredis';
 
-import { createHealthHandler } from './health.js';
+import { createApp } from './app.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -40,9 +39,7 @@ function main(): void {
     console.warn('[redis]', err instanceof Error ? err.message : String(err));
   });
 
-  const app = express();
-  // Top-level, NOT under /api/ — auth-exempt per the API contract (AD auth table).
-  app.get('/health', createHealthHandler(db, redis));
+  const app = createApp(db, redis);
 
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`[backend] listening on 0.0.0.0:${PORT} — GET /health ready`);

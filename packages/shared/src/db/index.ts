@@ -14,8 +14,12 @@ export { schema };
 // depend only on @hivly/shared (AD-2).
 export { sql } from 'drizzle-orm';
 
-/** The typed Drizzle database handle, bound to the full Hivly schema. */
-export type Database = NodePgDatabase<typeof schema>;
+/**
+ * The typed Drizzle database handle, bound to the full Hivly schema. `$client` is
+ * the underlying pg `Pool` — call `db.$client.end()` to close it (integration
+ * tests, graceful shutdown). This mirrors exactly what `drizzle(pool)` returns.
+ */
+export type Database = NodePgDatabase<typeof schema> & { $client: Pool };
 
 /**
  * Create a Drizzle client for the given Postgres connection string. Callers own
