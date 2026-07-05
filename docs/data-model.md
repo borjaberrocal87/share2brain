@@ -7,7 +7,7 @@ This document describes the data model for **Hivly Self-Hosted**, including enti
 **Conventions:**
 - IDs: Discord snowflake (`string`) for Discord entities; UUID v4 for own entities (conversations, embeddings, users).
 - Dates: `timestamp with time zone` in PostgreSQL; ISO 8601 UTC when serialized.
-- Vector search uses the `pgvector` extension (1536-dim embeddings, `text-embedding-3-small`).
+- Vector search uses the `pgvector` extension. Embedding provider/model are configurable (`embeddings.*`); the vector dimension is declared in `embeddings.dimensions` (deploy-time) — default `text-embedding-3-small` / 1536.
 - **Sessions are NOT a table** — they live in Redis via `connect-redis` (AD-10).
 
 ## Write Ownership
@@ -48,7 +48,7 @@ Vector index over grouped/chunked message content. Written by the Workers; read 
 **Fields:**
 - `id`: UUID (Primary Key)
 - `content`: chunk text (concatenated from grouped messages)
-- `embedding`: `vector(1536)` (pgvector)
+- `embedding`: `vector(N)` where `N = embeddings.dimensions` (pgvector; parametrized at deploy-time, default 1536)
 - `channel_id`: Discord channel snowflake (used for the RBAC filter)
 - `message_ids`: `string[]` of source Discord snowflakes contributing to the chunk
 - `created_at`: timestamp
@@ -131,7 +131,7 @@ erDiagram
     embeddings {
         uuid id PK
         text content "Text fragment"
-        vector embedding "1536 dims"
+        vector embedding "N dims (embeddings.dimensions)"
         string channel_id
         string[] message_ids
         timestamp created_at

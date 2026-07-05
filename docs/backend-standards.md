@@ -76,7 +76,7 @@ The system follows **Hexagonal (Shared Kernel) + Event-Driven Ingest**. All inva
 | Reverse proxy | nginx | 1.27 |
 | Containers | Docker Compose | 2 |
 | Testing | Vitest | latest |
-| Embeddings | text-embedding-3-small (1536 dims) | — |
+| Embeddings | configurable via `embeddings.*` (provider/model; default text-embedding-3-small) | dimension declared in `embeddings.dimensions` |
 
 There is **no serverless/AWS Lambda** deployment. The unit of deployment is Docker Compose.
 
