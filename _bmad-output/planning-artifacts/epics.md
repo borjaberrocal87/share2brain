@@ -21,7 +21,7 @@ FR1: El bot de Discord debe conectar al Gateway y escuchar eventos `messageCreat
 FR2: El bot debe realizar backfill de mensajes históricos al iniciar, partiendo del `last_seen_message_id` por canal (snowflake) o desde `backfill_limit` si es el primer arranque. Cada canal se procesa secuencialmente.
 FR3: El bot debe detectar ediciones de mensajes (`messageUpdate`) en canales habilitados y publicar el evento `discord.message.updated` a Redis Streams para re-indexación.
 FR4: El bot debe detectar borrados de mensajes (`messageDelete`) en canales habilitados y publicar el evento `discord.message.deleted` a Redis Streams para purgado (soft o hard según `delete_policy`).
-FR5: El Worker Indexer debe consumir eventos de `hivly:discord:messages`, agrupar mensajes consecutivos por canal (`grouping_window`), dividirlos en fragmentos (`chunk_size`, `chunk_overlap`), generar embeddings con `text-embedding-3-small` y almacenar en pgvector.
+FR5: El Worker Indexer debe consumir eventos de `hivly:discord:messages`, agrupar mensajes consecutivos por canal (`grouping_window`), dividirlos en fragmentos (`chunk_size`, `chunk_overlap`), generar embeddings con el proveedor/modelo configurado en `embeddings` (OpenAI o custom OpenAI-compatible) y almacenar en pgvector.
 FR6: El Worker Sync debe consumir eventos `discord.message.updated`: eliminar el embedding anterior y re-indexar el mensaje con el nuevo contenido.
 FR7: El Worker Sync debe consumir eventos `discord.message.deleted`: aplicar soft delete (`deleted_at`) o hard delete del embedding según `delete_policy`.
 FR8: El sistema debe ejecutar un sync al iniciar para detectar ediciones y borrados ocurridos mientras el bot estuvo offline (comparar Discord vs. indexados).
@@ -172,7 +172,7 @@ Un miembro del guild de Discord puede autenticarse via OAuth2 y ver la interfaz 
 **UX cubiertos:** UX-DR1 al UX-DR9
 
 ### Épico 3: Pipeline de Indexación de Conocimiento
-El conocimiento de los canales de Discord configurados fluye automáticamente al índice vectorial y es consultable. Incluye el Discord Bot (listener `messageCreate`, backfill reconciliado por snowflake con `last_seen_message_id`, publicación a Redis Streams), y los Workers Indexer (consumo at-least-once, agrupación por `grouping_window`, chunking, embeddings con `text-embedding-3-small`, upsert idempotente en pgvector).
+El conocimiento de los canales de Discord configurados fluye automáticamente al índice vectorial y es consultable. Incluye el Discord Bot (listener `messageCreate`, backfill reconciliado por snowflake con `last_seen_message_id`, publicación a Redis Streams), y los Workers Indexer (consumo at-least-once, agrupación por `grouping_window`, chunking, embeddings con el proveedor/modelo configurado (`embeddings.*`), upsert idempotente en pgvector).
 **FRs cubiertos:** FR1, FR2, FR5
 
 ### Épico 4: Búsqueda, Documentos y Read Tracking
@@ -445,6 +445,56 @@ para que los canales privados del guild permanezcan protegidos.
 
 El conocimiento de los canales de Discord configurados fluye automáticamente al índice vectorial y es consultable.
 
+### Historia 3.0: Configuración de proveedores LLM y embeddings
+
+Como Operador,
+quiero elegir de forma independiente el proveedor de LLM (Anthropic, OpenAI o custom
+OpenAI-compatible) y el de embeddings (OpenAI o custom), con sus claves y endpoints,
+para adaptar Hivly a mi stack sin tocar código.
+
+**Criterios de Aceptación:**
+
+**Dado** `packages/shared/src/config/index.ts`
+**Cuando** es revisado
+**Entonces** `agent.provider` es `z.enum(['anthropic','openai','custom'])` y existe el bloque `embeddings` con `provider: z.enum(['openai','custom'])`, `model`, `dimensions` (entero > 0), `base_url?` y `api_key`
+**Y** `agent` incluye `base_url?` y `api_key`
+**Y** `knowledge` ya NO contiene `embedding_model` (movido a `embeddings`)
+**Y** un `.superRefine` exige `base_url` no vacío cuando `provider === 'custom'` (agent y embeddings)
+
+**Dado** un `Hivly.config.yml` con `embeddings.provider: "anthropic"`
+**Cuando** `loadConfig()` valida
+**Entonces** falla con error descriptivo (Anthropic no ofrece API de embeddings)
+
+**Dado** un `provider: "custom"` sin `base_url`
+**Cuando** `loadConfig()` valida
+**Entonces** el proceso aborta con mensaje indicando que `base_url` es obligatorio para custom
+
+**Dado** un provider-factory en `packages/shared`
+**Cuando** recibe la config del `agent`
+**Entonces** devuelve `ChatAnthropic` (anthropic), o `ChatOpenAI` con `configuration.baseURL` + `apiKey` (openai/custom)
+**Y** para `embeddings` devuelve `OpenAIEmbeddings` con `configuration.baseURL` + `apiKey` (openai/custom)
+**Y** el `api_key`/`base_url` se pasan explícitos desde config (sin depender de nombres de env)
+
+**Dado** `packages/shared/src/db/schema.ts`
+**Cuando** se ejecuta `drizzle-kit generate`
+**Entonces** la dimensión de `vector('embedding', { dimensions })` proviene de `embeddings.dimensions` leída con un lector mínimo de YAML (NO `loadConfig()` completo, para no fallar por `${VAR}` sin setear)
+
+**Dado** el arranque de un servicio que genera/consulta embeddings
+**Cuando** obtiene un vector del proveedor
+**Entonces** un guard verifica `vector.length === embeddings.dimensions` y aborta/loguea error si no coincide (protege AD-13)
+
+**Dado** `Hivly.config.yml.example` y `.env.example`
+**Cuando** son revisados
+**Entonces** reflejan los bloques `agent`/`embeddings` y las keys `LLM_API_KEY`, `LLM_BASE_URL`, `EMBEDDINGS_API_KEY`, `EMBEDDINGS_BASE_URL`
+
+**Notas de implementación:**
+- Contrato = scope `shared` (AD-6). Evoluciona el contrato ya shipped en Story 1.2.
+- Aprovecha el spike abierto de Epic 2 (smoke real de embeddings API, verificar dimensión).
+- `docker-compose.yml`: propagar las nuevas env vars a bot/backend/workers.
+- **Dependencia:** 3.0 bloquea 3.3 (y a 4.1 / 5.1).
+
+---
+
 ### Historia 3.1: Discord Bot — conexión al Gateway y listener messageCreate
 
 Como Operador,
@@ -525,7 +575,8 @@ para poder encontrar conocimiento relevante con búsquedas en lenguaje natural.
 **Cuando** el Indexer los procesa
 **Entonces** agrupa mensajes consecutivos del mismo canal dentro de la ventana `grouping_window` configurada
 **Y** concatena el texto agrupado y lo divide en fragmentos de `chunk_size` tokens con `chunk_overlap` de solapamiento
-**Y** para cada fragmento llama a la API de embeddings con el modelo `text-embedding-3-small` (vector de 1536 dimensiones)
+**Y** para cada fragmento llama al cliente de embeddings del provider-factory (config `embeddings`), obteniendo un vector de `embeddings.dimensions`
+**Y** un guard verifica que la longitud del vector === `embeddings.dimensions`; si no coincide, NO hace XACK y registra error (protege AD-13)
 
 **Dado** los vectores generados para un fragmento
 **Cuando** son almacenados
@@ -559,7 +610,7 @@ para que el sistema me devuelva los fragmentos más relevantes respetando los ca
 **Dado** `GET /api/search?q=texto` con sesión válida
 **Cuando** el endpoint procesa la request
 **Entonces** valida el query con el Zod schema de `packages/shared/src/schemas/`
-**Y** genera el embedding de la query con `text-embedding-3-small`
+**Y** genera el embedding de la query con el cliente de embeddings del provider-factory (config `embeddings`)
 **Y** ejecuta la búsqueda vectorial en pgvector con filtro `WHERE channel_id = ANY(:allowedChannelIds)` obligatorio
 **Y** retorna los fragmentos ordenados por similitud coseno descendente
 
@@ -713,6 +764,7 @@ para obtener respuestas contextualizadas de mi comunidad en tiempo real.
 **Cuando** el endpoint procesa la petición
 **Entonces** responde con `Content-Type: text/event-stream`
 **Y** ejecuta el StateGraph LangGraph: nodo retrieve → nodo reason → nodo respond
+**Y** el StateGraph instancia el LLM vía provider-factory (config `agent`: provider/model/base_url/api_key), soportando anthropic | openai | custom
 **Y** el nodo retrieve filtra vectores por `allowedChannelIds` calculados en tiempo real (JOIN session.discordRoles + channel_permissions)
 **Y** el nodo retrieve excluye fragmentos con `deleted_at IS NOT NULL` en el join con `discord_messages`
 **Y** emite frames SSE según el wire format de `shared/schemas/sse.ts`: `token`, `citation`, `done`, `error`

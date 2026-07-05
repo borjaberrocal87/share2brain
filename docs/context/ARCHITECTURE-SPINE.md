@@ -68,7 +68,7 @@ graph TD
 
 - **Binds:** packages/shared, packages/bot, packages/backend, packages/workers
 - **Prevents:** definiciones de tabla duplicadas o divergentes entre servicios; migraciones en lenguajes o herramientas distintas
-- **Rule:** El schema de todas las tablas se define en `packages/shared/src/db/schema.ts` con Drizzle. Las migraciones se generan con `drizzle-kit` como SQL explícito. Ningún servicio define tablas ni hace DDL fuera de `packages/shared`. Las queries a pgvector usan la extensión de vector de drizzle-orm.
+- **Rule:** El schema de todas las tablas se define en `packages/shared/src/db/schema.ts` con Drizzle. Las migraciones se generan con `drizzle-kit` como SQL explícito. Ningún servicio define tablas ni hace DDL fuera de `packages/shared`. Las queries a pgvector usan la extensión de vector de drizzle-orm. La dimensión de la columna `vector` (tabla `embeddings`) se parametriza a **deploy-time** desde `embeddings.dimensions` (leída por `schema.ts` en generate-time con un lector mínimo de YAML, no `loadConfig()`); `schema.ts` sigue siendo la fuente de verdad del DDL. Cambiar la dimensión con datos ya indexados exige migración + re-indexado completo.
 
 ### AD-6 — Contrato API mediante Zod schemas en shared
 
@@ -308,7 +308,7 @@ hivly/
 - **Test framework y estrategia:** Vitest para unit/integration, Playwright para e2e — asumido pero no fijado como invariante.
 - **TLS / HTTPS en nginx:** Configuración de certificados (Let's Encrypt, cert manual) deferred a la guía de operaciones.
 - **Health checks de Compose:** Scripts de probe para cada servicio deferred al builder de docker-compose.
-- **Abstracción explícita del proveedor LLM:** LangChain.js maneja los adaptadores de proveedor (Anthropic, OpenAI), pero la interfaz de abstracción propia en shared (si se necesita) es deferred.
+- **Abstracción explícita del proveedor LLM/embeddings:** implementada en Story 3.0 — provider-factory en `shared` selecciona el adaptador de LangChain según config: LLM `ChatAnthropic`/`ChatOpenAI(baseURL)` (anthropic/openai/custom) y embeddings `OpenAIEmbeddings(baseURL)` (openai/custom). Anthropic no ofrece API de embeddings.
 - **Estrategia de batching del Indexer:** El `grouping_window` y `chunk_overlap` están en config; la lógica exacta de batching es deferred a la historia del Indexer Worker.
 - **Observabilidad detallada:** Sentry está referenciado en el PRD vía `SENTRY_DSN`; la estrategia de instrumentación (qué errores, qué traces) es deferred.
 - **Topología de desarrollo local:** En dev, el builder de `packages/web` levanta el Vite dev server (puerto 5173) mientras el Backend corre en el puerto 3000 — los orígenes son distintos. La configuración CORS del Backend (variable `FRONTEND_URL`) y el proxy de Vite (`vite.config.ts`) para `/api/*` son deferred al setup de desarrollo; no afectan la topología de producción gobernada por AD-7.

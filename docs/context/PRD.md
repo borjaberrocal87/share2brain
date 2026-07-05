@@ -40,9 +40,9 @@ Este documento define el **sistema core de Hivly** que cada operador despliega e
 | ID | Asunción | Propietario | Plan de validación |
 |----|----------|-------------|-------------------|
 | AS-1 | El operador dispone de un dominio público o IP accesible para el redirect URI de Discord OAuth2 | Operador | Verificar en guía de instalación; documentar configuración localhost para desarrollo |
-| AS-2 | Los costes de embedding (text-embedding-3-small) son asumibles para el volumen de mensajes de la comunidad objetivo | Producto | Calcular coste estimado para comunidades de 1k, 10k y 100k mensajes antes de lanzamiento |
+| AS-2 | Los costes de embedding (proveedor/modelo configurable en `embeddings`) son asumibles para el volumen de mensajes de la comunidad objetivo | Producto | Calcular coste estimado para comunidades de 1k, 10k y 100k mensajes con el modelo configurado antes de lanzamiento |
 | AS-3 | El rate limit de Discord API es suficiente para el backfill con `backfill_limit: 1000` mensajes por canal | Ingeniería | Validar con prueba de carga en entorno de staging con guild real |
-| AS-4 | `text-embedding-3-small` a 1536 dimensiones ofrece calidad semántica suficiente para búsqueda en comunidades de Discord | Ingeniería | Evaluar precisión con conjunto de preguntas reales de 3 comunidades piloto |
+| AS-4 | El modelo de embedding configurado (`embeddings.model`, p. ej. `text-embedding-3-small` a 1536 dims) ofrece calidad semántica suficiente para búsqueda en comunidades de Discord | Ingeniería | Evaluar precisión con conjunto de preguntas reales de 3 comunidades piloto sobre el modelo configurado |
 | AS-5 | El Operador y el Admin del guild son la misma persona o el Operador tiene acceso administrativo al guild | Producto | Confirmar en fase de beta con primeros operadores reales |
 
 ---
@@ -57,7 +57,7 @@ Este documento define el **sistema core de Hivly** que cada operador despliega e
 | **Guild** | Servidor de Discord identificado por su `guild_id` |
 | **Mensaje** | Mensaje original publicado en un canal de Discord (`discord_messages`) |
 | **Fragmento** | Unidad de conocimiento indexado generada al chunkear uno o varios mensajes agrupados (`embeddings`). Es el concepto de cara al usuario. |
-| **Embedding** | Vector numérico de 1536 dimensiones que representa semánticamente un Fragmento. Término interno de infraestructura. |
+| **Embedding** | Vector numérico de dimensión configurable (`embeddings.dimensions`, default 1536) que representa semánticamente un Fragmento. Término interno de infraestructura. |
 | **Conversación** | Sesión de chat entre un Miembro y el agente RAG (`conversations`) |
 | **Backfill** | Proceso de indexación de mensajes históricos al iniciar el sistema |
 | **Sync** | Proceso de reconciliación que detecta y propaga ediciones/borrados de mensajes en Discord |
@@ -116,7 +116,7 @@ Cada operador despliega una instancia independiente que sirve a **una comunidad 
 | SO-4 | Read Tracking | Cada miembro tiene su propio estado de lectura |
 | SO-5 | Configuración como código | Todo en `Hivly.config.yml` + `.env` |
 | SO-6 | Despliegue trivial | Un comando: `docker compose up -d` |
-| SO-7 | Datos bajo control | Self-hosted; datos en reposo nunca salen del servidor del operador. El procesamiento LLM (embeddings e inferencia) se delega al proveedor configurado por el operador — esta delegación es explícita y documentada (ver §13). |
+| SO-7 | Datos bajo control | Self-hosted; datos en reposo nunca salen del servidor del operador. El procesamiento se delega a los proveedores configurados por el operador — LLM (Anthropic/OpenAI/custom) y embeddings (OpenAI/custom), posiblemente distintos e incl. endpoint custom self-hosted — delegación explícita y documentada (ver §13). |
 | SO-8 | Multi-comunidad | Cada despliegue sirve a un guild independiente |
 
 ### 2.3 No-objetivos (en esta versión)
@@ -250,7 +250,7 @@ Cada operador despliega una instancia independiente que sirve a **una comunidad 
 3. INDEXACIÓN (Indexer Worker)
    └─▶ Recibe evento de Redis Streams
    └─▶ Agrupa mensajes por ventana temporal
-   └─▶ Genera embeddings (text-embedding-3-small)
+   └─▶ Genera embeddings (proveedor/modelo configurado)
    └─▶ Almacena en pgvector
    └─▶ Marca como indexado
 
@@ -473,10 +473,12 @@ discord:
     ignore_bots: true
   ignore_bots: true
 
-# Agent
+# Agent (LLM)
 agent:
-  provider: "anthropic"
-  model: "claude-3-5-sonnet"
+  provider: "anthropic"      # anthropic | openai | custom
+  model: "claude-sonnet-4-6"
+  base_url: "${LLM_BASE_URL}"    # opcional; OBLIGATORIO si provider: custom
+  api_key: "${LLM_API_KEY}"      # ref a secreto (.env)
   temperature: 0.7
   max_iterations: 10
   memory_window: 20          # turnos de historial antes de comprimir; ver SD-17
@@ -486,12 +488,19 @@ agent:
     Siempre cita el canal, autor y fecha del mensaje original.
     Si no encuentras información relevante, dilo explícitamente sin inventar.
 
+# Embeddings
+embeddings:
+  provider: "openai"         # openai | custom  (NO anthropic — sin API de embeddings)
+  model: "text-embedding-3-small"
+  dimensions: 1536           # debe coincidir con la columna vector(N); deploy-time
+  base_url: "${EMBEDDINGS_BASE_URL}"  # opcional; OBLIGATORIO si provider: custom
+  api_key: "${EMBEDDINGS_API_KEY}"    # ref a secreto (.env)
+
 # Knowledge
 knowledge:
   chunk_size: 500          # tokens por fragmento (LangChain default; ajustar post-MVP)
   chunk_overlap: 50        # tokens de solapamiento entre fragmentos
   grouping_window: 10      # mensajes consecutivos a agrupar antes de chunkear
-  embedding_model: "text-embedding-3-small"
   # Pipeline: agrupa N mensajes → genera chunk_text concatenado → divide en fragmentos de chunk_size tokens
 
 # Read Tracking
@@ -732,7 +741,7 @@ CREATE TABLE embeddings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     message_id UUID NOT NULL REFERENCES discord_messages(id) ON DELETE CASCADE,
     chunk_text TEXT NOT NULL,
-    embedding vector(1536) NOT NULL,
+    embedding vector(1536) NOT NULL,  -- 1536 = default; parametrizado por embeddings.dimensions
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -1207,9 +1216,11 @@ REDIS_URL=redis://localhost:6379
 # Session
 SESSION_SECRET=your_session_secret_at_least_32_chars
 
-# LLM (al menos uno requerido)
-ANTHROPIC_API_KEY=your_anthropic_key
-OPENAI_API_KEY=your_openai_key
+# LLM (agent.provider) y Embeddings (embeddings.provider)
+LLM_API_KEY=your_llm_provider_key
+LLM_BASE_URL=                       # solo si agent.provider: custom
+EMBEDDINGS_API_KEY=your_embeddings_provider_key
+EMBEDDINGS_BASE_URL=                # solo si embeddings.provider: custom
 
 # Telegram (opcional)
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
@@ -1399,7 +1410,10 @@ DISCORD_REDIRECT_URI=https://tu-dominio.com/api/auth/callback
 DATABASE_URL=
 REDIS_URL=
 SESSION_SECRET=
-ANTHROPIC_API_KEY=  # o OPENAI_API_KEY
+LLM_API_KEY=            # clave del proveedor LLM (agent.provider)
+LLM_BASE_URL=           # solo si agent.provider: custom
+EMBEDDINGS_API_KEY=     # clave del proveedor de embeddings (embeddings.provider)
+EMBEDDINGS_BASE_URL=    # solo si embeddings.provider: custom
 
 # Opcional
 SESSION_TTL_DAYS=7
@@ -1439,7 +1453,7 @@ SENTRY_DSN=
 | PO-2 | ¿Cuál es la estrategia de migración de `Hivly.config.yml` cuando se añaden o eliminan campos entre versiones? ¿Error fatal o warning y valores default? | Ingeniería | Antes del primer release público |
 | PO-3 | ¿El Operador es responsable de configurar y pagar el proveedor de búsqueda web si habilita `search_web`? ¿O Hivly provee un proveedor por defecto con límites de uso? | Producto | Antes de activar la tool en v1 |
 | PO-4 | ¿Cómo se gestiona el upgrade de `Hivly.config.yml` para Operadores existentes cuando migran a una nueva versión del sistema? | Ingeniería | Antes del segundo release público |
-| PO-5 | ¿El modelo de embedding `text-embedding-3-small` es suficiente para comunidades con jerga técnica muy específica (ej. comunidades de Solidity, Rust)? ¿Se permite configurar un modelo de embedding alternativo? | Producto + Ingeniería | Validar con comunidades piloto técnicas en beta |
+| PO-5 | RESUELTO (Story 3.0): el proveedor y modelo de embeddings son configurables (`embeddings.provider`: OpenAI o custom OpenAI-compatible; `embeddings.model`; `embeddings.dimensions`) vía `Hivly.config.yml`. Anthropic no aplica (sin API de embeddings). Queda validar en piloto qué modelo rinde mejor con jerga técnica (Solidity, Rust). | Producto + Ingeniería | Validar con comunidades piloto técnicas en beta sobre el modelo configurado |
 | PO-6 | ¿Qué ocurre con los embeddings al re-indexar si el modelo de embedding cambia (ej. el Operador cambia `embedding_model` en config)? ¿Reindexación total automática o manual? | Ingeniería | Antes de exponer `embedding_model` como config pública |
 | PO-7 | ¿El formato de fecha y autor en las citas del agente sigue la zona horaria del servidor o la del usuario? | UX + Ingeniería | Antes de implementar el Agent Runtime |
 | PO-8 | ¿Cómo se gestiona el `backfill_limit` si un canal tiene más mensajes que el límite? ¿Se documenta explícitamente que los mensajes más antiguos no estarán indexados? | Producto | Antes del lanzamiento; añadir advertencia visible en la UI |
@@ -1467,7 +1481,7 @@ SENTRY_DSN=
 | SD-15 | default_policy: deny | Seguridad por defecto; denegar si no hay regla explícita |
 | SD-16 | mark-all usa batch processing | Para evitar transacciones masivas (potencialmente 100k+ inserts), `POST /api/read-status/mark-all` procesa embeddings en lotes de 1.000. Solo puede operar sobre canales con acceso RBAC del usuario solicitante. |
 | SD-17 | Estrategia de memoria de conversación | ConversationSummaryBufferMemory: ventana de 20 turnos, resumen comprimido cuando supera el 60% del context window, presupuesto de 4.000 tokens para historial. Configurable via `agent.memory_window`. |
-| SD-18 | SO-7 acotado a datos en reposo | "Datos bajo control" significa que PostgreSQL, Redis y los archivos de configuración residen en el servidor del Operador. El contenido de mensajes se envía al proveedor LLM configurado para embeddings e inferencia — delegación explícita documentada en §0.1 AS-4 y §13. |
+| SD-18 | SO-7 acotado a datos en reposo | "Datos bajo control" significa que PostgreSQL, Redis y los archivos de configuración residen en el servidor del Operador. El contenido de mensajes se envía a los proveedores configurados por el Operador — inferencia (LLM: Anthropic/OpenAI/custom) y embeddings (OpenAI/custom), posiblemente distintos e incl. endpoint custom self-hosted — delegación explícita documentada en §0.1 AS-4 y §13. |
 
 ---
 
@@ -1508,7 +1522,7 @@ SENTRY_DSN=
 - [ ] Hivly.config.yml personalizado
 - [ ] Discord Bot creado y con permisos
 - [ ] `DISCORD_REDIRECT_URI` configurada en el dashboard de la aplicación Discord
-- [ ] Cuenta de Anthropic/OpenAI con API key
+- [ ] Credenciales del/los proveedor(es) elegido(s): LLM (Anthropic/OpenAI/custom) y embeddings (OpenAI/custom) con API key (y base_url si custom)
 - [ ] Estrategia de backup configurada (cron de `pg_dump` o snapshots del volumen)
 
 ### Despliegue

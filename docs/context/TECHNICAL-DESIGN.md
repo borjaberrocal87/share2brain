@@ -258,7 +258,7 @@ El Backfiller almacena el `last_seen_message_id` (Discord snowflake) por canal e
    a. Agrupar con mensajes consecutivos del mismo canal (grouping_window)
    b. Generar chunk_text concatenado
    c. Dividir en fragmentos de chunk_size tokens con chunk_overlap
-   d. Para cada fragmento: llamar a text-embedding-3-small → vector de 1536 dims
+   d. Para cada fragmento: llamar al proveedor de embeddings configurado → vector de `embeddings.dimensions`
    e. INSERT INTO embeddings (content, embedding, channel_id, message_ids, ...)
    f. Actualizar discord_messages SET indexed_at = now()
 3. XACK hivly:discord:messages hivly:indexer <message-id>
@@ -401,7 +401,7 @@ erDiagram
     embeddings {
         uuid id PK
         text content "Fragmento de texto"
-        vector embedding "1536 dims"
+        vector embedding "N dims (embeddings.dimensions)"
         string channel_id
         string[] message_ids
         timestamp created_at
@@ -489,7 +489,7 @@ sequenceDiagram
     participant Bot
     participant RS as Redis Streams
     participant Idx as Workers/Indexer
-    participant OAI as OpenAI Embeddings API
+    participant EMB as Embeddings Provider (config)
     participant PG as PostgreSQL+pgvector
 
     D->>Bot: messageCreate event
@@ -500,8 +500,8 @@ sequenceDiagram
     RS->>Idx: XREADGROUP hivly:indexer (at-least-once)
     Idx->>Idx: Agrupar mensajes consecutivos (grouping_window)
     Idx->>Idx: Dividir en fragmentos (chunk_size, chunk_overlap)
-    Idx->>OAI: POST /embeddings (text-embedding-3-small)
-    OAI-->>Idx: vector[1536]
+    Idx->>EMB: POST /embeddings (embeddings.model)
+    EMB-->>Idx: vector[dimensions]
     Idx->>PG: INSERT embeddings (content, embedding, channel_id, message_ids)
     Idx->>PG: UPDATE discord_messages SET indexed_at = now()
     Idx->>RS: XACK hivly:discord:messages hivly:indexer <id>
@@ -858,17 +858,25 @@ discord:
     ignore_bots: true
 
 agent:
-  provider: "anthropic"
+  provider: "anthropic"      # anthropic | openai | custom
   model: "claude-sonnet-4-6"
+  base_url: "${LLM_BASE_URL}"    # opcional; OBLIGATORIO si provider: custom
+  api_key: "${LLM_API_KEY}"
   temperature: 0.7
   max_iterations: 10
   memory_window: 20
+
+embeddings:
+  provider: "openai"         # openai | custom  (NO anthropic)
+  model: "text-embedding-3-small"
+  dimensions: 1536           # deploy-time; parametriza la columna vector(N)
+  base_url: "${EMBEDDINGS_BASE_URL}"  # opcional; OBLIGATORIO si provider: custom
+  api_key: "${EMBEDDINGS_API_KEY}"
 
 knowledge:
   chunk_size: 500
   chunk_overlap: 50
   grouping_window: 10
-  embedding_model: "text-embedding-3-small"
 
 sync:
   enabled: true
@@ -1018,7 +1026,7 @@ docker compose up -d
 | Cache/Streams | Redis | 8 | |
 | Reverse proxy | nginx | 1.27 mainline | |
 | Contenedores | Docker Compose | 2 | |
-| Embeddings | text-embedding-3-small | — | API OpenAI, 1536 dims |
+| Embeddings | Configurable (OpenAI / custom OpenAI-compatible) | — | provider-factory; dimensión declarada en `embeddings.dimensions` |
 
 ---
 
@@ -1069,7 +1077,7 @@ Estas decisiones están conscientemente pospuestas. No son olvidos — son área
 | **Test framework** | Vitest + Playwright (asumido) | Sin restricción |
 | **TLS en nginx** | Let's Encrypt vs cert manual | AD-7 establece que nginx termina TLS |
 | **Health checks Compose** | Scripts de probe por servicio | Sin restricción |
-| **Abstracción proveedor LLM** | Interfaz propia en shared (si necesaria) | LangChain.js ya abstrae Anthropic y OpenAI |
+| **Abstracción proveedor LLM/embeddings** | Implementada en Story 3.0 (provider-factory en shared: ChatAnthropic / ChatOpenAI(baseURL) / OpenAIEmbeddings(baseURL)) | Cubre LLM (anthropic/openai/custom) y embeddings (openai/custom) |
 | **Batching del Indexer** | Lógica exacta de grouping_window | El config fija los parámetros |
 | **Observabilidad** | Qué errores y traces van a Sentry | `SENTRY_DSN` en config |
 | **Topología dev local** | Vite proxy, CORS config en Backend | No afecta producción (AD-7) |
