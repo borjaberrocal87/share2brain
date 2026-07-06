@@ -21,8 +21,9 @@ export default defineConfig({
       },
       // Web: React component tests in jsdom. Own config in packages/web.
       './packages/web/vitest.config.ts',
-      // Integration: real Postgres + Redis. Own config in packages/backend.
+      // Integration: real Postgres + Redis. Own config per producer service.
       './packages/backend/vitest.config.ts',
+      './packages/bot/vitest.config.ts',
     ],
   },
 });
