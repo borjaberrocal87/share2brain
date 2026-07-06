@@ -28,6 +28,10 @@
       "types": "./src/providers/index.ts",
       "default": "./src/providers/index.ts"
     },
+    "./redis": {
+      "types": "./src/infrastructure/redis.ts",
+      "default": "./src/infrastructure/redis.ts"
+    },
     "./types/events": {
       "types": "./src/types/events.ts",
       "default": "./src/types/events.ts"
@@ -45,6 +49,7 @@
     "@langchain/openai": "^1.5.3",
     "drizzle-orm": "^0.45.0",
     "pg": "^8.13.0",
+    "redis": "^6.1.0",
     "yaml": "^2.6.0",
     "zod": "^4.4.0"
   },

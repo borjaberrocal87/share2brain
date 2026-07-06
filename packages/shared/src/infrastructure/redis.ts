@@ -1,11 +1,13 @@
-// node-redis client factory (project-wide Redis client — sessions today, Redis
-// Streams for bot/workers in Epic 3+). node-redis is the maintained client for
-// Redis 8 and the one connect-redis@9 supports natively; ioredis was dropped.
+// node-redis client factory (project-wide Redis client — sessions in the backend,
+// Redis Streams for bot/workers in Epic 3+). node-redis is the maintained client
+// for Redis 8 and the one connect-redis@9 supports natively; ioredis was dropped.
+// This lives in @hivly/shared so every service (backend, bot, workers) uses the
+// SAME factory without importing another service (AD-2).
 //
 // Importing this module opens NO connection — the caller decides when to
 // connect(). An 'error' handler is attached so a dropped or absent Redis
-// surfaces through a degraded /health probe rather than an unhandled 'error'
-// event that crashes the process.
+// surfaces through a degraded probe rather than an unhandled 'error' event that
+// crashes the process.
 import { createClient } from 'redis';
 
 /** Create a Redis client with a bounded reconnect backoff. Does not connect. */

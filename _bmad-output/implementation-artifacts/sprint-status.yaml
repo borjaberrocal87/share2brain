@@ -42,6 +42,12 @@
 
 generated: 2026-06-30
 last_updated: 2026-07-06
+# story 3-1 → done (3rd code review 2026-07-06 — fixed that fail-fast was dead code: node-redis reconnectStrategy always returns a number so connect() never rejects; R1 bound initial connect with 10s timeout→exit(1), R2 bound client.destroy, R3 .catch on raced quit/end, R4 .catch on waitOrAbort; gate green)
+# story 3-1 → done (2nd code review 2026-07-06 — 4 more patches: await+bound redis.quit, abortable backoff sleep, defensive handler try/catch, fail-fast on failed initial Redis connect; 2 decisions dismissed, 3 deferred; gate green)
+# story 3-1 → done (code review passed — 7 patches applied: redis.quit, await connect, shutdown timeout, empty content guard, ClientReady on, abort signal for retry, console.error + stack)
+# story 3-1 → review (bmad-dev-story)
+# story 3-1 → in-progress (bmad-dev-story)
+# story 3-1 → ready-for-dev (bmad-create-story); comprehensive context guide created
 # story 3-0 → done (code review passed — 5 patches applied: schema validation, type signatures, test coverage, URL format, error messages)
 # story 3-0 → review (bmad-dev-story)
 # story 3-0 → in-progress (bmad-dev-story)
@@ -87,7 +93,7 @@ development_status:
   # ── Épico 3: Pipeline de Indexación de Conocimiento ─────────────────────────
   epic-3: in-progress
   3-0-config-proveedores-llm-y-embeddings: done
-  3-1-discord-bot-conexion-al-gateway-y-listener-messagecreate: backlog
+  3-1-discord-bot-conexion-al-gateway-y-listener-messagecreate: done
   3-2-discord-bot-backfill-historico-con-reconciliacion-por-snowflake: backlog
   3-3-workers-indexer-embeddings-y-pgvector: backlog
   epic-3-retrospective: optional

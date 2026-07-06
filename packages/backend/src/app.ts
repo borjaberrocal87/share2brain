@@ -13,7 +13,7 @@ import type { DiscordOAuthClient } from './domain/repositories/discordOAuthClien
 import { createHealthHandler } from './health.js';
 import { createDrizzleChannelPermissionRepository } from './infrastructure/channelPermissionRepository.drizzle.js';
 import { createFetchDiscordOAuthClient } from './infrastructure/discordOAuthClient.fetch.js';
-import type { RedisClient } from './infrastructure/redis.js';
+import type { RedisClient } from '@hivly/shared/redis';
 import { createSessionMiddleware } from './infrastructure/sessionStore.js';
 import { createDrizzleUserRepository } from './infrastructure/userRepository.drizzle.js';
 import { createRbacMiddleware } from './middleware/rbac.js';

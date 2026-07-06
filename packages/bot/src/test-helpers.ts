@@ -1,9 +1,10 @@
-// Integration test helper: opens the SAME real clients the backend uses at startup
-// (pooled pg + node-redis) so tests exercise the true DB/Redis path, not a mock.
+// Integration test helper: opens the SAME real clients the bot uses at startup
+// (pooled pg via @hivly/shared/db + node-redis via @hivly/shared/redis) so tests
+// exercise the true DB/Redis path, not a mock. Mirrors packages/backend's helper,
+// but imports only from @hivly/shared (AD-2 — the bot never imports the backend).
+//
 // Requires a live Postgres + Redis — `docker compose up -d postgres redis`.
 import { createDatabase, type Database } from '@hivly/shared/db';
-
-import type { AppOptions } from './app.js';
 import { createRedisClient, type RedisClient } from '@hivly/shared/redis';
 
 // Dev defaults match the ports docker-compose exposes on localhost. Override via env
@@ -32,23 +33,5 @@ export async function openTestClients(): Promise<TestClients> {
       await db.$client.end();
       redis.destroy();
     },
-  };
-}
-
-/** Build AppOptions with safe test defaults; override per test (e.g. inject `oauth`). */
-export function buildTestAppOptions(overrides: Partial<AppOptions> = {}): AppOptions {
-  return {
-    sessionSecret: 'test-session-secret',
-    sessionTtlDays: 7,
-    cookieSecure: false,
-    discord: {
-      clientId: 'test-client-id',
-      clientSecret: 'test-client-secret',
-      redirectUri: 'http://localhost:3000/api/auth/callback',
-      guildId: 'test-guild',
-    },
-    frontendUrl: 'http://localhost:5173',
-    allowedOrigins: ['http://localhost:5173'],
-    ...overrides,
   };
 }

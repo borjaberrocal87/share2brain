@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run --project unit --project web --passWithNoTests",
-    "test:integration": "vitest run --project backend-integration",
+    "test:integration": "vitest run --project backend-integration --project bot-integration",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build --workspaces --if-present"
   },
