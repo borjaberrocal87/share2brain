@@ -6,7 +6,7 @@ import { RedisStore } from 'connect-redis';
 import type { RequestHandler } from 'express';
 import session from 'express-session';
 
-import type { RedisClient } from './redis.js';
+import type { RedisClient } from '@hivly/shared/redis';
 
 // The ONLY place the session payload is typed. `userId`/`discordRoles` are set on
 // a successful OAuth callback; `oauthState` is the transient CSRF nonce.

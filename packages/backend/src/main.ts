@@ -3,11 +3,11 @@
 // node-redis client at startup, then the app (health + Discord OAuth2 auth).
 import { loadConfig } from '@hivly/shared';
 import { createDatabase, type Database } from '@hivly/shared/db';
+import { createRedisClient } from '@hivly/shared/redis';
 
 import { createApp } from './app.js';
 import { createDrizzleChannelPermissionRepository } from './infrastructure/channelPermissionRepository.drizzle.js';
 import { materializeChannelPermissions } from './infrastructure/materializeChannelPermissions.js';
-import { createRedisClient } from './infrastructure/redis.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 

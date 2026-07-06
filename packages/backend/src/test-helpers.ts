@@ -4,7 +4,7 @@
 import { createDatabase, type Database } from '@hivly/shared/db';
 
 import type { AppOptions } from './app.js';
-import { createRedisClient, type RedisClient } from './infrastructure/redis.js';
+import { createRedisClient, type RedisClient } from '@hivly/shared/redis';
 
 // Dev defaults match the ports docker-compose exposes on localhost. Override via env
 // (e.g. CI): DATABASE_URL / REDIS_URL. Password matches the compose `.env` placeholder.

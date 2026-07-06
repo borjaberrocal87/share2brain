@@ -7,7 +7,7 @@ import { sql, type Database } from '@hivly/shared/db';
 import { HealthResponseSchema, type HealthResponse } from '@hivly/shared/schemas';
 import type { Request, Response } from 'express';
 
-import type { RedisClient } from './infrastructure/redis.js';
+import type { RedisClient } from '@hivly/shared/redis';
 
 /** Max time a single dependency probe may take before it counts as disconnected. */
 const PROBE_TIMEOUT_MS = 2000;

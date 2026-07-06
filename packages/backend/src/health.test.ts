@@ -1,5 +1,5 @@
 import type { Database } from '@hivly/shared/db';
-import type { RedisClient } from './infrastructure/redis.js';
+import type { RedisClient } from '@hivly/shared/redis';
 import { describe, expect, it, vi } from 'vitest';
 
 import { computeHealth } from './health.js';
