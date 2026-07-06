@@ -120,7 +120,7 @@ graph TD
 
 | Stream key | Producer | Consumer group | Consumer |
 |---|---|---|---|
-| `hivly:discord:messages` | bot | `hivly:indexer` | workers/indexer |
+| `hivly:discord:messages` | bot | `hivly:indexer` *(consumer activo desde 3.3)* | workers/indexer |
 | `hivly:discord:messages:updated` | bot | `hivly:sync` | workers/sync |
 | `hivly:discord:messages:deleted` | bot | `hivly:sync` | workers/sync |
 | `hivly:knowledge:events` | bot (desde 3.2: `discord.backfill.completed`); workers *(Epic 6)* | `hivly:notifier` | notifier *(deferred — Epic 6)* |
@@ -302,14 +302,14 @@ hivly/
 ## Deferred
 
 - **Notificador (Telegram/Slack):** El PRD lo lista como componente separado pero no está decidido si vive en `packages/workers` (junto a los eventos de knowledge) o en `packages/backend`. Deferred a la historia de notificaciones.
-- **Retry y dead-letter en Redis Streams (DLQ):** AD-13 fija los consumer groups y el ACK discipline. La política de máximo de reintentos, `MAXLEN` del stream y el destino del dead-letter (si lo hay) es deferred a la historia de Workers.
+- **Retry y dead-letter en Redis Streams (DLQ):** AD-13 fija los consumer groups y el ACK discipline. **Resuelto en Story 3.3 (Indexer):** el PEL *es* el dead-letter implícito — sin retry-max y sin `MAXLEN`; una entrada que falla queda pendiente y se re-procesa en el replay del arranque siguiente. Consecuencia aceptada a escala self-hosted: el stream crece sin límite. La política de *trimming* del stream (`MAXLEN`/`XTRIM`) queda deferred a una futura historia de retención.
 - **Framework CSS / UI components:** Tailwind + shadcn/ui vs CSS Modules — no afecta la consistencia entre servicios. Deferred al builder de packages/web.
 - **Frontend server state (data fetching):** TanStack Query vs SWR — deferred al builder de packages/web; debe respetar AD-6 (tipos inferidos de Zod).
 - **Test framework y estrategia:** Vitest para unit/integration, Playwright para e2e — asumido pero no fijado como invariante.
 - **TLS / HTTPS en nginx:** Configuración de certificados (Let's Encrypt, cert manual) deferred a la guía de operaciones.
 - **Health checks de Compose:** Scripts de probe para cada servicio deferred al builder de docker-compose.
 - **Abstracción explícita del proveedor LLM/embeddings:** implementada en Story 3.0 — provider-factory en `shared` selecciona el adaptador de LangChain según config: LLM `ChatAnthropic`/`ChatOpenAI(baseURL)` (anthropic/openai/custom) y embeddings `OpenAIEmbeddings(baseURL)` (openai/custom). Anthropic no ofrece API de embeddings.
-- **Estrategia de batching del Indexer:** El `grouping_window` y `chunk_overlap` están en config; la lógica exacta de batching es deferred a la historia del Indexer Worker.
+- **Estrategia de batching del Indexer:** El `grouping_window` y `chunk_overlap` están en config. **Resuelto en Story 3.3:** dentro de un batch `XREADGROUP`, las entradas se particionan por `channelId` (orden de stream preservado) en grupos de ≤ `grouping_window` mensajes; cada grupo se concatena con `'\n'` y se trocea con `RecursiveCharacterTextSplitter` usando una heurística de ~4 chars/token para que `chunk_size` cuente tokens aproximados.
 - **Observabilidad detallada:** Sentry está referenciado en el PRD vía `SENTRY_DSN`; la estrategia de instrumentación (qué errores, qué traces) es deferred.
 - **Topología de desarrollo local:** En dev, el builder de `packages/web` levanta el Vite dev server (puerto 5173) mientras el Backend corre en el puerto 3000 — los orígenes son distintos. La configuración CORS del Backend (variable `FRONTEND_URL`) y el proxy de Vite (`vite.config.ts`) para `/api/*` son deferred al setup de desarrollo; no afectan la topología de producción gobernada por AD-7.
 - **nginx image tag explícito:** Para evitar actualizaciones silenciosas en producción, el `docker-compose.yml` DEBE pintar `nginx:1.27-alpine` (o la versión exacta que elija el builder) en lugar de `nginx:latest`. Deferred al builder de docker-compose.
