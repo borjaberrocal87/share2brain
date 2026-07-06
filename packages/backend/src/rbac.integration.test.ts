@@ -57,7 +57,11 @@ describe('RBAC + route protection (integration)', () => {
 
   afterAll(async () => {
     await clients.db.execute(sql`DELETE FROM channel_permissions WHERE channel_id LIKE 'itest-%'`);
-    await clients.db.execute(sql`DELETE FROM users WHERE discord_id LIKE 'itest-%'`);
+    // Scoped to this suite's own discord_id — a broad `LIKE 'itest-%'` would race
+    // with every other integration file's "itest-*" users and could delete a row
+    // another suite still references (e.g. via a user_read_status FK), aborting
+    // its cleanup with a FK violation.
+    await clients.db.execute(sql`DELETE FROM users WHERE discord_id = ${MEMBER_DISCORD_ID}`);
     await clients.close();
   });
 

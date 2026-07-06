@@ -54,7 +54,13 @@ describe('Auth endpoints (integration)', () => {
   });
 
   afterAll(async () => {
-    await clients.db.execute(sql`DELETE FROM users WHERE discord_id LIKE 'itest-%'`);
+    // Scoped to this suite's own discord_ids — a broad `LIKE 'itest-%'` would race
+    // with every other integration file's "itest-*" users and could delete a row
+    // another suite still references (e.g. via a user_read_status FK), aborting
+    // its cleanup with a FK violation.
+    await clients.db.execute(
+      sql`DELETE FROM users WHERE discord_id IN (${MEMBER_DISCORD_ID}, ${NONMEMBER_DISCORD_ID})`,
+    );
     await clients.close();
   });
 

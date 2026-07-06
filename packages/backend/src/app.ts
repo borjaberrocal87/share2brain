@@ -8,22 +8,30 @@ import cors from 'cors';
 import express, { type Express } from 'express';
 
 import { createAuthService } from './application/services/authService.js';
+import { createDocumentService } from './application/services/documentService.js';
 import { createRbacService } from './application/services/rbacService.js';
+import { createReadStatusService } from './application/services/readStatusService.js';
 import { createSearchService } from './application/services/searchService.js';
 import type { DiscordOAuthClient } from './domain/repositories/discordOAuthClient.js';
 import type { QueryEmbedder } from './domain/repositories/queryEmbedder.js';
 import { createHealthHandler } from './health.js';
 import { createDrizzleChannelPermissionRepository } from './infrastructure/channelPermissionRepository.drizzle.js';
+import { createDrizzleDocumentRepository } from './infrastructure/documentRepository.drizzle.js';
 import { createDrizzleEmbeddingSearchRepository } from './infrastructure/embeddingSearchRepository.drizzle.js';
 import { createFetchDiscordOAuthClient } from './infrastructure/discordOAuthClient.fetch.js';
+import { createDrizzleReadStatusRepository } from './infrastructure/readStatusRepository.drizzle.js';
 import type { RedisClient } from '@hivly/shared/redis';
 import { createSessionMiddleware } from './infrastructure/sessionStore.js';
 import { createDrizzleUserRepository } from './infrastructure/userRepository.drizzle.js';
 import { createRbacMiddleware } from './middleware/rbac.js';
 import { requireAuth } from './middleware/requireAuth.js';
 import { createAuthController } from './presentation/controllers/authController.js';
+import { createDocumentController } from './presentation/controllers/documentController.js';
+import { createReadStatusController } from './presentation/controllers/readStatusController.js';
 import { createSearchController } from './presentation/controllers/searchController.js';
 import { createAuthRouter } from './routes/authRoutes.js';
+import { createDocumentRouter } from './routes/documentRoutes.js';
+import { createReadStatusRouter } from './routes/readStatusRoutes.js';
 import { createSearchRouter } from './routes/searchRoutes.js';
 
 export interface AppOptions {
@@ -101,6 +109,19 @@ export function createApp(db: Database, redis: RedisClient, opts: AppOptions): E
   const searchService = createSearchService({ embedder: queryEmbedder, searchRepo: embeddingSearch });
   const searchController = createSearchController({ searchService });
   app.use('/api/search', createSearchRouter(searchController));
+
+  // Documents + read-status (Epic 4, Story 4.2). Registered AFTER the /api gate,
+  // so both inherit requireAuth + the RBAC middleware — the AD-12 filter is
+  // enforced inside the SQL by each adapter.
+  const documentRepo = createDrizzleDocumentRepository(db);
+  const documentService = createDocumentService({ documentRepo });
+  const documentController = createDocumentController({ documentService });
+  app.use('/api/documents', createDocumentRouter(documentController));
+
+  const readStatusRepo = createDrizzleReadStatusRepository(db);
+  const readStatusService = createReadStatusService({ readStatusRepo });
+  const readStatusController = createReadStatusController({ readStatusService });
+  app.use('/api/read-status', createReadStatusRouter(readStatusController));
 
   return app;
 }

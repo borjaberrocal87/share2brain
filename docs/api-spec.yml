@@ -112,9 +112,16 @@ paths:
   /api/documents:
     get:
       tags: [documents]
-      summary: List/browse indexed documents visible to the caller
+      summary: List/browse indexed documents visible to the caller (paginated, read-annotated)
+      description: >
+        Results are filtered by the caller's allowedChannelIds inside the query
+        (not a post-filter) and each fragment carries isRead for the current user.
+      parameters:
+        - { name: page, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 1000000, default: 1 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
       responses:
-        "200": { description: Documents (RBAC-scoped) }
+        "200": { description: Paginated documents (RBAC-scoped) with isRead }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/chat:
@@ -165,21 +172,63 @@ paths:
   /api/read-status/unread-count:
     get:
       tags: [read-status]
-      summary: Unread fragment count for the caller (RBAC-scoped)
+      summary: Per-channel unread fragment count for the caller (RBAC-scoped)
+      description: >
+        A bare map keyed by channelId; a channel with 0 unread is absent (the
+        UI treats a missing key as 0).
       responses:
         "200":
-          description: Unread count
+          description: Per-channel unread count map
           content:
             application/json:
-              schema: { type: object, properties: { unread: { type: integer } } }
+              schema: { type: object, additionalProperties: { type: integer, minimum: 0 } }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/read-status/mark-all:
     post:
       tags: [read-status]
-      summary: Mark all visible fragments as read
+      summary: Mark all visible fragments as read, in one channel or across the caller's whole scope
+      description: >
+        channelId is optional: present marks that channel (must be in the
+        caller's allowedChannelIds, else 403); absent marks every visible
+        fragment across all allowedChannelIds.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channelId: { type: string }
       responses:
-        "200": { description: Updated read counts }
+        "200":
+          description: Count of newly marked-read fragments
+          content:
+            application/json:
+              schema: { type: object, properties: { markedCount: { type: integer, minimum: 0 } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /api/read-status/{embeddingId}:
+    post:
+      tags: [read-status]
+      summary: Mark a single fragment as read
+      parameters:
+        - { name: embeddingId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Marked as read (idempotent) }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      tags: [read-status]
+      summary: Unmark a single fragment as read (idempotent)
+      parameters:
+        - { name: embeddingId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: Unmarked as read (200 even if no row existed) }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/admin/roles/invalidate:
