@@ -57,6 +57,13 @@ export const embeddings = pgTable(
   'embeddings',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    // Deterministic dedup key `"<firstMessageId>:<chunkIndex>"` (Story 3.3). The
+    // Indexer UPSERTs on this so a re-delivered stream event (redelivery or a
+    // producer duplicate) converges to the same row instead of inserting a
+    // duplicate (AD-13 at-least-once idempotency). Message snowflakes are globally
+    // unique, so the channel is implicit and never part of the key. Table is empty
+    // in every deployment, so `notNull` without a default is safe.
+    chunkKey: text('chunk_key').notNull(),
     content: text('content').notNull(),
     embedding: vector('embedding', { dimensions: EMBEDDING_DIMENSIONS }).notNull(),
     channelId: text('channel_id').notNull(), // the RBAC filter column (AD-12)
@@ -64,6 +71,7 @@ export const embeddings = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    uniqueIndex('idx_embeddings_chunk_key').on(table.chunkKey),
     index('idx_embeddings_vector').using('hnsw', table.embedding.op('vector_cosine_ops')),
     index('idx_embeddings_channel').on(table.channelId),
   ],
