@@ -34,13 +34,14 @@ export function readEmbeddingDimensions(): number {
       return value;
     }
     console.warn(
-      `[embeddingDimensions] embeddings.dimensions missing or invalid in "${path}"; ` +
+      `[embeddingDimensions] config key "embeddings.dimensions" is missing or not a positive integer in "${path}"; ` +
         `falling back to ${DEFAULT_DIMENSIONS}.`,
     );
     return DEFAULT_DIMENSIONS;
-  } catch {
+  } catch (err) {
     console.warn(
-      `[embeddingDimensions] could not read "${path}"; falling back to ${DEFAULT_DIMENSIONS}.`,
+      `[embeddingDimensions] failed to read config file "${path}" (${err instanceof Error ? err.message : String(err)}); ` +
+        `falling back to ${DEFAULT_DIMENSIONS}.`,
     );
     return DEFAULT_DIMENSIONS;
   }

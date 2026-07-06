@@ -4,7 +4,7 @@ baseline_commit: cd0391706dcecde1154d69c408e5167fd221be10
 
 # Story 3.0: Configuración de proveedores LLM y embeddings
 
-Status: done
+Status: done (code review passed, 5 patches applied)
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -214,19 +214,29 @@ Decisions on the three non-blocking review questions in Dev Notes were taken as 
 - `Hivly.config.yml`
 - `.env`
 
-### Review Findings
+### Review Findings (Code Review 2026-07-06)
 
-- [x] [Review][Patch] `createChatModel` no valida provider — cualquier valor no-anthropic recibe `ChatOpenAI` silenciosamente [`packages/shared/src/providers/index.ts:29-43`]
-- [x] [Review][Patch] `createEmbeddingsModel` no valida provider — siempre pasa a `OpenAIEmbeddings` [`packages/shared/src/providers/index.ts:53-59`]
-- [x] [Review][Patch] `api_key`, `model` y `dimensions` pasados sin validación a los constructores LangChain [`packages/shared/src/providers/index.ts:31-58`]
-- [x] [Review][Patch] `assertEmbeddingDimensions` / `isValidEmbeddingLength` no guardan contra `null`/`undefined` [`packages/shared/src/providers/index.ts:70-82`]
-- [x] [Review][Patch] `docker-compose.yml` `${VAR:-}` empty-string default — `superRefine` lo ve como `""` (no `undefined`), falso positivo [`docker-compose.yml:66-69`] — dismissed, comportamiento correcto
-- [x] [Review][Patch] Mensajes `console.warn` en `readEmbeddingDimensions` idénticos — no se distingue file-read-error de key-invalida [`packages/shared/src/config/embeddingDimensions.ts:36-44`] — dismissed, ya están diferenciados
-- [x] [Review][Patch] Orden de validación: `requireString` antes del `switch`, error confuso si provider es inválido [`packages/shared/src/providers/index.ts`] — re-review round 2
-- [x] [Review][Defer] `readEmbeddingDimensions()` duplica la lógica de path de `loadConfig()` — silent drift si cambia; pre-existente
-- [x] [Review][Defer] `superRefine` solo corre en `z.parse()` — pre-existente (toda validación Zod es parse-time)
-- [x] [Review][Defer] `EMBEDDING_DIMENSIONS` evaluado en module-load — crash si config inválido; pre-existente en schema.ts
-- [x] [Review][Defer] `embeddingDimensions.ts` bypass de Zod — deliberado por AD-5 (no puede depender de loadConfig)
+**PATCH findings (fixable, unambiguous):**
+
+- [x] [Review][Patch] Zod schema allows empty strings in `api_key` / `model` — add `.min(1)` to enforce non-empty strings [`packages/shared/src/config/index.ts:51,56,65,68`] — **FIXED**
+- [x] [Review][Patch] Type signature mismatch in `assertEmbeddingDimensions` — declares `vector: number[]` but handles `null`/`undefined`; use `vector == null` check or update signature [`packages/shared/src/providers/index.ts:110-118`] — **FIXED**
+- [x] [Review][Patch] Missing test coverage for `null`/`undefined` in `assertEmbeddingDimensions` function [`packages/shared/src/providers/index.test.ts`] — **FIXED** (added 4 test cases)
+- [x] [Review][Patch] No format validation for `base_url` — should validate URL format or at least allowed prefixes [`packages/shared/src/config/index.ts:52,67`] — **FIXED** (refine to require http:// or https://)
+- [x] [Review][Patch] Identical `console.warn` messages in `readEmbeddingDimensions` — differentiate error types (file-read vs. invalid value) [`packages/shared/src/config/embeddingDimensions.ts:36-44`] — **FIXED** (distinct messages for each error path)
+
+**DEFER findings (pre-existing, not actionable in this story):**
+
+- [x] [Review][Defer] Temperature parameter not validated for bounds (0-2 OpenAI, 0-1 Anthropic) — pre-existing, not changed by Story 3.0
+- [x] [Review][Defer] Path resolution duplicated between `embeddingDimensions.ts` and `config/index.ts` — silent divergence risk; pre-existing
+- [x] [Review][Defer] No validation that `dimensions` matches model output — by design, deferred to Story 3.3 with `assertEmbeddingDimensions`
+
+**DISMISSED as noise or correct-by-design:**
+
+- [x] `isValidEmbeddingLength` allows dimension 0 — not a bug (schema validation prevents this state)
+- [x] Inconsistent emptiness validation for `base_url` — intentional design (works correctly for custom and non-custom)
+- [x] Exhaustiveness checks don't prevent invalid provider at runtime — schema validates provider, low risk
+
+**Acceptance Audit Result:** ✅ ALL 8 ACs PASSED — no violations detected
 
 ### Change Log
 

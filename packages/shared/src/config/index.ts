@@ -48,12 +48,14 @@ export const HivlyConfigSchema = z.object({
   // (enforced by the superRefine below).
   agent: z.object({
     provider: z.enum(['anthropic', 'openai', 'custom']),
-    model: z.string(),
+    model: z.string().min(1, 'agent.model cannot be empty'),
     temperature: z.number(),
     max_iterations: z.number(),
     memory_window: z.number(),
-    base_url: z.string().optional(),
-    api_key: z.string(),
+    base_url: z.string().refine(val => val === '' || /^https?:\/\//.test(val), {
+      message: 'agent.base_url must be empty or a valid HTTP(S) URL',
+    }).optional(),
+    api_key: z.string().min(1, 'agent.api_key cannot be empty'),
   }),
   // Embeddings provider. Anthropic offers NO embeddings API, so it is structurally
   // excluded from the enum; the custom message makes that explicit (AC-2). The
@@ -62,10 +64,12 @@ export const HivlyConfigSchema = z.object({
     provider: z.enum(['openai', 'custom'], {
       message: 'embeddings.provider must be "openai" or "custom" — Anthropic offers no embeddings API',
     }),
-    model: z.string(),
+    model: z.string().min(1, 'embeddings.model cannot be empty'),
     dimensions: z.number().int().positive(),
-    base_url: z.string().optional(),
-    api_key: z.string(),
+    base_url: z.string().refine(val => val === '' || /^https?:\/\//.test(val), {
+      message: 'embeddings.base_url must be empty or a valid HTTP(S) URL',
+    }).optional(),
+    api_key: z.string().min(1, 'embeddings.api_key cannot be empty'),
   }),
   knowledge: z.object({
     chunk_size: z.number(),

@@ -42,7 +42,7 @@
 
 generated: 2026-06-30
 last_updated: 2026-07-06
-# story 3-0 → done (code review passed and patches applied)
+# story 3-0 → done (code review passed — 5 patches applied: schema validation, type signatures, test coverage, URL format, error messages)
 # story 3-0 → review (bmad-dev-story)
 # story 3-0 → in-progress (bmad-dev-story)
 # story 3-0 → ready-for-dev (bmad-create-story); epic-3 backlog → in-progress (first story of epic 3)

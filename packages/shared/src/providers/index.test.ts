@@ -70,6 +70,24 @@ describe('createEmbeddingsModel', () => {
 
     expect(model).toBeInstanceOf(OpenAIEmbeddings);
   });
+
+  // Regression: the OpenAI SDK implicitly requests encoding_format:"base64" and
+  // decodes it client-side. An OpenAI-compatible proxy (e.g. LiteLLM in front of
+  // a self-hosted model) that ignores the param and returns a plain float array
+  // makes the SDK mis-decode it into a corrupt, all-zero vector of the wrong
+  // length. Pinning "float" keeps the wire format unambiguous for custom endpoints.
+  it.each(['openai', 'custom'] as const)(
+    'should pin encodingFormat to "float" for the "%s" provider',
+    (provider) => {
+      const model = createEmbeddingsModel({
+        ...baseEmbeddings,
+        provider,
+        base_url: provider === 'custom' ? 'https://emb.internal/v1' : undefined,
+      });
+
+      expect((model as OpenAIEmbeddings).encodingFormat).toBe('float');
+    },
+  );
 });
 
 describe('assertEmbeddingDimensions', () => {
@@ -80,11 +98,24 @@ describe('assertEmbeddingDimensions', () => {
   it('should throw a descriptive error naming both lengths on a mismatch', () => {
     expect(() => assertEmbeddingDimensions(new Array(768).fill(0), 1536)).toThrow(/768.*1536|1536.*768/);
   });
+
+  it('should throw when the vector is null', () => {
+    expect(() => assertEmbeddingDimensions(null, 1536)).toThrow(/null or undefined/);
+  });
+
+  it('should throw when the vector is undefined', () => {
+    expect(() => assertEmbeddingDimensions(undefined, 1536)).toThrow(/null or undefined/);
+  });
 });
 
 describe('isValidEmbeddingLength', () => {
   it('should be true when lengths match and false otherwise', () => {
     expect(isValidEmbeddingLength([1, 2, 3], 3)).toBe(true);
     expect(isValidEmbeddingLength([1, 2, 3], 4)).toBe(false);
+  });
+
+  it('should return false when the vector is null or undefined', () => {
+    expect(isValidEmbeddingLength(null, 3)).toBe(false);
+    expect(isValidEmbeddingLength(undefined, 3)).toBe(false);
   });
 });

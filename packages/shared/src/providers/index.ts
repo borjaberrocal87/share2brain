@@ -79,6 +79,13 @@ export function createEmbeddingsModel(embeddings: HivlyConfig['embeddings']): Em
         apiKey: api_key,
         model,
         dimensions,
+        // Force plain-float responses. The OpenAI SDK otherwise requests
+        // `encoding_format: "base64"` implicitly and decodes it client-side; an
+        // OpenAI-compatible proxy (e.g. LiteLLM in front of a self-hosted model)
+        // that ignores the param and returns a plain float array makes the SDK
+        // mis-decode it into a corrupt, all-zero vector of the wrong length.
+        // Asking for "float" keeps the wire format unambiguous for `custom` endpoints.
+        encodingFormat: 'float',
         configuration: base_url ? { baseURL: base_url } : undefined,
       });
     default: {
@@ -99,8 +106,8 @@ export function createEmbeddingsModel(embeddings: HivlyConfig['embeddings']): Em
  *
  * @throws {Error} when `vector` is null/undefined or `vector.length !== expected`.
  */
-export function assertEmbeddingDimensions(vector: number[], expected: number): void {
-  if (!vector) {
+export function assertEmbeddingDimensions(vector: number[] | null | undefined, expected: number): void {
+  if (vector == null) {
     throw new Error('Embedding dimension assertion failed: vector is null or undefined');
   }
   if (vector.length !== expected) {
@@ -113,6 +120,6 @@ export function assertEmbeddingDimensions(vector: number[], expected: number): v
 }
 
 /** Non-throwing companion to {@link assertEmbeddingDimensions} for callers that branch. */
-export function isValidEmbeddingLength(vector: number[], expected: number): boolean {
-  return !!vector && vector.length === expected;
+export function isValidEmbeddingLength(vector: number[] | null | undefined, expected: number): boolean {
+  return vector != null && vector.length === expected;
 }
