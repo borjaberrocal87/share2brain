@@ -70,7 +70,21 @@ async function main(): Promise<void> {
   if (config.discord.backfill.enabled) {
     for (const channel of config.discord.channels) {
       if (!channel.enabled) continue;
-      backfillCursors.set(channel.id, await getChannelCursor(db, channel.id));
+      try {
+        backfillCursors.set(channel.id, await getChannelCursor(db, channel.id));
+      } catch (error) {
+        // A transient DB blip (or a driver contract break — getChannelCursor
+        // throws rather than returning null for that) must not crash the process
+        // before the Gateway connects, but must NOT be treated as "first run"
+        // either: that would silently downgrade this channel's unbounded gap
+        // fetch to the bounded `limit` path. Leave it unset — the backfiller
+        // treats a missing cursor entry as a per-channel failure and skips this
+        // channel this run; cursor resolution is retried fresh next boot.
+        logger.error('failed to resolve backfill cursor, skipping this channel this run', {
+          channelId: channel.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     }
   } else {
     logger.info('backfill disabled — skipping historical backfill');
@@ -112,6 +126,9 @@ async function main(): Promise<void> {
   // AC-5: SIGTERM/SIGINT → clean shutdown. Real consumer-group drain stays in Epic 6.
   const shutdownSignal = new AbortController();
   let shuttingDown = false;
+  // Tracks the in-flight backfill (if any) so shutdown can wait for it — bounded —
+  // BEFORE tearing down the db/redis/client connections it may still be using.
+  let backfillPromise: Promise<void> = Promise.resolve();
   const shutdown = (signal: string): void => {
     if (shuttingDown) return;
     shuttingDown = true;
@@ -119,6 +136,12 @@ async function main(): Promise<void> {
     logger.info(`received ${signal}, shutting down`);
     void (async () => {
       try {
+        // Give the aborted backfill a bounded moment to stop touching db/redis/client
+        // before those connections start closing underneath it.
+        await Promise.race([
+          backfillPromise,
+          new Promise<void>((resolve) => setTimeout(resolve, 5_000)),
+        ]);
         // Bound destroy() too — a hung/half-open Gateway socket must not block the exit.
         await Promise.race([
           client.destroy(),
@@ -165,8 +188,10 @@ async function main(): Promise<void> {
   // reconnects are discord.js-internal and never re-run this). Non-blocking —
   // live ingestion runs concurrently and overlaps are absorbed by the idempotent
   // persistMessage. A whole-run failure is logged, never an unhandledRejection.
+  // NOTE: per-channel and completed-event XADD errors are handled inside
+  // runBackfill itself; this catch is for unexpected structural failures only.
   if (config.discord.backfill.enabled) {
-    void runBackfill({
+    backfillPromise = runBackfill({
       client,
       config,
       db,
@@ -175,7 +200,7 @@ async function main(): Promise<void> {
       cursors: backfillCursors,
       signal: shutdownSignal.signal,
     }).catch((error: unknown) => {
-      logger.error('backfill failed', {
+      logger.error('unexpected backfill failure', {
         error: error instanceof Error ? error.message : String(error),
       });
     });

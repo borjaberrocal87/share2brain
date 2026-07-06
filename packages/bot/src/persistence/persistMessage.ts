@@ -14,6 +14,15 @@
 // XADD → an event with no row. That is tolerated: delivery is at-least-once and
 // the Indexer is idempotent (AD-13). Redis cannot be a true XA participant, so we
 // do not pretend otherwise.
+//
+// Backfill's persistWithRetry (Story 3.2, packages/bot/src/backfill/backfiller.ts)
+// retries this whole function on any thrown error, INCLUDING this exact race — the
+// rolled-back INSERT means a retry's onConflictDoNothing finds no row and inserts
+// (and XADDs) again. Up to MAX_MESSAGE_ATTEMPTS attempts means up to that many
+// duplicate events for one message, not just one. Accepted trade-off (Review,
+// fourth pass, 2026-07-06, Borja): same failure class, same AD-13 idempotent-
+// consumer safety net as the original single-attempt design, just amplified —
+// revisit if Story 3.3's Indexer turns out not to dedupe by messageId in practice.
 import type { HivlyConfig } from '@hivly/shared';
 import { discordMessages, type Database } from '@hivly/shared/db';
 import type { RedisClient } from '@hivly/shared/redis';

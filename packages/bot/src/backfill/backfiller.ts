@@ -20,14 +20,69 @@ import type { Client } from 'discord.js';
 
 import { waitOrAbort } from '../discord/reconnect.js';
 import type { Logger } from '../logger.js';
-import { persistMessage, type IngestibleMessage } from '../persistence/persistMessage.js';
+import {
+  persistMessage,
+  type IngestDeps,
+  type IngestibleMessage,
+} from '../persistence/persistMessage.js';
 import { gapPages, latestPages, type FetchPage } from './pages.js';
 
-/** AC-4: minimum pause between two history page fetches. */
+/**
+ * AC-4: minimum pause between two history page fetches. Reused (via `throttle`
+ * below) as the inter-CHANNEL pause too — one constant, one REST budget, since
+ * a channel's first-page fetch shares the same rate-limit bucket as the
+ * inter-page fetches within it. Tune both together; they are NOT independent.
+ */
 const INTER_PAGE_DELAY_MS = 1_000;
+
+// Bounded retry for a single message's persist — absorbs a transient DB/Redis
+// blip without letting the derived cursor skip past an unpersisted message: the
+// cursor is just "the newest row in the table", so a lone failure surrounded by
+// later successes would otherwise be lost forever (Review, second pass).
+const MAX_MESSAGE_ATTEMPTS = 3;
+const MESSAGE_RETRY_DELAY_MS = 500;
 
 const defaultSleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Persist one message with up to MAX_MESSAGE_ATTEMPTS attempts, waiting
+ * MESSAGE_RETRY_DELAY_MS (abortable) between attempts. Returns null when every
+ * attempt failed or the signal aborted mid-retry — the caller logs that as an
+ * isolated failure (AC-5) and moves on to the next message.
+ */
+async function persistWithRetry(
+  message: IngestibleMessage,
+  deps: IngestDeps,
+  signal: AbortSignal,
+  sleep: (ms: number) => Promise<void>,
+  logger: Logger,
+): Promise<{ inserted: boolean } | null> {
+  for (let attempt = 1; attempt <= MAX_MESSAGE_ATTEMPTS; attempt += 1) {
+    try {
+      return await persistMessage(message, deps);
+    } catch (error) {
+      if (attempt >= MAX_MESSAGE_ATTEMPTS) {
+        logger.error('backfill message failed after retries', {
+          messageId: message.id,
+          channelId: message.channelId,
+          attempts: attempt,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return null;
+      }
+      logger.warn('backfill message persist failed, retrying', {
+        messageId: message.id,
+        channelId: message.channelId,
+        attempt,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      await waitOrAbort(sleep(MESSAGE_RETRY_DELAY_MS), signal);
+      if (signal.aborted) return null;
+    }
+  }
+  return null;
+}
 
 export interface BackfillDeps {
   client: Client;
@@ -62,15 +117,37 @@ export async function runBackfill({
   let channelsProcessed = 0;
   let channelsFailed = 0;
   let messagesPublished = 0;
+  let messagesFailed = 0;
+  let firstChannel = true;
 
   for (const channelConfig of config.discord.channels) {
     if (!channelConfig.enabled) continue;
     if (signal.aborted) break;
 
+    // Inter-channel throttle: pace first-page fetches so they don't all hit
+    // Discord back-to-back (each channel's first page fires through the same
+    // REST bucket as the inter-page throttled fetches within it).
+    if (firstChannel) {
+      firstChannel = false;
+    } else {
+      await throttle();
+      if (signal.aborted) break;
+    }
+
     try {
+      if (!cursors.has(channelConfig.id)) {
+        // Cursor resolution failed for this channel before login (main.ts) —
+        // NOT the same as a confirmed-null "first run" cursor. Skip this
+        // channel's backfill this run rather than guessing a bounded fetch;
+        // cursor resolution retries fresh next boot.
+        throw new Error('cursor unresolved for this channel — skipping this run');
+      }
       const channel = await client.channels.fetch(channelConfig.id);
-      if (channel === null || !channel.isTextBased()) {
-        throw new Error('channel not found or not text-based');
+      if (channel === null) {
+        throw new Error('channel not found (unknown id or bot lacks access)');
+      }
+      if (!channel.isTextBased()) {
+        throw new Error('channel is not text-based');
       }
 
       // Adapter boundary: wrap the real history fetch as the pure generators'
@@ -99,6 +176,7 @@ export async function runBackfill({
       let published = 0;
       for await (const page of pages) {
         for (const message of page) {
+          if (signal.aborted) break;
           // Same guards as the live path (AC-3), but at debug — a history full of
           // attachment-only messages must not spam the live intent-warning.
           if (config.discord.backfill.ignore_bots && message.author.bot) {
@@ -108,27 +186,45 @@ export async function runBackfill({
             });
             continue;
           }
-          if (message.content.length === 0) {
+          if (!message.content || message.content.trim().length === 0) {
             logger.debug('backfill skip: empty content', {
               messageId: message.id,
               channelId: message.channelId,
             });
             continue;
           }
-          const { inserted } = await persistMessage(message, { config, db, redis });
+          // Per-message error isolation: a transient Redis/DB failure on one
+          // message must not abort the rest of the channel — retried a few times
+          // first (persistWithRetry) so it doesn't cost a permanent loss either.
+          const result = await persistWithRetry(message, { config, db, redis }, signal, sleep, logger);
           // inserted=false → the row already existed (cursor-boundary overlap or a
           // live message that beat us): skipped, no duplicate row, no duplicate event.
-          if (inserted) published += 1;
+          // Credited immediately (not at channel end) so a later mid-channel throw
+          // doesn't undercount messages this run already persisted.
+          if (result === null) {
+            // Every persistWithRetry attempt failed — the accepted residual risk of
+            // the bounded-retry trade-off (Review, second pass). Surface it in the
+            // completed event so it isn't just a single easy-to-miss `error` log line.
+            messagesFailed += 1;
+          } else if (result.inserted) {
+            published += 1;
+            messagesPublished += 1;
+          }
         }
+        if (signal.aborted) break;
       }
 
-      messagesPublished += published;
-      channelsProcessed += 1;
-      logger.info('backfill channel done', {
-        channelId: channelConfig.id,
-        published,
-        mode: cursor === null ? 'initial' : 'gap',
-      });
+      // Skip the "done" bookkeeping when the run was cut short by shutdown — the
+      // channel was not actually processed, and the completed event never fires
+      // in that case anyway (see the `signal.aborted` check below).
+      if (!signal.aborted) {
+        channelsProcessed += 1;
+        logger.info('backfill channel done', {
+          channelId: channelConfig.id,
+          published,
+          mode: cursor === null ? 'initial' : 'gap',
+        });
+      }
     } catch (error) {
       // AC-5: one bad channel never aborts the backfill or crashes the bot.
       channelsFailed += 1;
@@ -145,7 +241,9 @@ export async function runBackfill({
   }
 
   // AC-5: always emitted once all channels were attempted, failures included.
-  // All-string fields (AD-13); the numeric counts are stringified here.
+  // All-string fields (AD-13); counts are numbers locally, stringified for the stream.
+  // Record<keyof T, string>, not T itself: xAdd wants Record<string, RedisArgument>,
+  // and a plain interface (no index signature) isn't structurally assignable to that.
   const event: Record<keyof BackfillCompletedEvent, string> = {
     type: 'discord.backfill.completed',
     guildId: config.discord.guild_id,
@@ -153,7 +251,22 @@ export async function runBackfill({
     channelsProcessed: String(channelsProcessed),
     channelsFailed: String(channelsFailed),
     messagesPublished: String(messagesPublished),
+    messagesFailed: String(messagesFailed),
   };
-  await redis.xAdd(STREAM_KEYS.KNOWLEDGE_EVENTS, '*', event);
-  logger.info('backfill completed', { channelsProcessed, channelsFailed, messagesPublished });
+  try {
+    await redis.xAdd(STREAM_KEYS.KNOWLEDGE_EVENTS, '*', event);
+  } catch (error) {
+    // The completed event is fire-and-forget observability (Epic 6 Notifier
+    // consumer is deferred). A Redis outage here does NOT mean the backfill
+    // itself failed — channels were successfully processed — so log separately.
+    logger.error('backfill completed event xadd failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+  logger.info('backfill completed', {
+    channelsProcessed,
+    channelsFailed,
+    messagesPublished,
+    messagesFailed,
+  });
 }

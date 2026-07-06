@@ -135,6 +135,7 @@ describe('backfill (integration)', () => {
       channelsProcessed: '1',
       channelsFailed: '0',
       messagesPublished: '1',
+      messagesFailed: '0',
     });
   });
 });

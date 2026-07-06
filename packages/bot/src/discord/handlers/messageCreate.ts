@@ -54,7 +54,7 @@ export async function handleMessageCreate(
     // If MessageContent intent is disabled in the Discord Developer Portal, every
     // message comes through with empty content. Warn the operator and skip rather
     // than silently persisting thousands of empty rows and stream events.
-    if (message.content.length === 0) {
+    if (!message.content || message.content.trim().length === 0) {
       deps.logger.warn('skip: empty content — MessageContent intent may be disabled', {
         messageId: message.id,
         channelId: message.channelId,
@@ -62,8 +62,8 @@ export async function handleMessageCreate(
       return;
     }
 
-    await persistMessage(message, deps);
-    deps.logger.debug('persisted message', {
+    const { inserted } = await persistMessage(message, deps);
+    deps.logger.debug(inserted ? 'persisted message' : 'skip: already persisted', {
       messageId: message.id,
       channelId: message.channelId,
       contentLength: message.content.length,

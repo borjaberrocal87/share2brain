@@ -241,10 +241,67 @@ describe('runBackfill', () => {
       channelsProcessed: '1',
       channelsFailed: '0',
       messagesPublished: '1',
+      messagesFailed: '0',
     });
     for (const value of Object.values(fields)) {
       expect(typeof value).toBe('string'); // AD-13
     }
+  });
+
+  it('should retry a failed persist and count it as published once a later attempt succeeds', async () => {
+    const channel = textChannel([[msg('1')]]);
+    persistMessageMock
+      .mockRejectedValueOnce(new Error('transient blip'))
+      .mockResolvedValueOnce({ inserted: true });
+    const deps = makeDeps({ channels: { 'chan-1': channel } });
+
+    await runBackfill(deps);
+
+    expect(persistMessageMock).toHaveBeenCalledTimes(2);
+    expect(deps.logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('retrying'),
+      expect.objectContaining({ messageId: '1', attempt: 1 }),
+    );
+    const [, , fields] = deps.xAdd.mock.calls[0] as [string, string, Record<string, string>];
+    expect(fields.messagesPublished).toBe('1');
+    expect(fields.messagesFailed).toBe('0');
+  });
+
+  it('should give up after exhausting retries, count it as messagesFailed, and NOT abort the channel', async () => {
+    const channel = textChannel([[msg('1'), msg('2')]]);
+    persistMessageMock
+      .mockRejectedValueOnce(new Error('down'))
+      .mockRejectedValueOnce(new Error('down'))
+      .mockRejectedValueOnce(new Error('down')) // 3 attempts for msg 1, all fail
+      .mockResolvedValueOnce({ inserted: true }); // msg 2 still gets processed
+    const deps = makeDeps({ channels: { 'chan-1': channel } });
+
+    await runBackfill(deps);
+
+    expect(persistMessageMock).toHaveBeenCalledTimes(4);
+    expect(deps.logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('failed after retries'),
+      expect.objectContaining({ messageId: '1', attempts: 3 }),
+    );
+    const [, , fields] = deps.xAdd.mock.calls[0] as [string, string, Record<string, string>];
+    expect(fields.messagesFailed).toBe('1');
+    expect(fields.messagesPublished).toBe('1');
+    expect(fields.channelsFailed).toBe('0');
+    expect(fields.channelsProcessed).toBe('1');
+  });
+
+  it('should not log "backfill channel done" when the signal aborts mid-channel (bookkeeping guard)', async () => {
+    const controller = new AbortController();
+    const fetch = vi.fn().mockImplementation(() => {
+      controller.abort(); // SIGTERM lands while the first page is in flight
+      return Promise.resolve(asFetchResult([msg('1')]));
+    });
+    const channel = { isTextBased: () => true, messages: { fetch } };
+    const deps = makeDeps({ channels: { 'chan-1': channel }, signal: controller.signal });
+
+    await runBackfill(deps);
+
+    expect(deps.logger.info).not.toHaveBeenCalledWith('backfill channel done', expect.anything());
   });
 
   it('should isolate a per-channel failure: log error, continue, and still emit the event', async () => {
@@ -296,6 +353,21 @@ describe('runBackfill', () => {
     const [, , fields] = deps.xAdd.mock.calls[0] as [string, string, Record<string, string>];
     expect(fields.channelsProcessed).toBe('0');
     expect(fields.channelsFailed).toBe('2');
+  });
+
+  it('should skip a channel whose cursor failed to resolve, without touching the Discord API', async () => {
+    const channel = textChannel([[msg('1')]]);
+    const deps = makeDeps({
+      channels: { 'chan-1': channel },
+      cursors: new Map(), // no entry for 'chan-1' — cursor resolution failed pre-login
+    });
+
+    await runBackfill(deps);
+
+    expect(channel.messages.fetch).not.toHaveBeenCalled();
+    const [, , fields] = deps.xAdd.mock.calls[0] as [string, string, Record<string, string>];
+    expect(fields.channelsFailed).toBe('1');
+    expect(fields.channelsProcessed).toBe('0');
   });
 
   it('should skip disabled channels entirely', async () => {

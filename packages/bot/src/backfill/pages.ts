@@ -35,7 +35,30 @@ export interface PageOptions {
 const PAGE_SIZE = 100;
 
 function sortAscendingById<T extends RawBackfillMessage>(page: T[]): T[] {
-  return [...page].sort((a, b) => (BigInt(a.id) < BigInt(b.id) ? -1 : 1));
+  // Parse each id's BigInt key ONCE, up front — never inside the comparator.
+  // Deciding numeric-vs-string per PAIR would let different comparisons in the
+  // same sort use different rules, which is not guaranteed transitive and can
+  // silently corrupt the ascending order `Array.prototype.sort` relies on.
+  // BigInt('') and BigInt('   ') return 0n instead of throwing, so a plain
+  // try/catch alone would let an empty/blank id slip through as a (wrongly
+  // minimal) numeric key. Require an all-digit string before parsing.
+  const keyed = page.map((item) => ({
+    item,
+    key: /^\d+$/.test(item.id) ? BigInt(item.id) : null,
+  }));
+  const allNumeric = keyed.every((entry) => entry.key !== null);
+  return keyed
+    .sort((a, b) => {
+      if (allNumeric) {
+        const aKey = a.key as bigint;
+        const bKey = b.key as bigint;
+        return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
+      }
+      // Any non-numeric id in the page — last resort: string compare for the
+      // WHOLE page, so every pairwise comparison uses the same rule.
+      return a.item.id < b.item.id ? -1 : a.item.id > b.item.id ? 1 : 0;
+    })
+    .map(({ item }) => item);
 }
 
 /**
@@ -95,6 +118,7 @@ export async function* latestPages<T extends RawBackfillMessage>(
   // Trim to the NEWEST `limit`, flip to chronological order, yield in chunks.
   const window = collected.slice(0, limit).reverse();
   for (let i = 0; i < window.length; i += PAGE_SIZE) {
+    if (signal?.aborted) return;
     yield window.slice(i, i + PAGE_SIZE);
   }
 }

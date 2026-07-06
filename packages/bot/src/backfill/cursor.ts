@@ -14,11 +14,23 @@ import { sql, type Database } from '@hivly/shared/db';
 /**
  * Resolve the backfill cursor for one channel: the id of the newest persisted
  * message, or null when the channel has no rows yet (first run → limit path).
+ *
+ * Throws — does NOT return null — on a driver/schema contract break (id isn't
+ * a string). Collapsing that into null would silently downgrade an established
+ * channel to the bounded `latestPages` limit path instead of the unbounded gap
+ * fetch, permanently skipping the older part of its offline gap. The caller
+ * (main.ts) treats a thrown error as "skip this channel's backfill this run,
+ * retry cursor resolution next boot" rather than guessing.
  */
 export async function getChannelCursor(db: Database, channelId: string): Promise<string | null> {
   const result = await db.execute(
     sql`select id from discord_messages where channel_id = ${channelId} order by created_at desc limit 1`,
   );
-  const row = result.rows[0] as { id: string } | undefined;
-  return row?.id ?? null;
+  const row = result.rows[0];
+  if (!row || typeof row !== 'object') return null;
+  const val = (row as Record<string, unknown>).id;
+  if (typeof val === 'string') return val;
+  throw new Error(
+    `backfill cursor: unexpected id type "${typeof val}" from driver for channel ${channelId}`,
+  );
 }

@@ -6,7 +6,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { getChannelCursor } from './cursor.js';
 
-function fakeDb(rows: Array<{ id: string }>): { db: Database; execute: ReturnType<typeof vi.fn> } {
+function fakeDb(rows: Array<Record<string, unknown>>): {
+  db: Database;
+  execute: ReturnType<typeof vi.fn>;
+} {
   const execute = vi.fn().mockResolvedValue({ rows });
   return { db: { execute } as unknown as Database, execute };
 }
@@ -35,5 +38,13 @@ describe('getChannelCursor', () => {
     const rendered = JSON.stringify(query);
     expect(rendered).toContain('order by created_at desc');
     expect(rendered).not.toContain('max(');
+  });
+
+  it('should throw (not return null) when the driver returns a non-string id', async () => {
+    const { db } = fakeDb([{ id: 1000000000000000000 }]);
+
+    // Must NOT collapse into the "confirmed first run" null — that would silently
+    // downgrade an established channel to the bounded limit path (Review, 4th pass).
+    await expect(getChannelCursor(db, 'chan-1')).rejects.toThrow(/unexpected id type/);
   });
 });
