@@ -19,6 +19,12 @@ export { sql } from 'drizzle-orm';
 // only on @hivly/shared and must not import drizzle-orm directly (AD-2).
 export { arrayOverlaps } from 'drizzle-orm';
 
+// Re-exported for the Indexer's dedup query (Story 3.3): `WHERE id IN (:ids)`
+// (`inArray`). Same rationale as `sql`/`arrayOverlaps` — workers depend only on
+// @hivly/shared and must not import drizzle-orm directly (AD-2). NOTE: `inArray`
+// throws on an empty array; guard the caller with `ids.length > 0`.
+export { inArray } from 'drizzle-orm';
+
 /**
  * The typed Drizzle database handle, bound to the full Hivly schema. `$client` is
  * the underlying pg `Pool` — call `db.$client.end()` to close it (integration

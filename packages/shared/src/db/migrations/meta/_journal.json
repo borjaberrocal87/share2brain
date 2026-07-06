@@ -15,6 +15,13 @@
       "when": 1783096983349,
       "tag": "0001_tough_skrulls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783341954848,
+      "tag": "0002_lush_fabian_cortez",
+      "breakpoints": true
     }
   ]
 }

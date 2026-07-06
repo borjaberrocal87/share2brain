@@ -786,7 +786,7 @@ Stream keys and consumer groups are invariants (AD-13):
 
 | Stream key | Producer | Consumer group | Consumer |
 |---|---|---|---|---|
-| `hivly:discord:messages` | bot | `hivly:indexer` | workers/indexer |
+| `hivly:discord:messages` | bot | `hivly:indexer` *(consumer live since 3.3)* | workers/indexer |
 | `hivly:discord:messages:updated` | bot | `hivly:sync` | workers/sync |
 | `hivly:discord:messages:deleted` | bot | `hivly:sync` | workers/sync |
 | `hivly:knowledge:events` | bot (since 3.2: `discord.backfill.completed`); workers *(Epic 6)* | `hivly:notifier` | notifier *(deferred — Epic 6)* |
