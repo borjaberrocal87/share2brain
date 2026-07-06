@@ -51,3 +51,13 @@
 - `embeddingDimensions.ts` bypass del schema Zod deliberadamente — necesario para AD-5 (drizzle-kit generate no puede correr `loadConfig()`). Si las reglas de validación de dimensiones se extienden, este file debe actualizarse en sincronía.
 - `discordRoles` typed as non-optional in `SessionData` — pre-existing pattern (mirrors `userId` which is also non-optional)
 - Short-circuit in `findAllowedChannelIds([])` not integration-tested against real Postgres — intentional optimization; covered by unit tests in `rbacService.test.ts`
+
+## Deferred from: code review of 3-1-discord-bot-conexion-al-gateway-y-listener-messagecreate (2026-07-06)
+
+- Redis offline queue retiene transacción DB — con `enableOfflineQueue: true` (default de node-redis), un `xAdd` durante una caída de Redis no rechaza inmediatamente, manteniendo abierta la transacción de Postgres y consumiendo una conexión del pool. Comportamiento preexistente de node-redis, no introducido por esta story.
+
+## Deferred from: code review of 3-1-discord-bot-conexion-al-gateway-y-listener-messagecreate (2026-07-06, 2nd pass)
+
+- XADD publica antes del COMMIT de Postgres — el `xAdd` corre dentro del callback de la transacción pero contra el cliente Redis (no transaccional), así que el evento es durable en Redis antes de que aterrice el COMMIT. Para Story 3.3: el Indexer debe leer `content` del propio evento (lo lleva) o tolerar un row-not-found transitorio sin hacer ACK.
+- INSERT sin `onConflict` — una re-entrega de `messageCreate` en un RESUME de Discord dispara un duplicado de PK que aborta la transacción y loguea un `error: failed to persist message` falso (la fila+evento ya existen). `onConflictDoNothing` haría el productor idempotente. Camino poco frecuente.
+- Recuperación del Gateway post-arranque delegada a discord.js — `connectWithRetry` corre una sola vez al boot; el reset/escalado de AC-4 solo se ejercita en el login inicial. Si discord.js agota sus propios reintentos tras el arranque, nada escala a `error` ni sale, y el bot queda idle. Coincide con el diseño documentado; revisar como mejora de observabilidad.
