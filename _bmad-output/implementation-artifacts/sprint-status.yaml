@@ -41,7 +41,11 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-06-30
-last_updated: 2026-07-05
+last_updated: 2026-07-06
+# story 3-0 → done (code review passed — 5 patches applied: schema validation, type signatures, test coverage, URL format, error messages)
+# story 3-0 → review (bmad-dev-story)
+# story 3-0 → in-progress (bmad-dev-story)
+# story 3-0 → ready-for-dev (bmad-create-story); epic-3 backlog → in-progress (first story of epic 3)
 # story 3-0 added (correct-course sprint-change 2026-07-05): provider config LLM/embeddings — blocks 3-3
 # epic-2 → done (all 4 stories + retrospective complete)
 # epic-2-retrospective → done (bmad-retrospective; epic-2-retro-2026-07-05.md)
@@ -81,8 +85,8 @@ development_status:
   epic-2-retrospective: done
 
   # ── Épico 3: Pipeline de Indexación de Conocimiento ─────────────────────────
-  epic-3: backlog
-  3-0-config-proveedores-llm-y-embeddings: backlog
+  epic-3: in-progress
+  3-0-config-proveedores-llm-y-embeddings: done
   3-1-discord-bot-conexion-al-gateway-y-listener-messagecreate: backlog
   3-2-discord-bot-backfill-historico-con-reconciliacion-por-snowflake: backlog
   3-3-workers-indexer-embeddings-y-pgvector: backlog

@@ -42,5 +42,12 @@
 ## Deferred from: code review of 2-4-rbac-proteccion-de-rutas-y-conexion-ui (2026-07-05)
 
 - `access_control.enabled` not checked during materialization — explicitly out of scope per story Dev Notes ("Do not build an allow-all branch or a disable switch")
+
+## Deferred from: code review of 3-0-config-proveedores-llm-y-embeddings (2026-07-06)
+
+- `readEmbeddingDimensions()` duplica lógica de path resolution de `loadConfig()` — si el mecanismo de path cambia en el futuro, divergen silenciosamente. Pre-existente en `loadConfig()`.
+- `superRefine` solo se ejecuta en `z.parse()` — si config se carga de una fuente cacheada que esquiva Zod, el invariante `custom`+`base_url` no se enforce. Pre-existente (toda validación Zod es parse-time).
+- `EMBEDDING_DIMENSIONS` evaluado en module-load time — si la config es inválida o el file no existe, `schema.ts` crashea al importarse. Pre-existente en schema.ts (era módulo-top-level antes del cambio).
+- `embeddingDimensions.ts` bypass del schema Zod deliberadamente — necesario para AD-5 (drizzle-kit generate no puede correr `loadConfig()`). Si las reglas de validación de dimensiones se extienden, este file debe actualizarse en sincronía.
 - `discordRoles` typed as non-optional in `SessionData` — pre-existing pattern (mirrors `userId` which is also non-optional)
 - Short-circuit in `findAllowedChannelIds([])` not integration-tested against real Postgres — intentional optimization; covered by unit tests in `rbacService.test.ts`

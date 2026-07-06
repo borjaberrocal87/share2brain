@@ -60,6 +60,11 @@ services:
     environment:
       DATABASE_URL: postgres://hivly:${POSTGRES_PASSWORD}@postgres:5432/hivly
       REDIS_URL: redis://redis:6379
+      # LLM (RAG, Epic 5) + embeddings (search query, Epic 4). base_url only for "custom".
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      EMBEDDINGS_API_KEY: ${EMBEDDINGS_API_KEY}
+      EMBEDDINGS_BASE_URL: ${EMBEDDINGS_BASE_URL:-}
     volumes:
       - ./Hivly.config.yml:/app/Hivly.config.yml:ro
     depends_on:
@@ -98,6 +103,9 @@ services:
     environment:
       DATABASE_URL: postgres://hivly:${POSTGRES_PASSWORD}@postgres:5432/hivly
       REDIS_URL: redis://redis:6379
+      # Embeddings (Indexer, Story 3.3). base_url only for "custom".
+      EMBEDDINGS_API_KEY: ${EMBEDDINGS_API_KEY}
+      EMBEDDINGS_BASE_URL: ${EMBEDDINGS_BASE_URL:-}
     volumes:
       - ./Hivly.config.yml:/app/Hivly.config.yml:ro
     depends_on:

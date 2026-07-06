@@ -24,6 +24,10 @@
       "types": "./src/config/index.ts",
       "default": "./src/config/index.ts"
     },
+    "./providers": {
+      "types": "./src/providers/index.ts",
+      "default": "./src/providers/index.ts"
+    },
     "./types/events": {
       "types": "./src/types/events.ts",
       "default": "./src/types/events.ts"
@@ -36,6 +40,9 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
+    "@langchain/anthropic": "^1.5.1",
+    "@langchain/core": "^1.2.1",
+    "@langchain/openai": "^1.5.3",
     "drizzle-orm": "^0.45.0",
     "pg": "^8.13.0",
     "yaml": "^2.6.0",

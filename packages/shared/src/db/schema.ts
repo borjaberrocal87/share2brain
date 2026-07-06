@@ -17,6 +17,15 @@ import {
   vector,
 } from 'drizzle-orm/pg-core';
 
+import { readEmbeddingDimensions } from '../config/embeddingDimensions.js';
+
+// The embeddings vector width is parametrized from `embeddings.dimensions` in
+// Hivly.config.yml, read at generate-time by a minimal YAML reader (NOT the full
+// loadConfig, which would abort generate on unset ${VAR}). schema.ts stays the
+// single DDL source of truth (AD-5); only the width is deploy-time configurable.
+// Default 1536 → identical DDL to before, so no migration diff for existing setups.
+const EMBEDDING_DIMENSIONS = readEmbeddingDimensions();
+
 /** A single cited source rendered alongside an assistant answer. */
 export interface Citation {
   channel: string;
@@ -49,7 +58,7 @@ export const embeddings = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     content: text('content').notNull(),
-    embedding: vector('embedding', { dimensions: 1536 }).notNull(),
+    embedding: vector('embedding', { dimensions: EMBEDDING_DIMENSIONS }).notNull(),
     channelId: text('channel_id').notNull(), // the RBAC filter column (AD-12)
     messageIds: text('message_ids').array().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

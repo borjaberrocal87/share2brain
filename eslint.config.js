@@ -40,7 +40,10 @@ const banNonBrowserSafeSharedInWeb = {
         // `patterns` = gitignore-style; `/db` + `/config` (and their descendants) are Node-only.
         patterns: [
           SIBLING_IMPORT_BAN,
-          { group: ['@hivly/shared/db', '@hivly/shared/config'], message: WEB_BROWSER_SAFE_MESSAGE },
+          {
+            group: ['@hivly/shared/db', '@hivly/shared/config', '@hivly/shared/providers'],
+            message: WEB_BROWSER_SAFE_MESSAGE,
+          },
         ],
       },
     ],

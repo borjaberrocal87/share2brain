@@ -42,18 +42,39 @@ export const HivlyConfigSchema = z.object({
       ignore_bots: z.boolean(),
     }),
   }),
+  // RAG agent (LLM) provider. All three providers are OpenAI-compatible via a
+  // base_url except Anthropic, which uses its native API. Secrets (api_key) come
+  // from .env via ${VAR}; base_url is required only for the "custom" provider
+  // (enforced by the superRefine below).
   agent: z.object({
-    provider: z.string(),
-    model: z.string(),
+    provider: z.enum(['anthropic', 'openai', 'custom']),
+    model: z.string().min(1, 'agent.model cannot be empty'),
     temperature: z.number(),
     max_iterations: z.number(),
     memory_window: z.number(),
+    base_url: z.string().refine(val => val === '' || /^https?:\/\//.test(val), {
+      message: 'agent.base_url must be empty or a valid HTTP(S) URL',
+    }).optional(),
+    api_key: z.string().min(1, 'agent.api_key cannot be empty'),
+  }),
+  // Embeddings provider. Anthropic offers NO embeddings API, so it is structurally
+  // excluded from the enum; the custom message makes that explicit (AC-2). The
+  // embedding_model that used to live under `knowledge` now lives here as `model`.
+  embeddings: z.object({
+    provider: z.enum(['openai', 'custom'], {
+      message: 'embeddings.provider must be "openai" or "custom" — Anthropic offers no embeddings API',
+    }),
+    model: z.string().min(1, 'embeddings.model cannot be empty'),
+    dimensions: z.number().int().positive(),
+    base_url: z.string().refine(val => val === '' || /^https?:\/\//.test(val), {
+      message: 'embeddings.base_url must be empty or a valid HTTP(S) URL',
+    }).optional(),
+    api_key: z.string().min(1, 'embeddings.api_key cannot be empty'),
   }),
   knowledge: z.object({
     chunk_size: z.number(),
     chunk_overlap: z.number(),
     grouping_window: z.number(),
-    embedding_model: z.string(),
   }),
   sync: z.object({
     enabled: z.boolean(),
@@ -81,6 +102,20 @@ export const HivlyConfigSchema = z.object({
     }),
     allowed_origins: z.array(z.string()),
   }),
+}).superRefine((config, ctx) => {
+  // A "custom" provider is an arbitrary OpenAI-compatible endpoint, so it is
+  // meaningless without a base_url. Enforce a non-empty base_url for both the
+  // agent (LLM) and the embeddings blocks (AC-3).
+  for (const block of ['agent', 'embeddings'] as const) {
+    const { provider, base_url } = config[block];
+    if (provider === 'custom' && !base_url?.trim()) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [block, 'base_url'],
+        message: `${block}.base_url is required when provider is "custom"`,
+      });
+    }
+  }
 });
 
 export type HivlyConfig = z.infer<typeof HivlyConfigSchema>;

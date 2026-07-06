@@ -26,20 +26,34 @@ discord:
     limit: 1000         # max messages to backfill per channel
     ignore_bots: true
 
-# --- RAG agent (LangGraph) ----------------------------------------------------
+# --- RAG agent / LLM (LangGraph) ---------------------------------------------
+# provider: "anthropic" | "openai" | "custom". "custom" is any OpenAI-compatible
+# endpoint and REQUIRES base_url. api_key is a secret referenced from .env.
 agent:
   provider: "anthropic"
   model: "claude-sonnet-4-6"
   temperature: 0.7
   max_iterations: 10
   memory_window: 20     # conversation turns kept before summarization
+  api_key: "${LLM_API_KEY}"
+  base_url: "${LLM_BASE_URL}"   # leave LLM_BASE_URL blank unless provider is "custom"
+
+# --- Embeddings provider ------------------------------------------------------
+# provider: "openai" | "custom" only — Anthropic has NO embeddings API.
+# dimensions MUST match the model's output (text-embedding-3-small = 1536).
+# Changing dimensions once embeddings exist requires a migration + reindex.
+embeddings:
+  provider: "openai"
+  model: "text-embedding-3-small"
+  dimensions: 1536
+  api_key: "${EMBEDDINGS_API_KEY}"
+  base_url: "${EMBEDDINGS_BASE_URL}"   # leave EMBEDDINGS_BASE_URL blank unless provider is "custom"
 
 # --- Knowledge / ingestion tuning --------------------------------------------
 knowledge:
   chunk_size: 500
   chunk_overlap: 50
   grouping_window: 10   # consecutive same-channel messages grouped before chunking
-  embedding_model: "text-embedding-3-small"  # 1536-dim vectors
 
 # --- Sync (edits/deletes from Discord) ---------------------------------------
 sync:

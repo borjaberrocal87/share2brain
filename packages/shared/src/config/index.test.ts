@@ -24,11 +24,16 @@ agent:
   temperature: 0.7
   max_iterations: 10
   memory_window: 20
+  api_key: "sk-ant-test"
+embeddings:
+  provider: "openai"
+  model: "text-embedding-3-small"
+  dimensions: 1536
+  api_key: "sk-openai-test"
 knowledge:
   chunk_size: 500
   chunk_overlap: 50
   grouping_window: 10
-  embedding_model: "text-embedding-3-small"
 sync:
   enabled: true
   sync_on_start: true
@@ -80,7 +85,12 @@ describe('loadConfig', () => {
     expect(config.version).toBe('1.0');
     expect(config.discord.guild_id).toBe('111111111111111111');
     expect(config.discord.channels).toHaveLength(1);
+    expect(config.agent.provider).toBe('anthropic');
     expect(config.agent.temperature).toBe(0.7);
+    expect(config.agent.api_key).toBe('sk-ant-test');
+    expect(config.embeddings.provider).toBe('openai');
+    expect(config.embeddings.dimensions).toBe(1536);
+    expect(config.embeddings.api_key).toBe('sk-openai-test');
     expect(config.sync.delete_policy).toBe('soft');
     expect(config.access_control.default_policy).toBe('deny');
     expect(config.observability.log_level).toBe('info');
@@ -112,7 +122,7 @@ describe('loadConfig', () => {
   });
 
   it('should throw a descriptive error when a required key is missing', () => {
-    const yaml = VALID_YAML.replace(/agent:[\s\S]*?memory_window: 20\n/, '');
+    const yaml = VALID_YAML.replace(/agent:[\s\S]*?api_key: "sk-ant-test"\n/, '');
     const path = writeFixture('missing-key.yml', yaml);
 
     expect(() => loadConfig(path)).toThrow(/agent/);
@@ -126,5 +136,68 @@ describe('loadConfig', () => {
 
   it('should throw when the config file does not exist', () => {
     expect(() => loadConfig(join(dir, 'does-not-exist.yml'))).toThrow();
+  });
+
+  it('should reject embeddings.provider "anthropic" with an embeddings-specific message', () => {
+    const yaml = VALID_YAML.replace('provider: "openai"', 'provider: "anthropic"');
+    const path = writeFixture('emb-anthropic.yml', yaml);
+
+    expect(() => loadConfig(path)).toThrow(/embeddings.*[Aa]nthropic|[Aa]nthropic.*embeddings/);
+  });
+
+  it('should reject agent.provider "custom" without a base_url, naming base_url', () => {
+    const yaml = VALID_YAML.replace('provider: "anthropic"', 'provider: "custom"');
+    const path = writeFixture('agent-custom-no-url.yml', yaml);
+
+    expect(() => loadConfig(path)).toThrow(/agent.*base_url|base_url.*agent/);
+  });
+
+  it('should reject embeddings.provider "custom" without a base_url, naming base_url', () => {
+    const yaml = VALID_YAML.replace('provider: "openai"', 'provider: "custom"');
+    const path = writeFixture('emb-custom-no-url.yml', yaml);
+
+    expect(() => loadConfig(path)).toThrow(/embeddings.*base_url|base_url.*embeddings/);
+  });
+
+  it('should accept provider "custom" when base_url is present', () => {
+    const yaml = VALID_YAML.replace(
+      'provider: "openai"\n  model: "text-embedding-3-small"',
+      'provider: "custom"\n  base_url: "https://llm.internal/v1"\n  model: "text-embedding-3-small"',
+    );
+    const path = writeFixture('emb-custom-ok.yml', yaml);
+
+    const config = loadConfig(path);
+
+    expect(config.embeddings.provider).toBe('custom');
+    expect(config.embeddings.base_url).toBe('https://llm.internal/v1');
+  });
+
+  it('should accept an empty base_url for non-custom providers (shipped-config pattern)', () => {
+    // Mirrors Hivly.config.yml: base_url references ${LLM_BASE_URL}/${EMBEDDINGS_BASE_URL},
+    // which interpolate to "" when the operator leaves them blank (non-custom).
+    const yaml = VALID_YAML.replace(
+      '  api_key: "sk-ant-test"',
+      '  api_key: "sk-ant-test"\n  base_url: ""',
+    ).replace('  api_key: "sk-openai-test"', '  api_key: "sk-openai-test"\n  base_url: ""');
+    const path = writeFixture('empty-base-url.yml', yaml);
+
+    const config = loadConfig(path);
+
+    expect(config.agent.base_url).toBe('');
+    expect(config.embeddings.base_url).toBe('');
+  });
+
+  it('should reject a non-positive embeddings.dimensions', () => {
+    const yaml = VALID_YAML.replace('dimensions: 1536', 'dimensions: 0');
+    const path = writeFixture('dim-zero.yml', yaml);
+
+    expect(() => loadConfig(path)).toThrow(/dimensions/);
+  });
+
+  it('should reject a non-integer embeddings.dimensions', () => {
+    const yaml = VALID_YAML.replace('dimensions: 1536', 'dimensions: 15.5');
+    const path = writeFixture('dim-float.yml', yaml);
+
+    expect(() => loadConfig(path)).toThrow(/dimensions/);
   });
 });
