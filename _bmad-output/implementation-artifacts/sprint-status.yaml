@@ -42,6 +42,9 @@
 
 generated: 2026-06-30
 last_updated: 2026-07-06
+# story 3-3 → review (bmad-dev-story 2026-07-06 — gate green: lint 0, 203 unit, build 5 clean, 22 integration; real-endpoint smoke: #general event → 1536-dim embeddings row + chunk_key + indexed_at stamped + XPENDING 0; redelivery deduped, count unchanged. Schema chunk_key + migration 0002 (spike-confirmed 1536); PEL-as-DLQ decision recorded)
+# story 3-3 → in-progress (bmad-dev-story 2026-07-06)
+# story 3-3 → ready-for-dev (bmad-create-story 2026-07-06); comprehensive context guide created — first Redis Streams consumer (hivly:indexer, PEL replay + XREADGROUP loop), chunk_key unique column for idempotent UPSERT (shared migration), dimension-mismatch blocker flagged (config 4096 vs migrated vector(1536), pgvector HNSW ≤2000 dims); 4 open questions RESOLVED with Borja same day: dimensions 1536 (MRL, spike-gated), chunk_key + onConflictDoUpdate, per-batch by-channel grouping, chars/4 token heuristic
 # story 3-2 → done (4th code review, fresh independent pass 2026-07-06 — 1 decision resolved (accept retry-amplified COMMIT-after-XADD race from Story 3.1, documented in persistMessage.ts) + 2 patches applied: cursor-resolution failure now skips the channel instead of downgrading to the bounded limit path, duplicate-channel-id check scoped to enabled channels only; 3 new tests; Acceptance Auditor found nothing new; gate green: lint 0 / 165 unit / 18 integration / build clean)
 # story 3-2 → done (3rd code review, fresh independent pass 2026-07-06 — 0 decisions + 6 patches applied: BigInt('') empty-id fix in the 2nd pass's own sort fallback, distinguishable channel-not-found vs not-text-based errors, messagesFailed counter added to BackfillCompletedEvent, duplicate channel id validation in config schema, 4 new unit tests for previously-untested retry/cursor/abort paths; 1 deferred (SIGTERM/SIGINT registered late, pre-existing); 5 dismissed as noise; gate green: lint 0 / 162 unit / 18 integration / build clean)
 # story 3-2 → done (2nd code review, fresh independent pass 2026-07-06 — 1 decision resolved (bounded per-message retry) + 9 patches applied: retry-before-giving-up, abort recheck on inter-channel throttle, throttle dedup, abort-safe channel bookkeeping, transitive comparator, cursor type-mismatch surfaced, partial-progress accounting, accurate persisted-vs-skipped log, bounded shutdown wait for in-flight backfill, plus a latent build error from the 1st pass fixed; 5 dismissed as noise; gate green: lint 0 / 158 unit / 18 integration / build clean)
@@ -102,7 +105,7 @@ development_status:
   3-0-config-proveedores-llm-y-embeddings: done
   3-1-discord-bot-conexion-al-gateway-y-listener-messagecreate: done
   3-2-discord-bot-backfill-historico-con-reconciliacion-por-snowflake: done
-  3-3-workers-indexer-embeddings-y-pgvector: backlog
+  3-3-workers-indexer-embeddings-y-pgvector: review
   epic-3-retrospective: optional
 
   # ── Épico 4: Búsqueda, Documentos y Read Tracking ───────────────────────────
