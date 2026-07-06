@@ -61,3 +61,14 @@
 - XADD publica antes del COMMIT de Postgres — el `xAdd` corre dentro del callback de la transacción pero contra el cliente Redis (no transaccional), así que el evento es durable en Redis antes de que aterrice el COMMIT. Para Story 3.3: el Indexer debe leer `content` del propio evento (lo lleva) o tolerar un row-not-found transitorio sin hacer ACK.
 - ~~INSERT sin `onConflict` — una re-entrega de `messageCreate` en un RESUME de Discord dispara un duplicado de PK que aborta la transacción y loguea un `error: failed to persist message` falso (la fila+evento ya existen). `onConflictDoNothing` haría el productor idempotente. Camino poco frecuente.~~ **RESUELTO en Story 3.2** (2026-07-06): `persistMessage` ahora hace `onConflictDoNothing().returning()` y omite el XADD cuando la fila ya existía — productor idempotente en el camino compartido live + backfill.
 - Recuperación del Gateway post-arranque delegada a discord.js — `connectWithRetry` corre una sola vez al boot; el reset/escalado de AC-4 solo se ejercita en el login inicial. Si discord.js agota sus propios reintentos tras el arranque, nada escala a `error` ni sale, y el bot queda idle. Coincide con el diseño documentado; revisar como mejora de observabilidad.
+
+## Deferred from: code review of 3-2-discord-bot-backfill-historico-con-reconciliacion-por-snowflake (2026-07-06)
+
+- No timeout on messages.fetch() — Discord API call has no AbortSignal. Pre-existing concern (same in live path); discord.js internal timebounds handle the common case.
+- Gap pages have no max-page safety valve — A year-long offline gap runs unboundedly. By design per AC-6 ("the whole gap is covered").
+- rateLimited listener without queue depth visibility — Discord.js internal queue depth is not observable via events.
+- onConflictDoNothing silences edits from backfill — `onConflictDoNothing` salta inserciones de mensajes que ya existen, incluso si el backfill trae contenido editado. Caso estrecho: solo cuando el mensaje fue recibido live Y editado durante la ventana offline. Tradeoff aceptado (Borja, 2026-07-06): un `ON CONFLICT DO UPDATE` añadiría escrituras innecesarias para el caso común.
+
+## Deferred from: code review of 3-2-discord-bot-backfill-historico-con-reconciliacion-por-snowflake (2026-07-06, 3rd pass)
+
+- SIGTERM/SIGINT handlers registered after the per-channel cursor-resolution loop and Discord client setup in `main.ts` — a signal arriving during that window bypasses the bounded-shutdown logic entirely (Node's default SIGTERM handling has no cleanup). Pre-existing ordering from the original implementation. Fixing it means moving `shutdownSignal`/`shutdown()`'s definition and the `process.on(...)` registration earlier in `main()`, ahead of the cursor loop — a bigger structural reorder than a single review patch.

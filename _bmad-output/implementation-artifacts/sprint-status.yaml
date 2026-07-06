@@ -1,5 +1,5 @@
 # generated: 2026-06-30
-# last_updated: 2026-06-30
+# last_updated: 2026-07-06
 # project: hivly
 # project_key: NOKEY
 # tracking_system: file-system
@@ -42,6 +42,10 @@
 
 generated: 2026-06-30
 last_updated: 2026-07-06
+# story 3-2 → done (4th code review, fresh independent pass 2026-07-06 — 1 decision resolved (accept retry-amplified COMMIT-after-XADD race from Story 3.1, documented in persistMessage.ts) + 2 patches applied: cursor-resolution failure now skips the channel instead of downgrading to the bounded limit path, duplicate-channel-id check scoped to enabled channels only; 3 new tests; Acceptance Auditor found nothing new; gate green: lint 0 / 165 unit / 18 integration / build clean)
+# story 3-2 → done (3rd code review, fresh independent pass 2026-07-06 — 0 decisions + 6 patches applied: BigInt('') empty-id fix in the 2nd pass's own sort fallback, distinguishable channel-not-found vs not-text-based errors, messagesFailed counter added to BackfillCompletedEvent, duplicate channel id validation in config schema, 4 new unit tests for previously-untested retry/cursor/abort paths; 1 deferred (SIGTERM/SIGINT registered late, pre-existing); 5 dismissed as noise; gate green: lint 0 / 162 unit / 18 integration / build clean)
+# story 3-2 → done (2nd code review, fresh independent pass 2026-07-06 — 1 decision resolved (bounded per-message retry) + 9 patches applied: retry-before-giving-up, abort recheck on inter-channel throttle, throttle dedup, abort-safe channel bookkeeping, transitive comparator, cursor type-mismatch surfaced, partial-progress accounting, accurate persisted-vs-skipped log, bounded shutdown wait for in-flight backfill, plus a latent build error from the 1st pass fixed; 5 dismissed as noise; gate green: lint 0 / 158 unit / 18 integration / build clean)
+# story 3-2 → done (code review passed — 2 decisions resolved + 11 patches applied: BigInt safety, whitespace guards, cursor type guard, full comparator, inter-channel throttle, cursor failure isolation, chunk abort check, schema max, inner abort check, per-message isolation, XADD error logging; gate green after patches: lint 0 + 56 unit + build clean; 8 test files, 56 tests passed)
 # story 3-2 → review (bmad-dev-story — gate green: lint 0, 158 unit, build clean, 18 integration; smoke: initial backfill 60 msgs/2 channels, gap reconciliation 3 msgs no dupes, failure isolation with completed event channelsFailed=1)
 # story 3-2 → in-progress (bmad-dev-story)
 # story 3-2 → ready-for-dev (bmad-create-story 2026-07-06); comprehensive context guide created — cursor derived from newest discord_messages row (no last_seen column, per 3.1 decision), idempotent persistMessage (resolves 3.1 deferred onConflict finding), new BackfillCompletedEvent in shared
@@ -97,7 +101,7 @@ development_status:
   epic-3: in-progress
   3-0-config-proveedores-llm-y-embeddings: done
   3-1-discord-bot-conexion-al-gateway-y-listener-messagecreate: done
-  3-2-discord-bot-backfill-historico-con-reconciliacion-por-snowflake: review
+  3-2-discord-bot-backfill-historico-con-reconciliacion-por-snowflake: done
   3-3-workers-indexer-embeddings-y-pgvector: backlog
   epic-3-retrospective: optional
 
