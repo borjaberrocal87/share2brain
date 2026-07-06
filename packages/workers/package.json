@@ -10,6 +10,8 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@hivly/shared": "*"
+    "@hivly/shared": "*",
+    "@langchain/textsplitters": "^1.0.1",
+    "redis": "^6.1.0"
   }
 }

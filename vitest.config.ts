@@ -24,6 +24,7 @@ export default defineConfig({
       // Integration: real Postgres + Redis. Own config per producer service.
       './packages/backend/vitest.config.ts',
       './packages/bot/vitest.config.ts',
+      './packages/workers/vitest.config.ts',
     ],
   },
 });
