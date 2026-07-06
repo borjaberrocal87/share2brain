@@ -4,7 +4,27 @@
 import { createDatabase, type Database } from '@hivly/shared/db';
 
 import type { AppOptions } from './app.js';
+import type { QueryEmbedder } from './domain/repositories/queryEmbedder.js';
 import { createRedisClient, type RedisClient } from '@hivly/shared/redis';
+
+// The deployed embeddings width (Story 3.3 pivot); the migrated column is vector(1536).
+// The fake query embedder MUST match it so the `<=>` operator accepts the query vector.
+export const TEST_EMBEDDING_DIMENSIONS = 1536;
+
+/**
+ * Deterministic fake query embedder for integration tests — a one-hot vector at
+ * index 0, so a seeded embedding that is also one-hot at index 0 scores similarity
+ * 1. Never hits a real embeddings endpoint (mirrors the Indexer's fake embedder).
+ */
+export function fakeQueryEmbedder(index = 0): QueryEmbedder {
+  return {
+    embedQuery: async () => {
+      const v = new Array<number>(TEST_EMBEDDING_DIMENSIONS).fill(0);
+      v[index] = 1;
+      return v;
+    },
+  };
+}
 
 // Dev defaults match the ports docker-compose exposes on localhost. Override via env
 // (e.g. CI): DATABASE_URL / REDIS_URL. Password matches the compose `.env` placeholder.
@@ -49,6 +69,8 @@ export function buildTestAppOptions(overrides: Partial<AppOptions> = {}): AppOpt
     },
     frontendUrl: 'http://localhost:5173',
     allowedOrigins: ['http://localhost:5173'],
+    // Deterministic fake so tests never hit a real embeddings endpoint. Overridable.
+    queryEmbedder: fakeQueryEmbedder(),
     ...overrides,
   };
 }

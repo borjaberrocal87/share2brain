@@ -7,6 +7,7 @@ import { createRedisClient } from '@hivly/shared/redis';
 
 import { createApp } from './app.js';
 import { createDrizzleChannelPermissionRepository } from './infrastructure/channelPermissionRepository.drizzle.js';
+import { createLangchainQueryEmbedder } from './infrastructure/queryEmbedder.langchain.js';
 import { materializeChannelPermissions } from './infrastructure/materializeChannelPermissions.js';
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -56,6 +57,10 @@ async function main(): Promise<void> {
     config.access_control.channel_permissions,
   );
 
+  // Build the query embedder from validated config (the LangChain provider stays
+  // behind this adapter). No network I/O at construction. GET /api/search uses it.
+  const queryEmbedder = createLangchainQueryEmbedder(config.embeddings);
+
   const app = createApp(db, redis, {
     sessionSecret,
     sessionTtlDays,
@@ -68,6 +73,7 @@ async function main(): Promise<void> {
     },
     frontendUrl,
     allowedOrigins: config.security.allowed_origins,
+    queryEmbedder,
   });
 
   const server = app.listen(PORT, '0.0.0.0', () => {
