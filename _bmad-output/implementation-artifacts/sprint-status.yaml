@@ -42,6 +42,7 @@
 
 generated: 2026-06-30
 last_updated: 2026-07-07
+# epic-4 development_status flipped in-progress → done 2026-07-07 (the retro log below claimed done but left the development_status field unflipped; all 5 stories + retrospective were already done).
 # epic-4 → done + epic-4-retrospective → done (bmad-retrospective 2026-07-07; epic-4-retro-2026-07-07.md). 5/5 stories done (4-5 added mid-epic via correct-course). Follow-through: 3/3 actionable Epic 3 items landed (deleted_at semantics, view-in-Discord link, treat-patch-as-new-code). 7 new action items recorded, 4 on the critical path before Epic 5's chat UI (fix inline-vs-:hover cascade, prefers-reduced-motion on kh-*, extend harness with chat/SSE specs, SSE end-to-end spike — spike elevated by Borja). Key lesson: a visual AC is not "done" until the harness asserts it (jsdom ignores external CSS → 4.3 shipped unverified → 4.5 harness found a real :focus defect). No re-plan for Epic 5, but a hard prep gate before 5.3/5.4.
 # story 4-5 → review (bmad-dev-story 2026-07-07); branch feat/4-5-web-app-e2e-visual-harness, baseline a30406e. Playwright E2E visual-verification harness shipped end-to-end, ALL 8 ACs met, gate green. NEW: packages/backend/src/e2e/{server,seed}.ts (spawned deterministic backend, reset-then-seed 3 ch/5 msg/5 emb/2 read scoped `e2e-`, fake OAuth code→identity, NODE_ENV=production refuses to boot, no auth-bypass route — AD-2 intact, web spawns not imports); packages/web/playwright.config.ts (chromium-only, workers:1, 2 webServers, reuseExistingServer:!CI); tests/helpers/session.ts (loginAs via page.request shared cookie jar, forces dark theme); tests/{search,docs}.spec.ts (getComputedStyle assertions of 4.3 + 4.4 visual ACs, real token names, +full-page screenshots); tests/README.md. MODIFIED: vite.config.ts (NEW preview.proxy + HIVLY_API_PROXY_TARGET — vite preview ignores server.proxy), web tsconfig (include tests, node types, drop rootDir), 4 minimal data-testids (similarity-bar/sidebar-badge/search-empty-state/docs-empty-state), root+backend+web package.json scripts, .gitignore, dev-guide (+chromium install prereq). 🔴 REAL 4.3 DEFECT FOUND + FIXED by the harness (the exact gap this story exists for): the search input's :focus border never turned amber — inline `border` shorthand on .kh-search-input outranks the .kh-search-input:focus{border-color} rule (probe: focused, border-color=rgb(42,49,61) base, box-shadow=amber glow DID apply). Fixed the PRODUCT (moved base border to the CSS class so :focus overrides color), not the assertion (Task 9 directive). Related NOT fixed (flagged for review, no AC asserts them): same inline-vs-:hover cascade disables .kh-result-card:hover + .kh-chip:hover border-color. Idempotency: Playwright tears down its webServers each run → next boot reseeds → mutating docs mark-all test safe (3 consecutive green runs). Gate: lint 0 / 360 unit / build clean (4 pkgs) / 76 integration (unchanged, coexists via distinct e2e- roles/channels — no RBAC leak) / test:e2e 4 passed chromium. Blocks 5-3/5-4 now UNBLOCKED.
 # story 4-5 → ready-for-dev (bmad-create-story 2026-07-07); Web App — E2E visual-verification harness (Playwright). Baseline a30406e. Cross-cutting test-enablement; blocks 5-3/5-4; initial specs verify 4-3 + 4-4 visual ACs retroactively via getComputedStyle + screenshots. 5 creation decisions (autonomous, within correct-course scope): (D1) e2e backend = packages/backend/src/e2e/server.ts SPAWNED by Playwright webServer[0] — web never imports backend (AD-2); reuses test-helpers (buildTestAppOptions/openTestClients/fakeQueryEmbedder); NODE_ENV=production refuses to start (stronger than a guarded route). (D2) built SPA via `vite build && vite preview` + NEW preview.proxy block (vite preview does NOT inherit server.proxy — without it every /api call 404s) with HIVLY_API_PROXY_TARGET env (test backend on :3100, preview on :4173). (D3) fake OAuth maps code→identity (e2e-member / e2e-empty): search has NO similarity threshold, so 4.3-AC6 empty state is only reachable with an empty-embedding channel scope (e2e-ch-void). (D4) chromium-only, workers:1 (specs share one seeded DB; docs spec mutates via mark-all — runs last), dark theme forced via addInitScript localStorage hivly-theme (light theme changes --accent-ink #F5A623→#9A5B00 → OS-preference flake). (D5) @playwright/test ^1.61.1 (the old "already installed" comment was false, but 1.61.1 is the correct current version to install). Session bootstrap: page.request (shared cookie jar) drives login→state→callback, maxRedirects:0. Story carries the full computed-value table (box-shadow serializes color-first; grid 1fr resolves to px), exact selectors (data-read is the only data attr; chips have no modifier class → assert computed bg) and verbatim Spanish strings. Docs §3.4/frontend-standards/dev-guide already amended by the correct-course — do NOT rewrite. All process docs verified AMENDED on disk before authoring.
@@ -127,7 +128,7 @@ development_status:
   epic-3-retrospective: done
 
   # ── Épico 4: Búsqueda, Documentos y Read Tracking ───────────────────────────
-  epic-4: in-progress
+  epic-4: done
   4-1-backend-api-de-busqueda-semantica: done
   4-2-backend-api-de-documentos-y-read-tracking: done
   4-3-web-app-vista-busqueda: done
@@ -218,18 +219,18 @@ action_items:
     owner: "Amelia (Dev)"
     status: open
   - epic: 4
-    action: "CRITICAL PATH before 5.3/5.4 — close the inline-vs-hover cascade debt on result cards and chips (move base border/color off the inline shorthand into the CSS class, mirroring the 4.3 focus fix)."
+    action: "CRITICAL PATH before 5.3/5.4 — close the inline-vs-hover cascade debt on result cards and chips (move base border/color off the inline shorthand into the CSS class, mirroring the 4.3 focus fix). DONE 2026-07-07 via PR #26 (fix/frontend-hover-reduced-motion), merged to main."
     owner: "Sally (UX) + Amelia (Dev)"
-    status: open
+    status: done
   - epic: 4
-    action: "CRITICAL PATH before 5.3/5.4 — prefers-reduced-motion wrapping all kh-* keyframes, including the new kh-pop/kh-blink (closes the debt carried from Story 2.1, now with a trigger)."
+    action: "CRITICAL PATH before 5.3/5.4 — prefers-reduced-motion wrapping all kh-* keyframes, including the new kh-pop/kh-blink (closes the debt carried from Story 2.1, now with a trigger). DONE 2026-07-07 via PR #26 (fix/frontend-hover-reduced-motion), merged to main."
     owner: "Sally (UX)"
-    status: open
+    status: done
   - epic: 4
     action: "CRITICAL PATH during 5.3/5.4 — extend the 4.5 harness with chat + SSE specs as part of the definition-of-done (FAB hexagon, panel dims, streaming cursor/tool_call/observation colors)."
     owner: "Amelia (Dev)"
     status: open
   - epic: 4
-    action: "CRITICAL PATH before 5.1/5.4 (elevated by Borja) — SSE end-to-end verification spike: confirm Playwright can drive the fetch-streaming chat and observe token frames accumulate, before building the 5.4 streaming UI."
+    action: "CRITICAL PATH before 5.1/5.4 (elevated by Borja) — SSE end-to-end verification spike: confirm Playwright can drive the fetch-streaming chat and observe token frames accumulate, before building the 5.4 streaming UI. DONE 2026-07-07 via PR #25 (spike/sse-streaming-harness), merged to main."
     owner: "Amelia (Dev)"
-    status: open
+    status: done
