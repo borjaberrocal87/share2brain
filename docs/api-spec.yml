@@ -23,6 +23,7 @@ servers:
 tags:
   - name: auth
   - name: search
+  - name: channels
   - name: documents
   - name: chat
   - name: conversations
@@ -82,8 +83,11 @@ paths:
               schema:
                 type: object
                 properties:
-                  userId: { type: string }
-                  discordRoles: { type: array, items: { type: string } }
+                  id: { type: string, format: uuid }
+                  discordId: { type: string }
+                  username: { type: string }
+                  avatar: { type: string, nullable: true }
+                  guildId: { type: string }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/auth/roles:
@@ -107,6 +111,30 @@ paths:
       responses:
         "200": { description: Ranked fragments with source metadata }
         "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/channels:
+    get:
+      tags: [channels]
+      summary: Channels visible to the caller (RBAC-scoped)
+      description: >
+        Channels are filtered by the caller's Discord roles inside the query
+        (array-overlap against channel_permissions, not a post-filter, AD-12).
+      responses:
+        "200":
+          description: Channels the caller may access
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  channels:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        name: { type: string }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/documents:
