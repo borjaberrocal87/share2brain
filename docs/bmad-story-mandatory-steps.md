@@ -93,12 +93,35 @@ The agent MUST exercise endpoints itself (start the Backend if needed):
 
 ### 3.4 E2E verification with Playwright (MANDATORY when UI is affected) — AGENT MUST EXECUTE
 
-When a story affects `@hivly/web` user workflows, the agent MUST:
-1. Ensure Backend and the Web App (or built `dist/` behind nginx) are running.
-2. Drive the workflow with Playwright (navigate, interact, assert) — e.g. search → results, chat streaming renders tokens + citations, read-status mark-all updates counts.
-3. Test error/validation paths.
-4. Verify persistence (data created via UI is present and correct).
-5. Restore any test data and the DB state.
+**Concrete verification path for this repo** — the Playwright harness landed by Story 4.5
+(`packages/web/playwright.config.ts` + `packages/web/tests/`, run via
+`npm run test:e2e -w @hivly/web`). When a story affects `@hivly/web` user workflows, the agent MUST:
+
+1. Boot the harness backend: `createApp` with an **injected fake `DiscordOAuthClient`**
+   (the `opts.oauth` pattern from `*.integration.test.ts`) + a deterministic fake
+   `queryEmbedder`, over a test Postgres+pgvector/Redis seeded with `channel_permissions` +
+   `embeddings`. The SPA gates on a Discord OAuth session, so acquire the session cookie via
+   the **fake-OAuth callback** — never real Discord credentials, and never a production
+   auth-bypass route.
+2. Point Vite preview at the test backend and drive the workflow with Playwright (navigate,
+   interact, assert) — e.g. search → results, docs read-status mark-all updates counts, chat
+   streaming renders tokens + citations.
+3. Assert **visual/CSS ACs** with `getComputedStyle` (fonts, box-shadow, token colors, grid
+   templates) — jsdom cannot; use the **real** token names (`--text-primary/-muted/-subtle`,
+   renamed in Story 2.1 from `--tx/--tx4/--tx5`). Capture screenshots as artifacts.
+4. Test error/validation paths; verify persistence (data created via UI is present and
+   correct); restore any test data and the DB state.
+
+**Explicit fallback when the agent environment has no browser automation** (no Playwright
+runner / no headless browser available in this session): the agent MUST
+1. run the backend-slice smoke it *can* (REST/SSE + RBAC per §3.3, over a real DB + fake OAuth);
+2. **explicitly flag every unverified visual/CSS AC** in the story implementation notes AND
+   the PR body (name the exact ACs, e.g. "AC2 focus box-shadow not visually verified");
+3. leave those ACs to be covered by the Story 4.5 harness spec.
+
+**Never mark a visual/CSS AC "satisfied" without either the harness run or a documented
+manual check.** A flagged-but-unverified AC is an accepted, documented deferral — a silently
+passed one is a gate violation.
 
 ### 3.5 Documentation update (MANDATORY)
 
@@ -111,7 +134,7 @@ Update the docs the change implies (see `documentation-standards.md`): `data-mod
 - [ ] Every acceptance criterion satisfied and mapped to evidence.
 - [ ] Mandatory verification steps executed and marked "AGENT MUST EXECUTE".
 - [ ] DB-affecting changes include baseline + restore steps.
-- [ ] E2E run if UI is affected.
+- [ ] E2E run if UI is affected (Playwright harness per §3.4); if browser automation is unavailable, the fallback ran and every unverified visual/CSS AC is flagged in notes + PR.
 - [ ] Documentation-update step done.
 - [ ] Closing hand-off to `bmad-code-review` → `bmad-checkpoint-preview` present for the finishing story.
 

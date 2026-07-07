@@ -176,9 +176,9 @@ El conocimiento de los canales de Discord configurados fluye automáticamente al
 **FRs cubiertos:** FR1, FR2, FR5
 
 ### Épico 4: Búsqueda, Documentos y Read Tracking
-El miembro puede buscar semánticamente el conocimiento indexado, explorar todos los fragmentos y gestionar su estado de lectura personal. Incluye los endpoints de búsqueda semántica (filtro RBAC en query pgvector), listado paginado de documentos, todos los endpoints de read-status (marcar/desmarcar fragmento, mark-all en batch de 1.000, conteo por canal), y la Web App: vista Búsqueda (barra, filter chips, result cards con similarity bar y badges), vista Documentos (tabla grid con dots ámbar/gris, toggle "Sin leer", "Cargar más"), y sidebar con conteo de no leídos por canal.
+El miembro puede buscar semánticamente el conocimiento indexado, explorar todos los fragmentos y gestionar su estado de lectura personal. Incluye los endpoints de búsqueda semántica (filtro RBAC en query pgvector), listado paginado de documentos, todos los endpoints de read-status (marcar/desmarcar fragmento, mark-all en batch de 1.000, conteo por canal), y la Web App: vista Búsqueda (barra, filter chips, result cards con similarity bar y badges), vista Documentos (tabla grid con dots ámbar/gris, toggle "Sin leer", "Cargar más"), y sidebar con conteo de no leídos por canal. Cierra con el harness de verificación visual E2E (Playwright) que valida los ACs visuales/CSS de las vistas Búsqueda y Documentos y desbloquea la verificación del chat en Epic 5.
 **FRs cubiertos:** FR11, FR12, FR15, FR16, FR17, FR19
-**UX cubiertos:** UX-DR10 al UX-DR14
+**UX cubiertos:** UX-DR10 al UX-DR14 (verificados vía el harness E2E de la Historia 4.5)
 
 ### Épico 5: Agente RAG y Chat
 El miembro puede hacer preguntas en lenguaje natural y recibir respuestas en streaming con fuentes citadas, con historial de conversación persistente. Incluye el LangGraph StateGraph (`retrieve → reason → respond`) con compresión de historial, streaming SSE con wire format definido, persistencia de conversaciones, y la Web App: chat floating widget completo (FAB hexagonal, panel 404×642px con animación kh-pop, historial de conversaciones, burbujas de mensaje con trace de ejecución, citas clicables, input con auto-resize y botón send adaptativo).
@@ -741,6 +741,52 @@ para saber qué conocimiento nuevo tengo pendiente de revisar.
 **Cuando** hay más documentos disponibles
 **Entonces** carga los siguientes 20 fragmentos añadiéndolos a la lista
 **Y** el hover aplica `border-color: var(--accent-ink)` y `color: var(--accent-ink)`
+
+---
+
+### Historia 4.5: Web App — Harness de verificación visual E2E (Playwright)
+
+Como desarrollador del proyecto,
+quiero un harness E2E que arranque la SPA autenticada sin Discord real y verifique los criterios visuales/CSS reales de las vistas,
+para cerrar el gap de verificación que dejó la Story 4.3 y desbloquear la verificación de la vista Documentos (4.4) y del chat (Epic 5).
+
+> Story transversal de habilitación de tests, descubierta durante la review de 4.3 (ver `sprint-change-proposal-2026-07-07.md`). El gate obligatorio (`bmad-story-mandatory-steps.md` §3.4) exige Playwright E2E cuando se toca la UI, pero no existía harness ni forma de autenticar la SPA sin Discord real. Playwright **no** está instalado hoy.
+
+**Criterios de Aceptación:**
+
+**Dado** el monorepo sin tooling E2E
+**Cuando** se instala y configura el harness
+**Entonces** `@hivly/web` declara `@playwright/test`, existe `playwright.config.ts` en `packages/web`, y el script `npm run test:e2e -w @hivly/web` ejecuta la suite E2E (con el wiring en la raíz)
+
+**Dado** que el harness necesita un backend determinista
+**Cuando** arranca
+**Entonces** monta `createApp` con un `DiscordOAuthClient` fake inyectado (patrón `opts.oauth` de los `*.integration.test.ts`) y un `queryEmbedder` determinista, sobre Postgres+pgvector/Redis de test seedeados con `channel_permissions` + `embeddings`, de modo que `GET /api/search` devuelve resultados fijos
+
+**Dado** que la SPA gatea todo tras sesión OAuth (`App.tsx → /api/auth/me → LoginScreen`)
+**Cuando** el harness inicia una sesión de navegador
+**Entonces** obtiene la cookie de sesión mediante el flujo fake-OAuth (`/api/auth/login` → callback fake) **sin credenciales reales de Discord** y **sin añadir una ruta de auth-bypass en producción** (una ruta test-only guarded a no-prod es solo fallback)
+
+**Dado** el frontend construido
+**Cuando** Playwright lo dirige
+**Entonces** Vite preview apunta al backend de test y la SPA autenticada renderiza las vistas reales
+
+**Dado** la spec inicial del harness
+**Cuando** navega a la vista Búsqueda (cobertura retroactiva de Story 4.3)
+**Entonces** verifica vía `getComputedStyle`: AC1 título (Space Grotesk 600 / 25px) + barra de búsqueda 54px; AC2 foco con `border-color: var(--accent-ink)` + `box-shadow: 0 0 0 3px rgba(245,166,35,0.12)`; AC4 tokens de result card (badge amber, gradiente de similarity-bar, avatar); AC5 chip activo/inactivo; AC6 empty state con borde dashed
+
+**Dado** la spec inicial del harness
+**Cuando** navega a la vista Documentos (cobertura retroactiva de Story 4.4)
+**Entonces** verifica vía `getComputedStyle`: grid de tabla `1fr 130px 130px 96px`; dot no leído ámbar con glow `0 0 0 3px rgba(245,166,35,0.16)` vs. leído `var(--dot-read)`; hover de fila `var(--hover-row)`; badge del sidebar; empty state "todo leído"
+
+**Dado** los nombres de tokens del mockup (`--tx`/`--tx4`/`--tx5`)
+**Cuando** se escriben las aserciones
+**Entonces** usan los **nombres reales** renombrados en Story 2.1 (`--text-primary`/`--text-muted`/`--text-subtle`, mismos valores)
+
+**Dado** una corrida del harness
+**Cuando** completa
+**Entonces** captura screenshots de las vistas como artefactos, y el harness queda documentado/reutilizable para que las Stories 5.3/5.4 añadan sus propias specs
+
+**Dependencias:** bloquea 5.3 y 5.4.
 
 ---
 

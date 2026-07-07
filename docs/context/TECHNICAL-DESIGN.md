@@ -1074,7 +1074,7 @@ Estas decisiones están conscientemente pospuestas. No son olvidos — son área
 | **Retry y DLQ (Redis Streams)** | Max reintentos, MAXLEN, dead-letter | AD-13 fija ACK discipline; el resto es libre |
 | **CSS / UI framework** | Tailwind + shadcn/ui vs CSS Modules | Sin restricción |
 | **Frontend data fetching** | TanStack Query vs SWR | Debe respetar AD-6 (tipos de Zod) |
-| **Test framework** | Vitest + Playwright (asumido) | Sin restricción |
+| **Test framework** | Vitest + Playwright (asumido); harness E2E con fake-OAuth inyectado + `getComputedStyle` implementado en Story 4.5 | Sin restricción (convención, no invariante) |
 | **TLS en nginx** | Let's Encrypt vs cert manual | AD-7 establece que nginx termina TLS |
 | **Health checks Compose** | Scripts de probe por servicio | Sin restricción |
 | **Abstracción proveedor LLM/embeddings** | Implementada en Story 3.0 (provider-factory en shared: ChatAnthropic / ChatOpenAI(baseURL) / OpenAIEmbeddings(baseURL)) | Cubre LLM (anthropic/openai/custom) y embeddings (openai/custom) |

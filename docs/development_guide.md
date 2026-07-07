@@ -112,10 +112,12 @@ npm run test -w @hivly/backend   # scope to one workspace
 npm run build           # build all packages
 ```
 
-E2E (web workflows) run with Playwright:
+E2E (web workflows) run with Playwright. The harness lands with **Story 4.5**; it boots the
+Backend with an injected **fake Discord OAuth** client over a test Postgres+pgvector/Redis
+(seeded), so it authenticates the SPA without real Discord credentials:
 
 ```bash
-npm run test:e2e        # Playwright end-to-end
+npm run test:e2e -w @hivly/web   # Playwright end-to-end (needs test Postgres+Redis + fake-OAuth session)
 ```
 
 ## Updating a running deployment

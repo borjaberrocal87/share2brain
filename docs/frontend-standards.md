@@ -184,7 +184,8 @@ Render `token` frames incrementally, `citation` frames as sources, close on `don
 ## Testing Standards
 
 - **Component/unit** (Vitest + RTL): test behavior, not implementation; test success and error states.
-- **E2E** (Playwright): test complete user workflows — search → results, chat streaming renders tokens/citations, read-status mark-all updates counts. Prefer `data-testid` for stable selection; test both success and error/validation paths.
+- **E2E** (Playwright): test complete user workflows — search → results, chat streaming renders tokens/citations, read-status mark-all updates counts. Prefer `data-testid` for stable selection; test both success and error/validation paths. The SPA gates on a Discord OAuth session, so the harness boots `createApp` with an **injected fake `DiscordOAuthClient`** (`opts.oauth`, same as `*.integration.test.ts`) over a seeded test DB and acquires the session cookie via the fake-OAuth callback — **no real Discord credentials, no production auth-bypass route**.
+- **Visual/CSS ACs** (fonts, box-shadow, token colors, grid templates) are verified with `getComputedStyle` in the Playwright run — jsdom cannot. Use the real token names (`--text-primary/-muted/-subtle`). The harness (`playwright.config.ts` + `tests/`) lands with Story 4.5; see `bmad-story-mandatory-steps.md` §3.4 for the mandatory flow and the explicit fallback when browser automation is unavailable.
 - Part of the verification gate: type-check + tests + build green before committing (see `bmad-story-mandatory-steps.md`).
 
 ```typescript
@@ -255,7 +256,7 @@ Follow the BMAD Method way of working (see `base-standards.md`):
 npm run dev -w @hivly/web       # Vite dev server on :5173
 npm run build -w @hivly/web     # production build → dist/
 npm run test -w @hivly/web      # Vitest component/unit tests
-npm run test:e2e -w @hivly/web  # Playwright E2E
+npm run test:e2e -w @hivly/web  # Playwright E2E (harness from Story 4.5; needs test Postgres+Redis + fake-OAuth session)
 npm run lint                    # ESLint
 ```
 
