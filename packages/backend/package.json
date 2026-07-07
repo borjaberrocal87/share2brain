@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
+    "e2e:server": "tsx src/e2e/server.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit"
   },

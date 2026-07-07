@@ -99,7 +99,11 @@ export function Sidebar({ activeScreen, onNavigate, unreadCount = 0 }: SidebarPr
             >
               <span style={iconSpanStyle}>{icon}</span>
               {label}
-              {screen === 'docs' && unreadCount > 0 && <span style={badgeStyle}>{unreadCount}</span>}
+              {screen === 'docs' && unreadCount > 0 && (
+                <span data-testid="sidebar-badge" style={badgeStyle}>
+                  {unreadCount}
+                </span>
+              )}
             </button>
           );
         })}

@@ -61,7 +61,11 @@
   border-color: #ed4245;
 }
 
-/* Búsqueda view (Story 4.3). */
+/* Búsqueda view (Story 4.3). The base border lives here (not inline) so :focus
+   can override border-color — an inline `border` shorthand outranks this rule. */
+.kh-search-input {
+  border: 1px solid var(--border-strong);
+}
 .kh-search-input:focus {
   border-color: var(--accent-ink);
   box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.12);

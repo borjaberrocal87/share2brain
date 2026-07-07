@@ -260,6 +260,7 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
           </div>
         ) : showEmptyState ? (
           <div
+            data-testid="docs-empty-state"
             style={{
               marginTop: 20,
               textAlign: 'center',
@@ -269,6 +270,7 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
             }}
           >
             <div
+              data-testid="docs-empty-state-check"
               style={{
                 margin: '0 auto 14px',
                 width: 38,
@@ -418,6 +420,7 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
     >
       <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start', minWidth: 0 }}>
         <span
+          data-testid="doc-row-dot"
           style={{
             width: 7,
             height: 7,
@@ -429,6 +432,7 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
           }}
         />
         <span
+          data-testid="doc-row-content"
           style={{
             fontSize: 13.5,
             lineHeight: 1.5,

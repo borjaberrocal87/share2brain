@@ -132,7 +132,10 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
               fontSize: 15,
               color: 'var(--text-primary)',
               background: 'var(--surface)',
-              border: '1px solid var(--border-strong)',
+              // Base border lives in the .kh-search-input CSS class (not inline) so
+              // the :focus rule can override border-color to var(--accent-ink) —
+              // an inline `border` shorthand would outrank the :focus rule and the
+              // focus ring's border would never turn amber (Story 4.3 AC2).
               borderRadius: 14,
               outline: 'none',
             }}
@@ -213,6 +216,7 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
 
         {showEmptyState && (
           <div
+            data-testid="search-empty-state"
             style={{
               marginTop: 30,
               textAlign: 'center',
@@ -309,6 +313,7 @@ function ResultCard({ fragment, guildId }: { fragment: SearchFragment; guildId: 
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
           <div
+            data-testid="similarity-bar"
             style={{
               width: 54,
               height: 5,

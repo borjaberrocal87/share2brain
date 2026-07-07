@@ -8,3 +8,6 @@ Hivly.config.yml
 *.log
 .DS_Store
 *.tsbuildinfo
+# Playwright E2E artifacts (Story 4.5)
+test-results/
+playwright-report/

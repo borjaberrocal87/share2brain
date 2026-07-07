@@ -117,6 +117,7 @@ Backend with an injected **fake Discord OAuth** client over a test Postgres+pgve
 (seeded), so it authenticates the SPA without real Discord credentials:
 
 ```bash
+npx playwright install chromium  # one-time: download the browser (chromium only)
 npm run test:e2e -w @hivly/web   # Playwright end-to-end (needs test Postgres+Redis + fake-OAuth session)
 ```
 
