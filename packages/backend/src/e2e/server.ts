@@ -15,59 +15,10 @@ if (process.env.NODE_ENV === 'production') {
   process.exit(1);
 }
 
-import type { Request, Response } from 'express';
-
-import type { SSEFrame } from '@hivly/shared/schemas';
-
 import { createApp } from '../app.js';
 import type { DiscordOAuthClient } from '../domain/repositories/discordOAuthClient.js';
 import { buildTestAppOptions, fakeQueryEmbedder, openTestClients } from '../test-helpers.js';
 import { resetAndSeed } from './seed.js';
-
-/**
- * SPIKE (Epic 4 retro Action Item #7) — NOT production, NOT Story 5.1's real
- * `/api/chat`. A throwaway SSE endpoint that streams `token` frames spaced over
- * time, then a `citation` and a `done`, all conforming to the shared
- * `SSEFrameSchema` wire format. It lets the Playwright harness prove it can drive
- * `fetch`-streaming (AD-4, NOT EventSource) and observe frames accumulate
- * INCREMENTALLY through the vite-preview proxy — the exact mechanism Story 5.4's
- * chat UI will use. If the proxy buffered the whole response, the frames would
- * all land in one read and the spec's timing-spread assertion would fail.
- *
- * Mounted here only (never in `createApp`) → no production route, AD-2 intact.
- * Delete this and its spec when Story 5.1 lands the real `/api/chat`.
- */
-const SPIKE_TOKENS = ['Hola', ' desde', ' el', ' agente', ' Hivly', '.'];
-const SPIKE_TOKEN_INTERVAL_MS = 50;
-
-function mountSpikeChatSse(app: ReturnType<typeof createApp>): void {
-  app.post('/api/_spike/chat-sse', (req: Request, res: Response): void => {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
-
-    const frames: SSEFrame[] = [
-      ...SPIKE_TOKENS.map((content): SSEFrame => ({ type: 'token', content })),
-      { type: 'citation', channel: '#general', author: 'e2e-author-ada', date: '2026-07-07' },
-      { type: 'done', conversationId: 'e2e-spike-conv' },
-    ];
-
-    let i = 0;
-    let timer: NodeJS.Timeout;
-    const send = (): void => {
-      if (i >= frames.length) {
-        res.end();
-        return;
-      }
-      res.write(`data: ${JSON.stringify(frames[i])}\n\n`);
-      i += 1;
-      timer = setTimeout(send, SPIKE_TOKEN_INTERVAL_MS);
-    };
-    req.on('close', () => clearTimeout(timer));
-    send();
-  });
-}
 
 // Ports/origins: keep the dev backend (3000) + dev Vite (5173) free so the
 // harness coexists with a running dev stack. Vite preview serves on 4173.
@@ -112,8 +63,6 @@ async function main(): Promise<void> {
       allowedOrigins: [E2E_WEB_ORIGIN],
     }),
   );
-
-  mountSpikeChatSse(app);
 
   const server = app.listen(E2E_BACKEND_PORT, '127.0.0.1', () => {
     console.log(`[e2e] backend listening on http://127.0.0.1:${E2E_BACKEND_PORT}`);
