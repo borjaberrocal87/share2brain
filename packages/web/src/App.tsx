@@ -8,12 +8,13 @@
 // full-page navigation to /api/auth/login so the browser leaves the SPA for the
 // Discord round-trip. onLogout POSTs /api/auth/logout then returns to the login
 // screen. Display data (community name, user) comes from real data / build config.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 
-import type { AuthMeResponse } from '@hivly/shared/schemas';
+import type { AuthMeResponse, UnreadCountResponse } from '@hivly/shared/schemas';
 
 import { fetchMe, logout as apiLogout, LOGIN_URL } from './api/auth';
+import { fetchUnreadCount } from './api/readStatus';
 import { AppLayout } from './components/AppLayout';
 import { LoginScreen } from './components/LoginScreen';
 import type { Screen } from './components/Sidebar';
@@ -33,6 +34,11 @@ export function App(): ReactElement {
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [user, setUser] = useState<AuthMeResponse | null>(null);
   const [screen, setScreen] = useState<Screen>('search');
+  const [unreadCounts, setUnreadCounts] = useState<UnreadCountResponse>({});
+  // Generation token: only the latest unread-count request may commit, so two
+  // overlapping refreshes (e.g. rapid mark-read/mark-all) can't let a slower
+  // stale response overwrite a newer one.
+  const unreadReqRef = useRef(0);
   const { theme, toggleTheme } = useTheme();
 
   // On mount: resolve the session. A stale/absent cookie yields 401 → anon.
@@ -56,6 +62,30 @@ export function App(): ReactElement {
       active = false;
     };
   }, []);
+
+  const refreshUnread = useCallback(() => {
+    const reqId = ++unreadReqRef.current;
+    fetchUnreadCount()
+      .then((counts) => {
+        if (unreadReqRef.current === reqId) setUnreadCounts(counts);
+      })
+      .catch(() => {
+        // Non-critical: the badge/counts just stay at their previous value.
+      });
+    return () => {
+      // Invalidate this request so its (possibly late) response is ignored.
+      if (unreadReqRef.current === reqId) unreadReqRef.current += 1;
+    };
+  }, []);
+
+  // The badge lives in the sidebar (visible from every screen), so the unread
+  // map is fetched once auth resolves rather than only when Documentos is active.
+  useEffect(() => {
+    if (authState !== 'authed') return;
+    return refreshUnread();
+  }, [authState, refreshUnread]);
+
+  const totalUnread = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
 
   // Full-page navigation: the browser must leave the SPA so Discord can redirect back.
   const login = useCallback(() => {
@@ -95,6 +125,9 @@ export function App(): ReactElement {
       onToggleTheme={toggleTheme}
       onLogout={logout}
       guildId={user.guildId}
+      unreadCount={totalUnread}
+      unreadCounts={unreadCounts}
+      onUnreadChange={refreshUnread}
     />
   );
 }

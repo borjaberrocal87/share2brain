@@ -147,3 +147,22 @@ export function ExternalLinkIcon({ size = 13 }: IconProps): ReactElement {
     </svg>
   );
 }
+
+// "estás al día" empty-state icon on the Documentos view (Story 4.4, AC4).
+export function CheckIcon({ size = 20 }: IconProps): ReactElement {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M20 6L9 17l-5-5" />
+    </svg>
+  );
+}

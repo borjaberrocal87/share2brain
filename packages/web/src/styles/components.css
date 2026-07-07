@@ -75,3 +75,19 @@
 .kh-discord-link:hover {
   color: #5865f2;
 }
+
+/* Documentos view (Story 4.4). */
+.kh-doc-row:hover {
+  background: var(--hover-row);
+}
+.kh-load-more:hover {
+  border-color: var(--accent-ink);
+  color: var(--accent-ink);
+}
+.kh-mark-all:hover {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+.kh-unread-toggle:hover {
+  border-color: var(--border-hover);
+}

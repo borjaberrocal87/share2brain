@@ -1,9 +1,11 @@
 // Authenticated app shell (Story 2.2, AC2 + AC5). Outer flex row: Sidebar +
-// a content column (Header on top, scrollable content below). The content area
-// renders a minimal titled placeholder per active screen — the real Search and
-// Documents views are Epic 4 (Historia 4.3/4.4), NOT built here.
+// a content column (Header on top, scrollable content below). The content
+// area renders Search (4.3) or Documentos (4.4) per the active screen.
 import type { CSSProperties, ReactElement } from 'react';
 
+import type { UnreadCountResponse } from '@hivly/shared/schemas';
+
+import { DocsView } from './DocsView';
 import { Header } from './Header';
 import { SearchView } from './SearchView';
 import { Sidebar, type Screen } from './Sidebar';
@@ -19,6 +21,12 @@ interface AppLayoutProps {
   onToggleTheme: () => void;
   onLogout: () => void;
   guildId: string;
+  /** Total unread count across all allowed channels — drives the sidebar badge (AC7). */
+  unreadCount: number;
+  /** Per-channel unread map — drives the Documentos view's "Sin leer · N" + mark-all (AC4/AC6). */
+  unreadCounts: UnreadCountResponse;
+  /** Re-fetch the unread map after a mark-read/mark-all action. */
+  onUnreadChange: () => void;
 }
 
 const shellStyle: CSSProperties = {
@@ -35,23 +43,6 @@ const contentColumnStyle: CSSProperties = {
   flexDirection: 'column',
 };
 
-const contentAreaStyle: CSSProperties = {
-  flex: 1,
-  overflowY: 'auto',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  textAlign: 'center',
-  padding: '0 24px',
-};
-
-// Minimal placeholder — the real view arrives in Story 4.4.
-const DOCS_PLACEHOLDER = {
-  title: 'Documentos indexados',
-  description: 'La vista de documentos y el read-tracking llegan en el Épico 4.',
-};
-
 export function AppLayout({
   activeScreen,
   onNavigate,
@@ -62,10 +53,13 @@ export function AppLayout({
   onToggleTheme,
   onLogout,
   guildId,
+  unreadCount,
+  unreadCounts,
+  onUnreadChange,
 }: AppLayoutProps): ReactElement {
   return (
     <div style={shellStyle}>
-      <Sidebar activeScreen={activeScreen} onNavigate={onNavigate} />
+      <Sidebar activeScreen={activeScreen} onNavigate={onNavigate} unreadCount={unreadCount} />
 
       <div style={contentColumnStyle}>
         <Header
@@ -80,23 +74,7 @@ export function AppLayout({
         {activeScreen === 'search' ? (
           <SearchView guildId={guildId} />
         ) : (
-          <main style={contentAreaStyle}>
-            <h2
-              style={{
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontWeight: 700,
-                fontSize: 24,
-                letterSpacing: '-0.01em',
-                color: 'var(--text-primary)',
-                margin: 0,
-              }}
-            >
-              {DOCS_PLACEHOLDER.title}
-            </h2>
-            <p style={{ marginTop: 10, fontSize: 14, color: 'var(--text-muted)' }}>
-              {DOCS_PLACEHOLDER.description}
-            </p>
-          </main>
+          <DocsView unreadCounts={unreadCounts} onUnreadChange={onUnreadChange} />
         )}
       </div>
     </div>

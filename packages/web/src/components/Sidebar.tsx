@@ -12,7 +12,7 @@ export type Screen = 'search' | 'docs';
 interface SidebarProps {
   activeScreen: Screen;
   onNavigate: (screen: Screen) => void;
-  /** Documentos badge count; 0 (default) renders no badge. Real count lands in Epic 4. */
+  /** Documentos badge count; 0 (default) renders no badge. */
   unreadCount?: number;
 }
 
