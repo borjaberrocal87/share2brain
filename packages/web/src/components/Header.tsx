@@ -84,6 +84,7 @@ export function Header({
         >
           <span
             aria-hidden="true"
+            data-testid="live-pulse"
             style={{
               width: 7,
               height: 7,

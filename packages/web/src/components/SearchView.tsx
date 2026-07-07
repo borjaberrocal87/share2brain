@@ -266,8 +266,9 @@ function ChannelChip({
               color: 'var(--accent-ink)',
             }
           : {
+              // Base border lives in .kh-chip so :hover can override border-color
+              // (Epic 4 retro Action Item #4); the active branch keeps it inline.
               background: 'var(--surface)',
-              border: '1px solid var(--border)',
               color: 'var(--text-tertiary)',
             }),
       }}
@@ -288,9 +289,10 @@ function ResultCard({ fragment, guildId }: { fragment: SearchFragment; guildId: 
     <div
       className="kh-result-card"
       style={{
+        // Base border lives in .kh-result-card so :hover can override
+        // border-color (Epic 4 retro Action Item #4).
         padding: '18px 20px',
         background: 'var(--surface)',
-        border: '1px solid var(--border)',
         borderRadius: 14,
       }}
     >

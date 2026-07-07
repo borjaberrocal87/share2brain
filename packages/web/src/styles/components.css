@@ -62,7 +62,10 @@
 }
 
 /* Búsqueda view (Story 4.3). The base border lives here (not inline) so :focus
-   can override border-color — an inline `border` shorthand outranks this rule. */
+   / :hover can override border-color — an inline `border` shorthand outranks
+   these rules (same cascade fix applied to the card and the inactive chip below,
+   Epic 4 retro Action Item #4). The ACTIVE chip keeps its amber border inline on
+   purpose, so it beats :hover the way .kh-nav-item--active does. */
 .kh-search-input {
   border: 1px solid var(--border-strong);
 }
@@ -70,8 +73,14 @@
   border-color: var(--accent-ink);
   box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.12);
 }
+.kh-result-card {
+  border: 1px solid var(--border);
+}
 .kh-result-card:hover {
   border-color: var(--border-hover);
+}
+.kh-chip {
+  border: 1px solid var(--border);
 }
 .kh-chip:hover {
   border-color: var(--border-hover);
