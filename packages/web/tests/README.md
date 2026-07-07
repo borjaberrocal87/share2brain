@@ -71,6 +71,17 @@ role names keep the e2e scope from leaking into the integration suites and vice
 versa. Search has **no similarity threshold** (any query returns the whole scope,
 LIMIT 5), so the empty state is only reachable via the empty-scope identity.
 
+## Spec discovery order (invariant)
+
+Playwright discovers spec files **alphabetically** and runs with `workers: 1`, so
+they execute in name order: `chat.spec.ts` → `docs.spec.ts` → `search.spec.ts`.
+`chat.spec.ts` (Story 5.3) is **read-only** — its history overlay only reads
+`GET /api/conversations`; nothing mutates state. The only mutating test is
+`docs.spec.ts`'s "mark all read", which relies on running **last** among the
+mutation-sensitive specs. Keep this invariant in mind when naming new specs: a
+new mutating spec must sort **after** any spec whose assertions depend on the
+seeded read/unread mix, or reseed explicitly.
+
 ## Adding a spec (Stories 5.3 / 5.4)
 
 1. `import { loginAs } from './helpers/session'` and `await loginAs(page)`.

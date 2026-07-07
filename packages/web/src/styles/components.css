@@ -104,3 +104,70 @@
 .kh-unread-toggle:hover {
   border-color: var(--border-hover);
 }
+
+/* Chat widget (Story 5.3). Same cascade rule as the Búsqueda block above: any
+   border/color/background that changes on :hover has its BASE value declared here
+   (not inline), because an inline shorthand outranks a stylesheet :hover and the
+   hover silently dies (Epic 4 retro Action Item #4). The active history row keeps
+   its amber tint inline on purpose, so it beats :hover like .kh-nav-item--active. */
+
+/* FAB launcher — lifts on hover (AC1). */
+.kh-chat-fab {
+  transition: transform 0.14s ease;
+}
+.kh-chat-fab:hover {
+  transform: translateY(-2px);
+}
+.kh-chat-fab:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}
+
+/* Header icon buttons: base border+color here so :hover can override both.
+   historial/nueva hover to amber; the --danger (cerrar) hovers to red and must
+   win, so its rule is declared AFTER the shared hover (equal specificity → source
+   order decides). */
+.kh-chat-header-btn {
+  border: 1px solid var(--border);
+  color: var(--text-tertiary);
+}
+.kh-chat-header-btn:hover {
+  color: var(--accent-ink);
+  border-color: var(--border-hover);
+}
+.kh-chat-header-btn--danger:hover {
+  color: #ed4245;
+  border-color: #ed4245;
+}
+.kh-chat-header-btn:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}
+
+/* Empty-state suggestion chips: base border here so :hover border-color applies.
+   Hover color uses --text-primary (NOT the prototype's hardcoded #fff) so light
+   theme stays legible. */
+.kh-chat-suggestion {
+  border: 1px solid var(--border);
+}
+.kh-chat-suggestion:hover {
+  border-color: var(--accent-ink);
+  color: var(--text-primary);
+}
+.kh-chat-suggestion:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}
+
+/* History rows: base transparent background here so :hover can set it. The active
+   row's amber tint is applied inline (beats hover). */
+.kh-chat-history-item {
+  background: transparent;
+}
+.kh-chat-history-item:hover {
+  background: var(--hover);
+}
+.kh-chat-history-item:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}

@@ -50,7 +50,8 @@ async function main(): Promise<void> {
   const summary = await resetAndSeed(clients.db);
   console.log(
     `[e2e] seeded: ${summary.channels} channels, ${summary.messages} messages, ` +
-      `${summary.embeddings} embeddings, ${summary.read} read`,
+      `${summary.embeddings} embeddings, ${summary.read} read, ` +
+      `${summary.conversations} conversations`,
   );
 
   const app = createApp(

@@ -6,8 +6,11 @@
 // this epic needs come from the design prototype, others interpolate.
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
 
-const CLIP_PATH = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
-const AMBER_GRADIENT = 'linear-gradient(150deg, #FFCB6B, #F5A623)';
+// Exported so the chat FAB (Story 5.3) can reuse the exact brand hexagon shape +
+// fill without re-inlining the magic polygon string. The FAB is a SINGLE amber
+// hexagon (not the 3-layer Hexagon component), so it applies these consts inline.
+export const CLIP_PATH = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)';
+export const AMBER_GRADIENT = 'linear-gradient(150deg, #FFCB6B, #F5A623)';
 const AMBER = '#F5A623';
 
 // Exact inner dimensions per outer size, from KeepHive Web.dc.html. Sizes not

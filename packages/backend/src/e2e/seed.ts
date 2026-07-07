@@ -88,17 +88,46 @@ const EMBEDDINGS: EmbeddingSpec[] = [
 // sidebar badge). Kept < the total so the Documentos view shows a mixed state.
 const READ_CHUNK_KEYS = ['e2e-msg-g1:0', 'e2e-msg-r1:0'];
 
+// One seeded conversation for the member (Story 5.3), so the chat history overlay
+// is populated & assertable. Title is DERIVED server-side from the first USER
+// message (Story 5.2 D1 — no title column), so CONVERSATION_TITLE is the exact
+// text the history row must show. The assistant reply carries a citation to prove
+// the persisted `citations` jsonb round-trips (unused by the 5.3 shell, but the
+// column is NOT NULL and 5.4 will render it).
+const CONVERSATION_TITLE = '¿Cómo configuro las notificaciones externas?';
+const CONVERSATION_CREATED_AT = '2026-07-01T09:00:00Z';
+const CONVERSATION_UPDATED_AT = '2026-07-01T09:00:05Z';
+const CONVERSATION_ANSWER =
+  'Las notificaciones externas se configuran en Hivly.config.yml bajo la sección notifications.';
+const CONVERSATION_CITATIONS = [
+  { channel: 'general', author: 'e2e-author-ada', date: '2026-06-01T10:00:00Z' },
+];
+
 export interface SeedSummary {
   channels: number;
   messages: number;
   embeddings: number;
   read: number;
+  conversations: number;
 }
 
 /** Reset every `e2e-`-scoped row, then insert the deterministic dataset. */
 export async function resetAndSeed(db: Database): Promise<SeedSummary> {
-  // Delete in FK order: user_read_status → embeddings → discord_messages →
-  // channel_permissions → users. NEVER widen these predicates beyond `e2e-`.
+  // Delete in FK order: messages → conversations → user_read_status → embeddings
+  // → discord_messages → channel_permissions → users (messages/conversations
+  // reference users, so they must go before the users delete). NEVER widen these
+  // predicates beyond `e2e-` (scoped to the e2e member user, the 4.2 broad-LIKE
+  // race lesson).
+  await db.execute(sql`
+    delete from messages m
+    using conversations c, users u
+    where m.conversation_id = c.id and c.user_id = u.id and u.discord_id like 'e2e-user-%'
+  `);
+  await db.execute(sql`
+    delete from conversations c
+    using users u
+    where c.user_id = u.id and u.discord_id like 'e2e-user-%'
+  `);
   await db.execute(sql`
     delete from user_read_status urs
     using users u
@@ -151,11 +180,33 @@ export async function resetAndSeed(db: Database): Promise<SeedSummary> {
     where e.chunk_key in (${sql.join(READ_CHUNK_KEYS.map((k) => sql`${k}`), sql`, `)})
   `);
 
+  // One conversation for the member: a first USER message (becomes the derived
+  // title) + an assistant reply with a citation. Story 5.3's history overlay lists
+  // it; 5.4 will render the messages.
+  const conversationResult = await db.execute(sql`
+    insert into conversations (user_id, created_at, updated_at)
+    values (${memberId}, ${CONVERSATION_CREATED_AT}, ${CONVERSATION_UPDATED_AT})
+    returning id
+  `);
+  const conversationId = String((conversationResult.rows[0] as { id: string }).id);
+  await db.execute(sql`
+    insert into messages (conversation_id, role, content, citations, created_at)
+    values (${conversationId}, 'user', ${CONVERSATION_TITLE}, '[]'::jsonb, ${CONVERSATION_CREATED_AT})
+  `);
+  await db.execute(sql`
+    insert into messages (conversation_id, role, content, citations, created_at)
+    values (
+      ${conversationId}, 'assistant', ${CONVERSATION_ANSWER},
+      ${JSON.stringify(CONVERSATION_CITATIONS)}::jsonb, ${CONVERSATION_UPDATED_AT}
+    )
+  `);
+
   const summary: SeedSummary = {
     channels: CHANNELS.length,
     messages: MESSAGES.length,
     embeddings: EMBEDDINGS.length,
     read: readResult.rowCount ?? READ_CHUNK_KEYS.length,
+    conversations: 1,
   };
   return summary;
 }

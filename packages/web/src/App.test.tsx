@@ -77,6 +77,25 @@ describe('App session flow', () => {
     expect(screen.queryByRole('button', { name: /Continuar con Discord/i })).toBeNull();
   });
 
+  it('should render the floating chat FAB in the authenticated shell', async () => {
+    fetchMe.mockResolvedValue(PROFILE);
+
+    render(<App />);
+    await screen.findByText('ada lovelace');
+
+    // The chat widget (Story 5.3) mounts as a sibling of AppLayout when authed.
+    expect(screen.getByTestId('chat-fab')).toBeTruthy();
+  });
+
+  it('should not render the chat FAB on the login screen (anon)', async () => {
+    fetchMe.mockResolvedValue(null);
+
+    render(<App />);
+    await screen.findByRole('button', { name: /Continuar con Discord/i });
+
+    expect(screen.queryByTestId('chat-fab')).toBeNull();
+  });
+
   it('should navigate to the login URL when the Discord button is clicked', async () => {
     fetchMe.mockResolvedValue(null);
     const original = window.location;

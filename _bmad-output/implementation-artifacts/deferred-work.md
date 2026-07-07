@@ -1,5 +1,16 @@
 # Deferred Work
 
+## Deferred from: code review of 5-3-widget-flotante-fab-panel-base, round 2 (2026-07-07)
+
+- `aria-modal="true"` on the chat panel (`packages/web/src/components/ChatWidget.tsx`) doesn't make `AppLayout` behind it `inert`/`aria-hidden` — assistive tech that doesn't fully honor `aria-modal` (e.g. touch/virtual-cursor browsing) can still reach it. The keyboard-Tab escape this was meant to prevent is closed by the round-2 focus-trap fixes; adding `inert` to `AppLayout` is additional hardening that touches a file outside `ChatWidget.tsx`.
+
+## Deferred from: code review of 5-3-widget-flotante-fab-panel-base (2026-07-07)
+
+- `resetAndSeed`'s new deletes/inserts (`packages/backend/src/e2e/seed.ts`) run as separate unguarded `db.execute` calls, no transaction — a mid-sequence failure leaves partial e2e state; self-heals on the next boot since delete-then-insert always re-runs first. Test-infra only, not production code.
+- `fetchConversations`'s `if (params.page)` / `if (params.limit)` truthiness checks (`packages/web/src/api/conversations.ts`) silently drop an explicit `page: 0`/`limit: 0` — copied verbatim from the story's own Dev Notes §Conversations API template; currently unreachable since `ChatWidget` never passes these params in 5.3.
+- The chat history overlay (`packages/web/src/components/ChatWidget.tsx`) fetches `total` but never surfaces it — no pagination affordance if a user ever has more conversations than the default page size. Out of the 5.3 shell's stated scope.
+- `conversations.ts` throws a generic `Error` with just the HTTP status on a non-ok response (discards any error body) and doesn't guard a malformed-JSON parse failure — matches the existing `api/documents.ts` convention verbatim, not a new regression.
+
 ## Deferred from: code review of 5-2-gestion-de-conversaciones-e-historial, round 2 (2026-07-07)
 
 - `Array.from`-based title truncation (`deriveTitle`) is Unicode-code-point-safe but not grapheme-cluster-safe — a ZWJ emoji sequence, flag pair, or base+combining-diacritic sequence spanning multiple code points can still be split at the 80-code-point boundary. A fully correct fix needs `Intl.Segmenter({granularity:'grapheme'})`; no AC requires grapheme-perfect truncation.

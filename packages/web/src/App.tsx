@@ -16,6 +16,7 @@ import type { AuthMeResponse, UnreadCountResponse } from '@hivly/shared/schemas'
 import { fetchMe, logout as apiLogout, LOGIN_URL } from './api/auth';
 import { fetchUnreadCount } from './api/readStatus';
 import { AppLayout } from './components/AppLayout';
+import { ChatWidget } from './components/ChatWidget';
 import { LoginScreen } from './components/LoginScreen';
 import type { Screen } from './components/Sidebar';
 import { useTheme } from './hooks/useTheme';
@@ -114,21 +115,27 @@ export function App(): ReactElement {
     return <LoginScreen onLogin={login} />;
   }
 
+  // The chat widget is a floating sibling AFTER <AppLayout> (UX-DR5): AppLayout is
+  // overflow:hidden, so a position:fixed sibling correctly overlays the whole
+  // shell. It owns its own open/history/active state (Story 5.3 D1) — no props.
   return (
-    <AppLayout
-      activeScreen={screen}
-      onNavigate={setScreen}
-      communityName={COMMUNITY_NAME}
-      statsLine={STATS_LINE}
-      user={{ name: user.username, initials: initialsFromUsername(user.username) }}
-      theme={theme}
-      onToggleTheme={toggleTheme}
-      onLogout={logout}
-      guildId={user.guildId}
-      unreadCount={totalUnread}
-      unreadCounts={unreadCounts}
-      onUnreadChange={refreshUnread}
-    />
+    <>
+      <AppLayout
+        activeScreen={screen}
+        onNavigate={setScreen}
+        communityName={COMMUNITY_NAME}
+        statsLine={STATS_LINE}
+        user={{ name: user.username, initials: initialsFromUsername(user.username) }}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onLogout={logout}
+        guildId={user.guildId}
+        unreadCount={totalUnread}
+        unreadCounts={unreadCounts}
+        onUnreadChange={refreshUnread}
+      />
+      <ChatWidget />
+    </>
   );
 }
 

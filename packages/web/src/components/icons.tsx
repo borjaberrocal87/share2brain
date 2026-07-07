@@ -166,3 +166,79 @@ export function CheckIcon({ size = 20 }: IconProps): ReactElement {
     </svg>
   );
 }
+
+// Chat/message glyph — the FAB launcher icon (25px) and the history-row icon
+// (15px). Story 5.3; path verbatim from KeepHive Web.dc.html.
+export function ChatIcon({ size = 20 }: IconProps): ReactElement {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+    </svg>
+  );
+}
+
+// Clock/history glyph — the chat header "historial" button (Story 5.3).
+export function HistoryIcon({ size = 20 }: IconProps): ReactElement {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.9}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+
+// Plus glyph — the chat header "nueva conversación" button (Story 5.3).
+export function PlusIcon({ size = 20 }: IconProps): ReactElement {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+
+// X glyph — the chat header "cerrar" button (Story 5.3).
+export function CloseIcon({ size = 20 }: IconProps): ReactElement {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
+  );
+}
