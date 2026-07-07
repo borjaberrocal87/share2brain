@@ -2,6 +2,7 @@
 // resolves the whole contract; add new request/response schemas here.
 export * from './auth.js';
 export * from './channels.js';
+export * from './chat.js';
 export * from './documents.js';
 export * from './errors.js';
 export * from './health.js';
