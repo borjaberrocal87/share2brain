@@ -3,7 +3,7 @@
 // and throws on a non-ok status. Mirrors documents.test.ts.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { fetchConversations } from './conversations';
+import { fetchConversation, fetchConversations } from './conversations';
 
 function fakeFetch(body: unknown): typeof fetch {
   return vi.fn(async () => new Response(JSON.stringify(body), { status: 200 })) as unknown as typeof fetch;
@@ -65,5 +65,59 @@ describe('fetchConversations', () => {
     );
 
     await expect(fetchConversations()).rejects.toThrow();
+  });
+});
+
+describe('fetchConversation', () => {
+  const detail = {
+    id: '550e8400-e29b-41d4-a716-446655440000',
+    createdAt: '2026-07-01T00:00:00.000Z',
+    updatedAt: '2026-07-01T00:00:05.000Z',
+    messages: [
+      {
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        role: 'user',
+        content: '¿Cómo configuro Hivly?',
+        citations: [],
+        createdAt: '2026-07-01T00:00:00.000Z',
+      },
+      {
+        id: '550e8400-e29b-41d4-a716-446655440002',
+        role: 'assistant',
+        content: 'Se configura en Hivly.config.yml.',
+        citations: [{ channel: 'general', author: 'ada', date: '2026-06-01T10:00:00Z' }],
+        createdAt: '2026-07-01T00:00:05.000Z',
+      },
+    ],
+  };
+
+  it('should request /api/conversations/:id with credentials', async () => {
+    const fetchMock = fakeFetch(detail);
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchConversation('550e8400-e29b-41d4-a716-446655440000');
+
+    const [url, init] = (fetchMock as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/conversations/550e8400-e29b-41d4-a716-446655440000');
+    expect(init.credentials).toBe('include');
+  });
+
+  it('should parse and return the conversation detail with its messages', async () => {
+    vi.stubGlobal('fetch', fakeFetch(detail));
+
+    const res = await fetchConversation('550e8400-e29b-41d4-a716-446655440000');
+
+    expect(res.messages).toHaveLength(2);
+    expect(res.messages[0].role).toBe('user');
+    expect(res.messages[1].citations[0].channel).toBe('general');
+  });
+
+  it('should throw on a non-ok response (404 for a non-owned/unknown id)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { status: 404 })),
+    );
+
+    await expect(fetchConversation('550e8400-e29b-41d4-a716-446655440000')).rejects.toThrow();
   });
 });

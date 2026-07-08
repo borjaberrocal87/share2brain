@@ -117,7 +117,9 @@ export function App(): ReactElement {
 
   // The chat widget is a floating sibling AFTER <AppLayout> (UX-DR5): AppLayout is
   // overflow:hidden, so a position:fixed sibling correctly overlays the whole
-  // shell. It owns its own open/history/active state (Story 5.3 D1) — no props.
+  // shell. It owns its own open/history/active/message state (5.3 D1); the only
+  // prop is the user identity for the user-bubble avatar (5.4 D4).
+  const userIdentity = { name: user.username, initials: initialsFromUsername(user.username) };
   return (
     <>
       <AppLayout
@@ -125,7 +127,7 @@ export function App(): ReactElement {
         onNavigate={setScreen}
         communityName={COMMUNITY_NAME}
         statsLine={STATS_LINE}
-        user={{ name: user.username, initials: initialsFromUsername(user.username) }}
+        user={userIdentity}
         theme={theme}
         onToggleTheme={toggleTheme}
         onLogout={logout}
@@ -134,7 +136,7 @@ export function App(): ReactElement {
         unreadCounts={unreadCounts}
         onUnreadChange={refreshUnread}
       />
-      <ChatWidget />
+      <ChatWidget user={userIdentity} />
     </>
   );
 }

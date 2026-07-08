@@ -171,3 +171,29 @@
   outline: 2px solid var(--accent-ink);
   outline-offset: 2px;
 }
+
+/* Composer input row (Story 5.4): base border here so :focus-within can override
+   its color (an inline border shorthand would outrank the pseudo-class — Epic 4
+   AI#4). Turns amber when the textarea inside is focused. */
+.kh-chat-input-row {
+  border: 1px solid var(--border-strong);
+}
+.kh-chat-input-row:focus-within {
+  border-color: var(--accent-ink);
+}
+
+/* Citation chip (Story 5.4): base border here so :hover border-color applies.
+   Hovers to the Discord blurple, matching the prototype. */
+.kh-chat-citation {
+  border: 1px solid var(--border);
+}
+.kh-chat-citation:hover {
+  border-color: #5865f2;
+}
+
+/* Send button keyboard focus ring (the state-driven bg/color stay inline — they
+   are React-driven, not a CSS pseudo-class). */
+.kh-chat-send:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}
