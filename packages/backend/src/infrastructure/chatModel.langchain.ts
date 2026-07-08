@@ -7,6 +7,31 @@ import { createChatModel } from '@hivly/shared/providers';
 
 import type { ChatModel, ChatTurn } from '../domain/repositories/chatModel.js';
 
+/**
+ * Structural guard: providers (Anthropic in particular) accept only ONE system
+ * message and only as the leading turn — a second system turn, or a system turn at
+ * a non-zero index, is rejected with `400 A 'system' message can only appear at
+ * index 0`. That contract is invisible to the fake ChatModel used in unit/integration
+ * tests, so it slipped through until a real-provider chat hit it. This guard makes the
+ * invariant fail loud (unit-tested directly) at the one boundary every caller crosses,
+ * regardless of which graph node assembled the messages. Callers must flatten their
+ * system turns into a single index-0 message before streaming (see graph.ts reasonNode).
+ */
+export function assertSingleLeadingSystem(messages: ChatTurn[]): void {
+  const systemCount = messages.reduce((n, m) => (m.role === 'system' ? n + 1 : n), 0);
+  if (systemCount > 1) {
+    throw new Error(
+      `ChatModel received ${systemCount} system messages; providers accept only one leading system message. ` +
+        'Fold every system turn (grounding + RAG context + any compression summary) into a single index-0 message.',
+    );
+  }
+  if (systemCount === 1 && messages[0]?.role !== 'system') {
+    throw new Error(
+      'ChatModel received a system message at a non-zero index; the single system message must be at index 0.',
+    );
+  }
+}
+
 function toLangchainMessage(turn: ChatTurn): BaseMessage {
   switch (turn.role) {
     case 'system':
@@ -45,6 +70,9 @@ export function createLangchainChatModel(agent: HivlyConfig['agent']): ChatModel
 
   return {
     async *stream(messages: ChatTurn[], signal?: AbortSignal): AsyncIterable<string> {
+      // Fail loud before the provider does — surfaces a mis-assembled prompt as a
+      // clear error at the boundary instead of an opaque provider 400.
+      assertSingleLeadingSystem(messages);
       const langchainMessages = messages.map(toLangchainMessage);
       // Pass the abort signal into the provider request so a client disconnect
       // cancels generation mid-flight (LangChain honors RunnableConfig.signal).

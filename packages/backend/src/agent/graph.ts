@@ -82,10 +82,24 @@ function buildGraph(deps: { chatModel: ChatModel; ragRetriever: RagRetriever; me
       console.error('[agent] history compression failed, falling back to uncompressed window:', err);
       prepared = windowed;
     }
+    // Anthropic only accepts a single leading system message (LangChain extracts
+    // just messages[0] into the top-level `system` param; a second system turn
+    // stays in the messages array and the API rejects it: "A 'system' message can
+    // only appear at index 0"). `prepared` may ALSO begin with a `system` turn —
+    // compressIfNeeded (compress.ts) prepends a `<conversation summary>` system
+    // message when history is over budget. So fold EVERY system turn (grounding +
+    // RAG context + any compression summary) into one index-0 message and keep only
+    // the non-system conversation turns after it — never emit two system turns.
+    const systemContext = prepared.filter((t) => t.role === 'system').map((t) => t.content);
+    const conversation = prepared.filter((t) => t.role !== 'system');
     const preparedMessages: ChatTurn[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'system', content: buildRAGContext(state.retrievedFragments) },
-      ...prepared,
+      {
+        role: 'system',
+        content: [SYSTEM_PROMPT, buildRAGContext(state.retrievedFragments), ...systemContext].join(
+          '\n\n',
+        ),
+      },
+      ...conversation,
     ];
     return { preparedMessages };
   }

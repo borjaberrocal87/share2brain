@@ -5,6 +5,7 @@ import type { SearchFragment, SSEFrame } from '@hivly/shared/schemas';
 import type { ChatModel, ChatTurn } from '../domain/repositories/chatModel.js';
 import type { RagRetriever } from '../domain/repositories/ragRetriever.js';
 import { createRagAgent } from './graph.js';
+import { SYSTEM_PROMPT } from './prompt.js';
 
 function fakeChatModel(chunks: string[]): ChatModel {
   return {
@@ -165,6 +166,12 @@ describe('createRagAgent().runChat', () => {
 
     const prepared = model.received[0];
     expect(prepared.some((t) => t.role === 'user' && t.content === 'the question')).toBe(true);
+    // UNCOMPRESSED PATH: exactly ONE system turn, at index 0 (grounding + RAG context
+    // merged). The counterpart of the compression-path assertion — the single-leading-
+    // system invariant must hold whether or not compression fired.
+    expect(prepared.filter((t) => t.role === 'system')).toHaveLength(1);
+    expect(prepared[0].role).toBe('system');
+    expect(prepared[0].content).toContain(SYSTEM_PROMPT);
   });
 
   it('should compress an over-budget history into a system summary before the model reasons (AC3)', async () => {
@@ -195,9 +202,15 @@ describe('createRagAgent().runChat', () => {
 
     // The model is streamed twice: once to summarize (reason), once to respond.
     expect(model.received.length).toBe(2);
-    // The respond prompt (the last stream call) carries an ephemeral system summary.
     const respondPrompt = model.received.at(-1) as ChatTurn[];
-    expect(respondPrompt.some((t) => t.content.startsWith('<conversation summary>'))).toBe(true);
+    // COMPRESSION PATH: exactly ONE system turn, at index 0 — the compression summary
+    // is FOLDED INTO the single grounding system message, never emitted as a second
+    // system turn (which Anthropic rejects with "a 'system' message can only appear at
+    // index 0"). This is the regression the multi-system fix closes.
+    expect(respondPrompt.filter((t) => t.role === 'system')).toHaveLength(1);
+    expect(respondPrompt[0].role).toBe('system');
+    // The ephemeral summary is present, but as part of that single system message.
+    expect(respondPrompt[0].content).toContain('<conversation summary>');
     // The current turn is still present verbatim (recent tail preserved).
     expect(respondPrompt.some((t) => t.role === 'user' && t.content === 'the follow-up')).toBe(true);
   });
@@ -356,10 +369,12 @@ describe('createRagAgent().runChat', () => {
       }),
     );
 
-    // With the guard, memoryWindow 0 keeps zero turns — only the system + RAG
-    // context messages remain (no user turn). Without the guard, slice(-0)
-    // would have returned the FULL history instead.
+    // With the guard, memoryWindow 0 keeps zero turns — only the single merged
+    // system + RAG context message remains (no user turn). Without the guard,
+    // slice(-0) would have returned the FULL history instead.
     const prepared = model.received[0];
     expect(prepared.every((t) => t.role === 'system')).toBe(true);
+    // Still exactly one system turn — an empty window must not drop the invariant.
+    expect(prepared).toHaveLength(1);
   });
 });
