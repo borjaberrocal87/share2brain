@@ -12,15 +12,10 @@ import {
   type IngestDeps,
   type IngestibleMessage,
 } from '../../persistence/persistMessage.js';
+import { isChannelEnabled } from './channelGuard.js';
 
 export interface MessageCreateDeps extends IngestDeps {
   logger: Logger;
-}
-
-/** True when the message's channel is configured AND enabled. */
-function isChannelEnabled(deps: MessageCreateDeps, channelId: string): boolean {
-  const channel = deps.config.discord.channels.find((c) => c.id === channelId);
-  return channel?.enabled === true;
 }
 
 /**
@@ -36,7 +31,7 @@ export async function handleMessageCreate(
   // guards themselves (e.g. a malformed/partial message with a missing field) — not
   // just from persistMessage — must never surface as an unhandledRejection (AC-3).
   try {
-    if (!isChannelEnabled(deps, message.channelId)) {
+    if (!isChannelEnabled(deps.config.discord.channels, message.channelId)) {
       deps.logger.debug('skip: channel disabled or not configured', {
         channelId: message.channelId,
       });

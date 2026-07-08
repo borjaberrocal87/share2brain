@@ -11,6 +11,8 @@ import { runBackfill } from './backfill/backfiller.js';
 import { getChannelCursor } from './backfill/cursor.js';
 import { createDiscordClient, login } from './discord/client.js';
 import { handleMessageCreate } from './discord/handlers/messageCreate.js';
+import { handleMessageDelete } from './discord/handlers/messageDelete.js';
+import { handleMessageUpdate } from './discord/handlers/messageUpdate.js';
 import { bindGatewayEvents, connectWithRetry } from './discord/reconnect.js';
 import { createLogger } from './logger.js';
 
@@ -109,6 +111,15 @@ async function main(): Promise<void> {
     // handleMessageCreate never rejects (it catches persistence errors), but guard
     // the promise anyway so a future change can't leak an unhandled rejection.
     void handleMessageCreate(message, { config, db, redis, logger });
+  });
+  // Story 6.1: publish-only edit/delete detection for the Sync worker (6.2).
+  // Neither handler ever rejects (both catch internally), but `void` the
+  // promise anyway — same rationale as MessageCreate above.
+  client.on(Events.MessageUpdate, (_oldMessage, newMessage) => {
+    void handleMessageUpdate(newMessage, { config, redis, logger });
+  });
+  client.on(Events.MessageDelete, (message) => {
+    void handleMessageDelete(message, { config, redis, logger });
   });
 
   // AC-5: process-level hardening (minimum pulled forward from the Epic 2 retro).
