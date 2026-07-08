@@ -8,16 +8,30 @@
 //
 // Requires infra:  docker compose up -d postgres redis
 // Run:             npm run test:integration
+//
+// ISOLATION (Story OPS-2): every id (member, guild, channels) is RUN-UNIQUE via a
+// per-run suffix, and every assertion is scoped to this run's ids, so a sibling
+// suite or a stale row cannot perturb the result. NOTE: the member's effective
+// roles include the injected `@everyone` role, whose ID equals the guild id
+// (authService injects it — AD-12 / PR #32); the assertions expect it explicitly.
 import { sql } from '@hivly/shared/db';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import type { AppOptions } from './app.js';
 import { createApp } from './app.js';
 import type { DiscordOAuthClient } from './domain/repositories/discordOAuthClient.js';
 import { createDrizzleChannelPermissionRepository } from './infrastructure/channelPermissionRepository.drizzle.js';
 import { buildTestAppOptions, openTestClients, type TestClients } from './test-helpers.js';
 
-const MEMBER_DISCORD_ID = 'itest-rbac-member';
+// Run-unique suffix — no shared literal ids across suites/runs (Epic 4 AI#3; 6.3 salt).
+const SFX = `${Date.now()}-${Math.round(Math.random() * 1_000_000)}`;
+const MEMBER_DISCORD_ID = `itest-rbac-member-${SFX}`;
+const GUILD_ID = `itest-rbac-guild-${SFX}`;
+const CH_PREFIX = `itest-${SFX}-`;
+const CH_ADMIN = `${CH_PREFIX}admin`;
+const CH_MOD = `${CH_PREFIX}mod`;
+const CH_PRIVATE = `${CH_PREFIX}private`;
 
 /** A member whose Discord roles are ['admin', 'mod'] (no 'owner'). */
 function memberOAuth(roles: string[] = ['admin', 'mod']): DiscordOAuthClient {
@@ -28,6 +42,13 @@ function memberOAuth(roles: string[] = ['admin', 'mod']): DiscordOAuthClient {
   };
 }
 
+/** Test app options bound to this run's unique guild id (drives the @everyone
+ *  injection deterministically). Overrides only guildId; keeps the other defaults. */
+function appOptions(oauth: DiscordOAuthClient): AppOptions {
+  const base = buildTestAppOptions({ oauth });
+  return { ...base, discord: { ...base.discord, guildId: GUILD_ID } };
+}
+
 /** Establish an authenticated session on the agent (login → callback). */
 async function loginMember(agent: ReturnType<typeof request.agent>): Promise<void> {
   const login = await agent.get('/api/auth/login');
@@ -36,9 +57,9 @@ async function loginMember(agent: ReturnType<typeof request.agent>): Promise<voi
   expect(cb.status).toBe(302);
 }
 
-/** Keep only the itest- channels so other rows in the table don't perturb asserts. */
-function itestChannels(allowedChannels: string[]): string[] {
-  return allowedChannels.filter((c) => c.startsWith('itest-')).sort();
+/** Keep only THIS run's channels so other rows in the table can't perturb asserts. */
+function ownChannels(allowedChannels: string[]): string[] {
+  return allowedChannels.filter((c) => c.startsWith(CH_PREFIX)).sort();
 }
 
 describe('RBAC + route protection (integration)', () => {
@@ -49,34 +70,34 @@ describe('RBAC + route protection (integration)', () => {
     // Seed the RBAC policy via the repository (also exercises upsertMany's query).
     const repo = createDrizzleChannelPermissionRepository(clients.db);
     await repo.upsertMany([
-      { channelId: 'itest-admin', name: 'admin-only', allowedRoles: ['admin'] },
-      { channelId: 'itest-mod', name: 'mod-only', allowedRoles: ['mod'] },
-      { channelId: 'itest-private', name: 'owner-only', allowedRoles: ['owner'] },
+      { channelId: CH_ADMIN, name: 'admin-only', allowedRoles: ['admin'] },
+      { channelId: CH_MOD, name: 'mod-only', allowedRoles: ['mod'] },
+      { channelId: CH_PRIVATE, name: 'owner-only', allowedRoles: ['owner'] },
     ]);
   });
 
   afterAll(async () => {
-    await clients.db.execute(sql`DELETE FROM channel_permissions WHERE channel_id LIKE 'itest-%'`);
-    // Scoped to this suite's own discord_id — a broad `LIKE 'itest-%'` would race
-    // with every other integration file's "itest-*" users and could delete a row
-    // another suite still references (e.g. via a user_read_status FK), aborting
-    // its cleanup with a FK violation.
+    // Scoped to THIS run's own ids — never a broad `LIKE 'itest-%'`, which would
+    // race every other integration file's "itest-*" rows and could delete a row
+    // another suite still references (FK), aborting its cleanup.
+    await clients.db.execute(sql`DELETE FROM channel_permissions WHERE channel_id LIKE ${`${CH_PREFIX}%`}`);
     await clients.db.execute(sql`DELETE FROM users WHERE discord_id = ${MEMBER_DISCORD_ID}`);
     await clients.close();
   });
 
   it('should return 200 { roles, allowedChannels } for /api/auth/roles with a session', async () => {
-    const app = createApp(clients.db, clients.redis, buildTestAppOptions({ oauth: memberOAuth() }));
+    const app = createApp(clients.db, clients.redis, appOptions(memberOAuth()));
     const agent = request.agent(app);
     await loginMember(agent);
 
     const res = await agent.get('/api/auth/roles');
 
     expect(res.status).toBe(200);
-    expect(res.body.roles).toEqual(['admin', 'mod']);
+    // The member's OAuth roles PLUS the injected @everyone role (= guild id, AD-12).
+    expect(res.body.roles).toEqual(['admin', 'mod', GUILD_ID]);
     // admin+mod channels are granted; the owner-only channel is NOT (security boundary).
-    expect(itestChannels(res.body.allowedChannels)).toEqual(['itest-admin', 'itest-mod']);
-    expect(res.body.allowedChannels).not.toContain('itest-private');
+    expect(ownChannels(res.body.allowedChannels)).toEqual([CH_ADMIN, CH_MOD].sort());
+    expect(res.body.allowedChannels).not.toContain(CH_PRIVATE);
   });
 
   it('should return 401 AUTH_REQUIRED for /api/auth/roles without a session', async () => {
@@ -99,42 +120,39 @@ describe('RBAC + route protection (integration)', () => {
   });
 
   it('should recompute allowedChannels per request (not cached in the session)', async () => {
-    const app = createApp(clients.db, clients.redis, buildTestAppOptions({ oauth: memberOAuth() }));
+    const app = createApp(clients.db, clients.redis, appOptions(memberOAuth()));
     const agent = request.agent(app);
     await loginMember(agent);
 
     const before = await agent.get('/api/auth/roles');
-    expect(before.body.allowedChannels).not.toContain('itest-private');
+    expect(before.body.allowedChannels).not.toContain(CH_PRIVATE);
 
     // Grant the owner-only channel to 'admin' AFTER the session was created.
     const repo = createDrizzleChannelPermissionRepository(clients.db);
     await repo.upsertMany([
-      { channelId: 'itest-private', name: 'owner-only', allowedRoles: ['owner', 'admin'] },
+      { channelId: CH_PRIVATE, name: 'owner-only', allowedRoles: ['owner', 'admin'] },
     ]);
 
     const after = await agent.get('/api/auth/roles');
     // Same session, changed policy → the new channel appears immediately.
-    expect(after.body.allowedChannels).toContain('itest-private');
+    expect(after.body.allowedChannels).toContain(CH_PRIVATE);
 
     // Restore the seed so test ordering can't leak this change.
     await repo.upsertMany([
-      { channelId: 'itest-private', name: 'owner-only', allowedRoles: ['owner'] },
+      { channelId: CH_PRIVATE, name: 'owner-only', allowedRoles: ['owner'] },
     ]);
   });
 
   it('should NOT grant any channel to a member whose roles intersect none', async () => {
-    const app = createApp(
-      clients.db,
-      clients.redis,
-      buildTestAppOptions({ oauth: memberOAuth(['nobody']) }),
-    );
+    const app = createApp(clients.db, clients.redis, appOptions(memberOAuth(['nobody'])));
     const agent = request.agent(app);
     await loginMember(agent);
 
     const res = await agent.get('/api/auth/roles');
 
     expect(res.status).toBe(200);
-    expect(res.body.roles).toEqual(['nobody']);
-    expect(itestChannels(res.body.allowedChannels)).toEqual([]);
+    // 'nobody' plus the injected @everyone (guild id); neither is granted any seeded channel.
+    expect(res.body.roles).toEqual(['nobody', GUILD_ID]);
+    expect(ownChannels(res.body.allowedChannels)).toEqual([]);
   });
 });

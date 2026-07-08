@@ -22,7 +22,7 @@
   `messageDelete.ts` (+ the 6.3 offline-sync republish path reuses these handlers).
 
 ### P1.2 — Backend integration-test isolation (the recurring RBAC flake)
-> **Story created 2026-07-08:** `ops-2-integration-test-isolation.md` (status ready-for-dev). Starts with a reproduction spike; test-infra fix unless a real product bug is found.
+> **DONE 2026-07-08:** `ops-2-integration-test-isolation.md` (status done, code review passed). Spike pinned the "test-guild leak" as a STALE assertion (PR #32 @everyone/guild-id injection), not a flake — fixed + run-unique ids + fail-fast guard + development_guide precondition. A separate load-sensitive intermittency (auth/documents/search under heavy load) is deferred in `deferred-work.md`.
 - **Why now:** `rbac.integration.test.ts` / `channels.integration.test.ts` fail non-deterministically
   ("test-guild role leak" — a stale/shared `channel_permissions` row). Reported as pre-existing and
   unrelated in the 6.2, 6.3 **and** 6.4 Completion Notes; first flagged in the Epic 4 retro.

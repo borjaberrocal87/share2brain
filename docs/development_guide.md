@@ -109,8 +109,27 @@ npm run lint            # ESLint across all packages
 npm run lint:fix
 npm run test            # Vitest (unit/integration) across workspaces
 npm run test -w @hivly/backend   # scope to one workspace
+npm run test:integration         # integration suites (need Postgres + Redis; see the warning below)
 npm run build           # build all packages
 ```
+
+> ⚠️ **Do not run `npm run test:integration` against a database a live app stack is also using.**
+> The integration suites seed and assert on shared tables (`channel_permissions`, `discord_messages`,
+> …). A running `docker compose` **backend** materializes `channel_permissions` from its own config on
+> boot, and the **bot**/**workers** write ingest rows — both perturb the tests and cause intermittent
+> failures. Before running integration tests, stop the app containers (infra stays up):
+>
+> ```bash
+> docker compose stop bot backend workers   # leave postgres + redis running
+> npm run test:integration
+> docker compose start bot backend workers   # restore when done
+> ```
+>
+> `openTestClients` has a **best-effort** guard (Story OPS-2) that fails fast if it detects a connection to
+> the test DB from a *foreign client address* (a dockerized app container or a remote client). It does **not**
+> catch a **same-host** writer — e.g. a local `npm run dev -w @hivly/backend` sharing your address — nor a
+> writer behind a connection pooler; stopping those is on you (this doc). Set `HIVLY_TEST_ALLOW_SHARED_DB=1`
+> to bypass the guard for an intentional shared-DB run.
 
 E2E (web workflows) run with Playwright. The harness lands with **Story 4.5**; it boots the
 Backend with an injected **fake Discord OAuth** client over a test Postgres+pgvector/Redis

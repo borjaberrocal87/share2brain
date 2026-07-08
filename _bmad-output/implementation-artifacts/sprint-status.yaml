@@ -184,7 +184,7 @@ development_status:
   # over a hardening epic at the Epic 6 retro, 2026-07-08). Not auto-discovered by
   # create-story/dev-story (they scan number-number keys); invoke these explicitly.
   ops-1-maxlen-stream-trimming: done
-  ops-2-integration-test-isolation: ready-for-dev
+  ops-2-integration-test-isolation: done
 
 action_items:
   - epic: 1

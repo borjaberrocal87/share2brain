@@ -1,5 +1,9 @@
 # Deferred Work
 
+## Deferred from: story OPS-2 (integration-test isolation) (2026-07-08)
+
+- **Load-sensitive backend integration intermittency (~1/10 under heavy load).** After OPS-2 fixed the deterministic RBAC `test-guild` stale assertion, a separate rare flake remains: a SHIFTING test (`auth` CSRF-state, `documents` channelId narrowing, `search` q-missing — all auth+session-backed) intermittently fails a status assertion. Investigation ruled out `flushAll`, cross-file parallelism (`fileParallelism:false` did not help, reverted), and live containers (fails with them stopped too). It reproduces ONLY under heavy concurrent machine load (rapid suite loops + docker ops + builds); when quiet, 28 consecutive clean backend-integration runs + 3/3 full `test:integration` (110 tests). Most consistent with a session write→read timing gap under contention (a just-written Redis session transiently unreadable → `requireAuth` 401s before the endpoint's own validation). Low priority; investigate IF it recurs in CI. Candidate fixes to explore then: assert-with-retry on the login/session step, a small session-write await/confirm in `loginMember`, or a dedicated per-file Redis key prefix. NOT the RBAC leak (that is fixed) — a distinct, pre-existing infra-timing issue.
+
 ## Deferred from: code review of story-6.2 (2026-07-08)
 
 - **Row-missing update/delete acks and drops the event.** `processUpdate`/`processDelete` treat an unknown-message event as an ack+skip no-op (DECISION 4). Blind/Edge flagged this as a lost-edit / resurface race, but the **Bot** owns `discord_messages` (via `persistMessage`), not the Indexer — so the row exists for any live edit/delete and the branch only fires for messages the bot never persisted (historical / bot-was-down). That is **Story 6.3 offline-reconciliation scope** (note #8). The `deleted_at` anti-join further prevents resurface for the row-exists case. Low live-path risk; left to 6.3.
