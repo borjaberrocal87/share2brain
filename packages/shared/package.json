@@ -35,6 +35,14 @@
     "./types/events": {
       "types": "./src/types/events.ts",
       "default": "./src/types/events.ts"
+    },
+    "./logger": {
+      "types": "./src/logger.ts",
+      "default": "./src/logger.ts"
+    },
+    "./notifier": {
+      "types": "./src/notifier/index.ts",
+      "default": "./src/notifier/index.ts"
     }
   },
   "main": "./src/index.ts",

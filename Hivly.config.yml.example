@@ -86,8 +86,36 @@ observability:
 
 # --- Security -----------------------------------------------------------------
 security:
+  # Three independent tiers (Story 6.4, AC-2), each { window_ms, max_requests }.
+  # Keyed per client IP (trust proxy 1, the single nginx hop). /health is never
+  # rate-limited.
   rate_limit:
-    window_ms: 60000
-    max_requests: 20
+    api:
+      window_ms: 900000   # 15 min
+      max_requests: 100
+    auth:
+      window_ms: 900000   # 15 min
+      max_requests: 10
+    chat:
+      window_ms: 60000    # 1 min
+      max_requests: 20
   allowed_origins:
     - "${FRONTEND_URL}"  # dev: Vite origin; prod: served behind nginx
+
+# --- External notifications (FR21, Story 6.4) ---------------------------------
+# Crash alerts (uncaughtException/unhandledRejection/fatal-shutdown) sent
+# directly via HTTP from each service (bot/backend/workers) — NOT through the
+# reserved hivly:knowledge:events stream. Behavior only (enabled, provider)
+# lives here; credentials are secrets and live ONLY in .env. Never mix the two
+# (AD Consistency Conventions).
+#
+# NOTE: interpolateEnv substitutes placeholders across the WHOLE raw file
+# BEFORE YAML parsing, including inside comments — so an env-var placeholder
+# written in a comment below would still abort startup if unset. The two
+# credential blocks are therefore left out entirely while disabled; add ONE of
+# them (matching `provider`) only once you also set its secret(s) in .env — see
+# the "External notifications" section there for the exact variable names and
+# the placeholder syntax to use here.
+notifications:
+  enabled: false
+  provider: "telegram"   # "telegram" | "slack" — only enforced when enabled: true

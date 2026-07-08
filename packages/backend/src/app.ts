@@ -6,6 +6,8 @@
 import { type Database } from '@hivly/shared/db';
 import cors from 'cors';
 import express, { type Express } from 'express';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
 
 import { createRagAgent } from './agent/graph.js';
 import { createAuthService } from './application/services/authService.js';
@@ -49,6 +51,12 @@ import { createSearchRouter } from './routes/searchRoutes.js';
 /** Fallback turn-count window when `agentMemoryWindow` isn't injected (tests). */
 const DEFAULT_AGENT_MEMORY_WINDOW = 20;
 
+/** One rate-limit tier in express-rate-limit v8's option shape. */
+export interface RateLimitTierOptions {
+  windowMs: number;
+  limit: number;
+}
+
 export interface AppOptions {
   sessionSecret: string;
   sessionTtlDays: number;
@@ -75,13 +83,46 @@ export interface AppOptions {
   /** Turn-count window the agent's `reason` node truncates history to
    * (`config.agent.memory_window`). Defaults to DEFAULT_AGENT_MEMORY_WINDOW. */
   agentMemoryWindow?: number;
+  /**
+   * Three-tier rate limiting (Story 6.4, AC-2). OPTIONAL and OFF by default —
+   * `buildTestAppOptions` and the Playwright e2e harness omit it (they build the
+   * app via `buildTestAppOptions` and would 429-flake under real limits); only
+   * `main.ts` injects it from `config.security.rate_limit`. When absent, no
+   * limiter is mounted and no request is ever 429'd.
+   */
+  rateLimit?: { api: RateLimitTierOptions; auth: RateLimitTierOptions; chat: RateLimitTierOptions };
 }
 
 /** Build the API app bound to the given startup clients + options. No listen. */
 export function createApp(db: Database, redis: RedisClient, opts: AppOptions): Express {
   const app = express();
 
-  // Top-level, NOT under /api/ — auth-exempt per the API contract (AD auth table).
+  // AC-2 (Story 6.4): helmet mounts FIRST, before EVERYTHING — including
+  // /health, so probes also carry the security headers ("cualquier request").
+  // crossOriginResourcePolicy is relaxed to cross-origin (not helmet's
+  // same-origin default) and COEP is left off, so it doesn't fight the SPA's
+  // credentialed cross-origin fetch (cors({credentials:true}) below).
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      crossOriginEmbedderPolicy: false,
+      // AC-2 requires X-Frame-Options: DENY specifically — helmet's own default
+      // is the less strict SAMEORIGIN.
+      frameguard: { action: 'deny' },
+    }),
+  );
+  // The backend sits behind nginx (AD-7) — a single reverse-proxy hop. Trust it
+  // (and only it) so express-rate-limit's per-IP keyGenerator reads the real
+  // client IP from X-Forwarded-For instead of nginx's internal address (which
+  // would collapse "per-IP" into a single global limit). Gated on the same
+  // condition that mounts the limiters (note #6: do NOT trust the proxy in
+  // tests/e2e — they connect directly, and trusting a spoofable X-Forwarded-For
+  // with no limiter to need it is pure downside).
+  if (opts.rateLimit) app.set('trust proxy', 1);
+
+  // Top-level, NOT under /api/ — auth-exempt per the API contract (AD auth
+  // table) AND never rate-limited (Compose probes it every few seconds; a
+  // limiter would flap it to 429 → a false "degraded"/restart signal).
   app.get('/health', createHealthHandler(db, redis));
 
   app.use(cors({ origin: opts.allowedOrigins, credentials: true }));
@@ -93,6 +134,22 @@ export function createApp(db: Database, redis: RedisClient, opts: AppOptions): E
       cookieSecure: opts.cookieSecure,
     }),
   );
+
+  // Three-tier rate limiting (Story 6.4, AC-2, note #4) — mounted ONLY when
+  // `opts.rateLimit` is injected (production `main.ts`). `buildTestAppOptions`
+  // and the e2e harness omit it, so this stays an empty array there and no
+  // request is ever 429'd in tests. v8 option names: windowMs/limit (not the
+  // deprecated `max`), standardHeaders as the IETF draft, legacyHeaders off.
+  const limiterOptions = { standardHeaders: 'draft-8' as const, legacyHeaders: false };
+  const authLimiters = opts.rateLimit
+    ? [rateLimit({ ...limiterOptions, ...opts.rateLimit.auth })]
+    : [];
+  const apiLimiters = opts.rateLimit
+    ? [rateLimit({ ...limiterOptions, ...opts.rateLimit.api })]
+    : [];
+  const chatLimiters = opts.rateLimit
+    ? [rateLimit({ ...limiterOptions, ...opts.rateLimit.chat })]
+    : [];
 
   // Compose the auth + RBAC layers.
   const oauth = opts.oauth ?? createFetchDiscordOAuthClient(opts.discord);
@@ -111,13 +168,13 @@ export function createApp(db: Database, redis: RedisClient, opts: AppOptions): E
   // The auth router handles its own auth semantics (public login/callback,
   // session-checked me/roles/logout) and is registered BEFORE the generic gate,
   // so it short-circuits and the gate never runs for /api/auth/* (AC2 exemption).
-  app.use('/api/auth', createAuthRouter(authController));
+  app.use('/api/auth', ...authLimiters, createAuthRouter(authController));
 
   // Generic gate for every OTHER /api/* request: 401 without a session, then the
   // per-request RBAC expansion attaches req.allowedChannelIds (AC2, AC3). Ordering
   // is load-bearing — this MUST come after the auth router. Future Epic 4/5 routes
   // registered below inherit it.
-  app.use('/api', requireAuth, createRbacMiddleware(rbacService));
+  app.use('/api', ...apiLimiters, requireAuth, createRbacMiddleware(rbacService));
 
   // Search (Epic 4). Registered AFTER the /api gate, so it inherits requireAuth +
   // the RBAC middleware (req.allowedChannelIds) — the AD-12 filter is enforced
@@ -173,7 +230,7 @@ export function createApp(db: Database, redis: RedisClient, opts: AppOptions): E
   const conversationRepo = createDrizzleConversationRepository(db);
   const chatService = createChatService({ agent: ragAgent, conversationRepo });
   const chatController = createChatController({ chatService });
-  app.use('/api/chat', createChatRouter(chatController));
+  app.use('/api/chat', ...chatLimiters, createChatRouter(chatController));
 
   // Conversations read side (Epic 5, Story 5.2). Registered AFTER the /api gate, so
   // it inherits requireAuth + the RBAC middleware. Access control is by OWNERSHIP

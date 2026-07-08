@@ -31,6 +31,12 @@ const ChannelPermissionSchema = z.object({
   allowed_roles: z.array(z.string()),
 });
 
+/** One rate-limit tier: a request budget per rolling window (Story 6.4, AC-2). */
+const RateLimitTierSchema = z.object({
+  window_ms: z.number().int().positive(),
+  max_requests: z.number().int().positive(),
+});
+
 export const HivlyConfigSchema = z.object({
   version: z.string(),
   discord: z.object({
@@ -97,11 +103,27 @@ export const HivlyConfigSchema = z.object({
   }),
   security: z.object({
     rate_limit: z.object({
-      window_ms: z.number(),
-      max_requests: z.number(),
+      api: RateLimitTierSchema,
+      auth: RateLimitTierSchema,
+      chat: RateLimitTierSchema,
     }),
     allowed_origins: z.array(z.string()),
   }),
+  // External crash alerts (FR21, Story 6.4). Optional and defaults to disabled so
+  // existing configs/fixtures without it remain valid. Behavior (enabled,
+  // provider) lives here; secrets (bot_token, chat_id, webhook_url) are always
+  // ${VAR} references resolved from .env by interpolateEnv — never raw values.
+  notifications: z.object({
+    enabled: z.boolean(),
+    provider: z.enum(['telegram', 'slack']),
+    telegram: z.object({
+      bot_token: z.string(),
+      chat_id: z.string(),
+    }).optional(),
+    slack: z.object({
+      webhook_url: z.string(),
+    }).optional(),
+  }).optional(),
 }).superRefine((config, ctx) => {
   // A "custom" provider is an arbitrary OpenAI-compatible endpoint, so it is
   // meaningless without a base_url. Enforce a non-empty base_url for both the
@@ -134,9 +156,33 @@ export const HivlyConfigSchema = z.object({
     }
     seenChannelIds.add(channel.id);
   });
+
+  // A notifier enabled without its provider's credentials would silently no-op
+  // (createNotifier degrades rather than crashes) — catch the misconfiguration
+  // at load time instead, mirroring the agent/embeddings custom-base_url check.
+  if (config.notifications?.enabled) {
+    const { provider, telegram, slack } = config.notifications;
+    if (provider === 'telegram' && (!telegram?.bot_token?.trim() || !telegram?.chat_id?.trim())) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['notifications', 'telegram'],
+        message:
+          'notifications.telegram.bot_token and chat_id are required when notifications.enabled is true and provider is "telegram"',
+      });
+    }
+    if (provider === 'slack' && !slack?.webhook_url?.trim()) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['notifications', 'slack', 'webhook_url'],
+        message:
+          'notifications.slack.webhook_url is required when notifications.enabled is true and provider is "slack"',
+      });
+    }
+  }
 });
 
 export type HivlyConfig = z.infer<typeof HivlyConfigSchema>;
+export type NotificationsConfig = NonNullable<HivlyConfig['notifications']>;
 
 const DEFAULT_CONFIG_FILE = 'Hivly.config.yml';
 const ENV_PLACEHOLDER = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;

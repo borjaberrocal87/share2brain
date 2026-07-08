@@ -9,6 +9,7 @@
 // streams, re-indexing edits and purging deletes — gated by config.sync.enabled.
 import { loadConfig } from '@hivly/shared';
 import { createDatabase, type Database } from '@hivly/shared/db';
+import { createNotifier } from '@hivly/shared/notifier';
 import { createEmbeddingsModel } from '@hivly/shared/providers';
 import { createRedisClient, type RedisClient } from '@hivly/shared/redis';
 
@@ -79,6 +80,9 @@ async function main(): Promise<void> {
   // an unset ${VAR} throws ConfigError here and aborts the process (caught below).
   const config = loadConfig();
   const logger = createLogger(config.observability.log_level);
+  // FR21 (Story 6.4): a no-op when notifications.enabled is false/absent — the
+  // workers process behaves exactly as before this story (AC-1).
+  const notifier = createNotifier(config.notifications, logger);
 
   // Both caps are silently applied per-batch (grouping.ts / chunking.ts) so a
   // misconfigured value never fails a group; warn once at boot instead so an
@@ -96,16 +100,26 @@ async function main(): Promise<void> {
     });
   }
 
+  // Shared with the SIGTERM/SIGINT drain below: a fatal handler must not abort an
+  // in-flight graceful shutdown (nor fire a spurious crash alert for a clean exit).
+  let shuttingDown = false;
+
   // AC-1: process-level hardening (minimum pulled forward from the Epic 2 retro).
   // An uncaught error/rejection is fatal → exit(1); Compose restarts the container.
   process.on('uncaughtException', (error) => {
+    if (shuttingDown) return;
     logger.error('uncaughtException', { reason: error.message, stack: error.stack });
-    process.exit(1);
+    void notifier
+      .notify({ service: 'workers', message: error.message, timestamp: new Date().toISOString() })
+      .finally(() => process.exit(1));
   });
   process.on('unhandledRejection', (reason) => {
+    if (shuttingDown) return;
     const error = reason instanceof Error ? reason : new Error(String(reason));
     logger.error('unhandledRejection', { reason: error.message, stack: error.stack });
-    process.exit(1);
+    void notifier
+      .notify({ service: 'workers', message: error.message, timestamp: new Date().toISOString() })
+      .finally(() => process.exit(1));
   });
 
   // AC-6: SIGTERM/SIGINT → clean shutdown. Registered BEFORE any long-running boot
@@ -115,7 +129,6 @@ async function main(): Promise<void> {
   // its next iteration boundary; a parked BLOCK read must return first, so bound the
   // wait. Real consumer-group drain stays in Epic 6.
   const shutdownSignal = new AbortController();
-  let shuttingDown = false;
   // Assigned once runIndexer/runSync start; shutdown waits for both (bounded)
   // so in-flight work settles before the db/redis connections close underneath
   // them. syncRedis stays undefined when config.sync.enabled is false.
@@ -154,9 +167,11 @@ async function main(): Promise<void> {
           new Promise<void>((resolve) => setTimeout(resolve, 10_000)),
         ]);
       } catch (err) {
-        logger.error('error during shutdown', {
-          reason: err instanceof Error ? err.message : String(err),
-        });
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error('error during shutdown', { reason: message });
+        // Best-effort (note #9): notify() is internally bounded (<=5s) and never
+        // throws, so awaiting it here can't hang the exit below indefinitely.
+        await notifier.notify({ service: 'workers', message, timestamp: new Date().toISOString() });
       } finally {
         process.exit(0);
       }

@@ -16,7 +16,9 @@
     "connect-redis": "^9.0.0",
     "cors": "^2.8.5",
     "express": "^5.2.0",
+    "express-rate-limit": "^8.5.2",
     "express-session": "^1.18.0",
+    "helmet": "^8.2.0",
     "redis": "^6.1.0"
   },
   "devDependencies": {

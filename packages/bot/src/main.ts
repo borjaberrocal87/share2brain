@@ -4,6 +4,7 @@
 // config or missing-secret failure aborts BEFORE any network I/O.
 import { loadConfig } from '@hivly/shared';
 import { createDatabase, type Database } from '@hivly/shared/db';
+import { createNotifier } from '@hivly/shared/notifier';
 import { createRedisClient } from '@hivly/shared/redis';
 import { Events } from 'discord.js';
 
@@ -31,6 +32,9 @@ async function main(): Promise<void> {
   // an unset ${VAR} throws ConfigError here and aborts the process (caught below).
   const config = loadConfig();
   const logger = createLogger(config.observability.log_level);
+  // FR21 (Story 6.4): a no-op when notifications.enabled is false/absent — the
+  // bot behaves exactly as before this story (AC-1).
+  const notifier = createNotifier(config.notifications, logger);
 
   // Secrets live in .env, never in Hivly.config.yml. A missing token aborts here,
   // before any network I/O (AC-1).
@@ -123,21 +127,30 @@ async function main(): Promise<void> {
     void handleMessageDelete(message, { config, redis, logger });
   });
 
+  // Shared with the SIGTERM/SIGINT drain below: a fatal handler must not abort an
+  // in-flight graceful shutdown (nor fire a spurious crash alert for a clean exit).
+  let shuttingDown = false;
+
   // AC-5: process-level hardening (minimum pulled forward from the Epic 2 retro).
   // An uncaught error/rejection is fatal → exit(1); Compose restarts the container.
   process.on('uncaughtException', (error) => {
+    if (shuttingDown) return;
     logger.error('uncaughtException', { reason: error.message, stack: error.stack });
-    process.exit(1);
+    void notifier
+      .notify({ service: 'bot', message: error.message, timestamp: new Date().toISOString() })
+      .finally(() => process.exit(1));
   });
   process.on('unhandledRejection', (reason) => {
+    if (shuttingDown) return;
     const error = reason instanceof Error ? reason : new Error(String(reason));
     logger.error('unhandledRejection', { reason: error.message, stack: error.stack });
-    process.exit(1);
+    void notifier
+      .notify({ service: 'bot', message: error.message, timestamp: new Date().toISOString() })
+      .finally(() => process.exit(1));
   });
 
   // AC-5: SIGTERM/SIGINT → clean shutdown. Real consumer-group drain stays in Epic 6.
   const shutdownSignal = new AbortController();
-  let shuttingDown = false;
   // Tracks the in-flight backfill (if any) so shutdown can wait for it — bounded —
   // BEFORE tearing down the db/redis/client connections it may still be using.
   let backfillPromise: Promise<void> = Promise.resolve();
@@ -176,9 +189,11 @@ async function main(): Promise<void> {
           new Promise<void>((resolve) => setTimeout(resolve, 10_000)),
         ]);
       } catch (err) {
-        logger.error('error during shutdown', {
-          reason: err instanceof Error ? err.message : String(err),
-        });
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error('error during shutdown', { reason: message });
+        // Best-effort (note #9): notify() is internally bounded (<=5s) and never
+        // throws, so awaiting it here can't hang the exit below indefinitely.
+        await notifier.notify({ service: 'bot', message, timestamp: new Date().toISOString() });
       } finally {
         process.exit(0);
       }

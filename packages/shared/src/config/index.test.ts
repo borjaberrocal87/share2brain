@@ -54,8 +54,15 @@ observability:
   log_level: "info"
 security:
   rate_limit:
-    window_ms: 60000
-    max_requests: 20
+    api:
+      window_ms: 900000
+      max_requests: 100
+    auth:
+      window_ms: 900000
+      max_requests: 10
+    chat:
+      window_ms: 60000
+      max_requests: 20
   allowed_origins:
     - "http://localhost:5173"
 `;
@@ -94,7 +101,10 @@ describe('loadConfig', () => {
     expect(config.sync.delete_policy).toBe('soft');
     expect(config.access_control.default_policy).toBe('deny');
     expect(config.observability.log_level).toBe('info');
-    expect(config.security.rate_limit.max_requests).toBe(20);
+    expect(config.security.rate_limit.api.max_requests).toBe(100);
+    expect(config.security.rate_limit.auth.max_requests).toBe(10);
+    expect(config.security.rate_limit.chat.max_requests).toBe(20);
+    expect(config.notifications).toBeUndefined();
   });
 
   it('should interpolate ${ENV_VAR} placeholders from process.env', () => {
@@ -221,5 +231,94 @@ describe('loadConfig', () => {
     const path = writeFixture('dim-float.yml', yaml);
 
     expect(() => loadConfig(path)).toThrow(/dimensions/);
+  });
+
+  it('should reject a malformed rate_limit tier (non-positive window_ms)', () => {
+    const yaml = VALID_YAML.replace('window_ms: 900000\n      max_requests: 100', 'window_ms: 0\n      max_requests: 100');
+    const path = writeFixture('rate-limit-bad-tier.yml', yaml);
+
+    expect(() => loadConfig(path)).toThrow(/rate_limit/);
+  });
+
+  it('should accept a config with notifications enabled and valid telegram credentials', () => {
+    const yaml =
+      VALID_YAML +
+      `notifications:
+  enabled: true
+  provider: "telegram"
+  telegram:
+    bot_token: "test-bot-token"
+    chat_id: "123456789"
+`;
+    const path = writeFixture('notifications-telegram-ok.yml', yaml);
+
+    const config = loadConfig(path);
+
+    expect(config.notifications).toEqual({
+      enabled: true,
+      provider: 'telegram',
+      telegram: { bot_token: 'test-bot-token', chat_id: '123456789' },
+    });
+  });
+
+  it('should accept a config with notifications enabled and valid slack credentials', () => {
+    const yaml =
+      VALID_YAML +
+      `notifications:
+  enabled: true
+  provider: "slack"
+  slack:
+    webhook_url: "https://hooks.slack.com/services/test"
+`;
+    const path = writeFixture('notifications-slack-ok.yml', yaml);
+
+    const config = loadConfig(path);
+
+    expect(config.notifications?.provider).toBe('slack');
+    expect(config.notifications?.slack?.webhook_url).toBe('https://hooks.slack.com/services/test');
+  });
+
+  it('should reject notifications enabled with provider "telegram" but no bot_token', () => {
+    const yaml =
+      VALID_YAML +
+      `notifications:
+  enabled: true
+  provider: "telegram"
+`;
+    const path = writeFixture('notifications-telegram-missing-creds.yml', yaml);
+
+    expect(() => loadConfig(path)).toThrow(/notifications.*telegram|telegram.*notifications/i);
+  });
+
+  it('should reject notifications enabled with provider "slack" but no webhook_url', () => {
+    const yaml =
+      VALID_YAML +
+      `notifications:
+  enabled: true
+  provider: "slack"
+`;
+    const path = writeFixture('notifications-slack-missing-creds.yml', yaml);
+
+    expect(() => loadConfig(path)).toThrow(/notifications.*slack|slack.*notifications/i);
+  });
+
+  it('should accept notifications disabled without any provider credentials', () => {
+    const yaml =
+      VALID_YAML +
+      `notifications:
+  enabled: false
+  provider: "telegram"
+`;
+    const path = writeFixture('notifications-disabled.yml', yaml);
+
+    expect(() => loadConfig(path)).not.toThrow();
+  });
+
+  it('should accept a config with no notifications block at all (backward-compat)', () => {
+    const path = writeFixture('no-notifications.yml', VALID_YAML);
+
+    const config = loadConfig(path);
+
+    expect(config.notifications).toBeUndefined();
   });
 });

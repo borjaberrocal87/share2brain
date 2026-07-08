@@ -74,6 +74,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # Story 6.4 (AC-3, note #7): the bounded graceful-drain (server close 10s +
+    # redis.quit 5s + db.end 10s) can total ~25s worst case — longer than
+    # Compose's 10s default, which would SIGKILL mid-drain.
+    stop_grace_period: 30s
 
   bot:
     build:
@@ -93,6 +97,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # Story 6.4 (AC-3, note #7): the bounded drain (backfill/offline-sync wait 5s
+    # + Gateway destroy 5s + redis.quit 5s + db.end 10s) can total ~25s worst case.
+    stop_grace_period: 30s
 
   workers:
     build:
@@ -115,6 +122,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # Story 6.4 (AC-3, note #7): the bounded drain is sequential — consumer loops
+    # 7s + up to 3 bounded redis.quit calls (redis + syncRedisUpdated +
+    # syncRedisDeleted) at 5s each + db.end 10s = 32s worst case (sync enabled).
+    # Grace must exceed that or Compose SIGKILLs mid db.end() → 35s (not 30s like
+    # backend/bot, which top out at 25s with a single redis client).
+    stop_grace_period: 35s
 
   # ── Edge: the only host-exposed service (AD-7) ──────────────────────────────
   # Built from packages/web/Dockerfile: the SPA dist + nginx.conf are baked into
