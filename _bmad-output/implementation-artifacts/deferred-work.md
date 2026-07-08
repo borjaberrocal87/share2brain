@@ -1,5 +1,9 @@
 # Deferred Work
 
+## Deferred from: story creation of 6-1-bot-deteccion-de-ediciones-y-borrados-en-tiempo-real (2026-07-08)
+
+- `messageDeleteBulk` (Discord moderation bulk-purge) is a **separate** Gateway event from `messageDelete` and is out of scope for Story 6.1 (the epic specifies `messageDelete` only). Consequence: if a moderator bulk-deletes N messages at once, those deletions are NOT published to `hivly:discord:messages:deleted` and won't sync until offline reconciliation (Story 6.3) — or a dedicated follow-up. A follow-up would register `Events.MessageBulkDelete`, iterate the deleted collection, and publish one `discord.message.deleted` per message through the same `handleMessageDelete` path. **[DECIDED with Borja, 2026-07-08]** to defer.
+
 ## Deferred from: code review of 5-3-widget-flotante-fab-panel-base, round 2 (2026-07-07)
 
 - `aria-modal="true"` on the chat panel (`packages/web/src/components/ChatWidget.tsx`) doesn't make `AppLayout` behind it `inert`/`aria-hidden` — assistive tech that doesn't fully honor `aria-modal` (e.g. touch/virtual-cursor browsing) can still reach it. The keyboard-Tab escape this was meant to prevent is closed by the round-2 focus-trap fixes; adding `inert` to `AppLayout` is additional hardening that touches a file outside `ChatWidget.tsx`.
