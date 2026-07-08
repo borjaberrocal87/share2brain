@@ -1,34 +1,60 @@
-// Floating chat widget — FAB launcher + panel shell (Story 5.3). This is the
-// SHELL only: FAB, panel chrome (header), empty state, and the conversation-
-// history overlay (reading GET /api/conversations). The message composer,
-// bubble rendering, SSE streaming, execution trace, and citation chips are all
-// Story 5.4 — selecting a history item or "nueva conversación" here only updates
-// panel state; it does NOT load or render messages yet (the empty state stays).
+// Floating chat widget — FAB launcher + working chat panel (Stories 5.3 + 5.4).
+// 5.3 shipped the SHELL (FAB, header, empty state, history overlay). 5.4 turns it
+// into a working chat: the message composer, user/agent bubbles, SSE `token`
+// streaming with the amber blinking cursor, citation chips, wiring the empty-state
+// suggestions to send, and loading a conversation's messages from history.
 //
-// State is SELF-CONTAINED (D1): chatOpen / chatHistoryOpen / activeConversationId
-// live here, not lifted to App.tsx — nothing outside the widget consumes them in
-// 5.3. It mounts as a `position: fixed` sibling after <AppLayout> (which is
-// overflow:hidden), so it overlays the whole authenticated shell (UX-DR5: the
-// chat is a floating widget, not a nav item).
+// The execution-trace "loop de ejecución" panel (UX-DR20 tool_call/observation) is
+// DEFERRED (D1): the backend SSE contract emits only token/citation/done/error —
+// there is no tool_exec node. Building it is a future backend+shared story.
 //
-// Chrome detail follows UX-DR16 + the prototype (KeepHive Web.dc.html:284-348),
-// NOT the loose epic phrasing "título Chat" (D3): the header shows the hexagon
-// logo + brand "Hivly" + status "Agente de conocimiento", no literal "Chat".
-// Prototype `--tx*` token names are STALE (Story 2.1 rename) — real names used
-// throughout (D2). Reduced motion is handled globally in global.css (no local
-// block). Hover/focus border+color live in components.css classes, never inline,
-// because an inline `border`/`color` outranks a stylesheet `:hover` (Epic 4 AI#4).
+// State is SELF-CONTAINED: chatOpen / chatHistoryOpen / activeConversationId /
+// messages / sending / draft live here. It mounts as a `position: fixed` sibling
+// after <AppLayout> (UX-DR5: the chat is a floating widget, not a nav item).
+//
+// Stream lifecycle (D6): the in-flight stream is NOT aborted on panel close — the
+// widget stays mounted, the stream keeps writing to `messages`, and the FAB shows
+// the pulsing launcher dot (`launcherActive = sending && !chatOpen`). It is aborted
+// only on component unmount.
+//
+// Cascade rule (Epic 4 AI#4): any element whose border/background/color changes on
+// :hover/:focus-within declares its BASE value in a components.css class, never
+// inline — an inline shorthand outranks a stylesheet pseudo-class and the state
+// silently dies. The send button's disabled/enabled bg is the one deliberate inline
+// state (React-driven, not a CSS pseudo-class).
 import { useEffect, useRef, useState } from 'react';
-import type { CSSProperties, ReactElement } from 'react';
+import type { CSSProperties, KeyboardEvent, ReactElement, ReactNode } from 'react';
 
-import type { ConversationSummary } from '@hivly/shared/schemas';
+import type { CitationType, ConversationSummary } from '@hivly/shared/schemas';
 
-import { fetchConversations } from '../api/conversations';
+import { streamChat } from '../api/chat';
+import { fetchConversation, fetchConversations } from '../api/conversations';
 import { relativeTimeEs } from '../lib/relativeTime';
 import { Hexagon, CLIP_PATH, AMBER_GRADIENT } from './Hexagon';
-import { ChatIcon, CloseIcon, HistoryIcon, PlusIcon } from './icons';
+import { ChatIcon, CloseIcon, ExternalLinkIcon, HistoryIcon, LockIcon, PlusIcon, SendIcon } from './icons';
 
 type HistoryStatus = 'idle' | 'loading' | 'error';
+
+/** One rendered chat message. `id` is client-generated for React keys; `streaming`,
+ * `errored`, and `errorNote` apply to an assistant bubble only. `errorNote` overrides
+ * the default inline error text (e.g. a history-load failure vs. a stream failure). */
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  citations: CitationType[];
+  streaming?: boolean;
+  errored?: boolean;
+  errorNote?: string;
+}
+
+interface ChatWidgetProps {
+  /** The signed-in user, for the user-bubble avatar (UX-DR19, D4). */
+  user: { name: string; initials: string };
+}
+
+const AMBER = '#F5A623';
+const DISCORD_BLURPLE = '#5865F2';
 
 // Focus-trap helper (AC6 hardening): the elements Tab/Shift+Tab should cycle
 // between while the panel is open, so keyboard focus never escapes into the
@@ -41,9 +67,18 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
   );
 }
 
+// Immutably replace the message with `id` (used to mutate the streaming assistant
+// bubble as token/citation/done frames arrive).
+function replaceMessage(
+  messages: ChatMessage[],
+  id: string,
+  fn: (m: ChatMessage) => ChatMessage,
+): ChatMessage[] {
+  return messages.map((m) => (m.id === id ? fn(m) : m));
+}
+
 // Empty-state suggestion prompts (the prototype leaves these dynamic). Knowledge-
-// oriented, Spanish. In 5.3 clicking is a no-op stub; 5.4 wires it to send a
-// prefilled message.
+// oriented, Spanish. Clicking one sends it as a message (AC5).
 const SUGGESTIONS: readonly string[] = [
   '¿Cómo configuro los canales a indexar?',
   '¿Qué es el backfill histórico?',
@@ -58,19 +93,34 @@ const ACTIVE_ROW_STYLE: CSSProperties = {
   color: 'var(--accent-ink)',
 };
 
-export function ChatWidget(): ReactElement {
+export function ChatWidget({ user }: ChatWidgetProps): ReactElement {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [historyStatus, setHistoryStatus] = useState<HistoryStatus>('idle');
-  // Forward-compatible (UX-DR15): the pulsing "sending while closed" launcher dot
-  // is 5.4's trigger; the markup is present but the flag stays false in 5.3.
-  const launcherActive = false;
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sending, setSending] = useState(false);
+  const [draft, setDraft] = useState('');
+  // UX-DR15: the pulsing green launcher dot shows while a send is in flight and
+  // the panel is closed (the stream keeps running — D6).
+  const launcherActive = sending && !chatOpen;
 
   const fabRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const historyBtnRef = useRef<HTMLButtonElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // The in-flight stream's controller; aborted only on unmount (D6) or when the
+  // user explicitly abandons it via newChat/selectConversation (review fix).
+  const streamAbortRef = useRef<AbortController | null>(null);
+  // Mirrors `sending` synchronously (state updates are batched/async) so send()'s
+  // re-entrancy guard can't be bypassed by two triggers in the same tick (review fix).
+  const sendingRef = useRef(false);
+  // Bumped on every selectConversation/newChat call; a fetchConversation response
+  // is applied only if it's still the most recent request (review fix — races
+  // between rapid history-row clicks, or a load racing a newChat).
+  const conversationLoadIdRef = useRef(0);
   // Only steal focus back to the FAB on a genuine open→close transition, never on
   // the initial mount (which would hijack focus from the app on load).
   const wasOpenRef = useRef(false);
@@ -122,6 +172,18 @@ export function ChatWidget(): ReactElement {
     return () => controller.abort();
   }, [chatHistoryOpen]);
 
+  // Abort the in-flight stream ONLY on unmount (D6) — panel close keeps it alive.
+  useEffect(() => {
+    return () => streamAbortRef.current?.abort();
+  }, []);
+
+  // Auto-scroll the message list to the newest content as messages/tokens arrive.
+  // jsdom has no scrollIntoView, so guard it (unit tests must not crash).
+  useEffect(() => {
+    const el = messagesEndRef.current;
+    if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'end' });
+  }, [messages]);
+
   function openChat(): void {
     setChatOpen(true);
   }
@@ -135,17 +197,166 @@ export function ChatWidget(): ReactElement {
     setChatHistoryOpen((v) => !v);
   }
 
-  // 5.3: selecting a conversation only sets the active id + closes the overlay —
-  // no message loading/rendering (that is 5.4). The empty state stays visible.
+  // Selecting a history row loads its messages (closes 5.3's deferral) and closes
+  // the overlay. Ownership is enforced server-side. Abandons any in-flight send
+  // stream (review fix — otherwise its eventual `done` frame could silently
+  // reassign activeConversationId back to the conversation the user just left) and
+  // tags this load with a monotonic id so a slower, superseded response (from a
+  // previous row click or a since-issued newChat) is ignored on arrival.
   function selectConversation(id: string): void {
-    setActiveConversationId(id);
+    streamAbortRef.current?.abort();
     setChatHistoryOpen(false);
+    const loadId = ++conversationLoadIdRef.current;
+    fetchConversation(id)
+      .then((detail) => {
+        if (conversationLoadIdRef.current !== loadId) return;
+        setActiveConversationId(id);
+        setMessages(
+          detail.messages
+            // A `system` message (none are seeded) is not rendered as a bubble.
+            .filter((m): m is typeof m & { role: 'user' | 'assistant' } => m.role !== 'system')
+            .map((m) => ({ id: m.id, role: m.role, content: m.content, citations: m.citations })),
+        );
+      })
+      .catch((err: unknown) => {
+        if (conversationLoadIdRef.current !== loadId) return;
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        // Surface a visible error instead of failing silently; leave any existing
+        // messages in place (append, don't replace).
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: '',
+            citations: [],
+            errored: true,
+            errorNote: 'No se pudo cargar la conversación. Intentá de nuevo.',
+          },
+        ]);
+      });
   }
 
   function newChat(): void {
+    // Abandon any in-flight stream/history-load so its result can't land after
+    // the reset (review fix, mirrors selectConversation).
+    streamAbortRef.current?.abort();
+    conversationLoadIdRef.current++;
     setActiveConversationId(null);
+    setMessages([]);
     setChatHistoryOpen(false);
   }
+
+  // Send one turn: append a user bubble + a streaming assistant bubble, then
+  // consume the SSE frames (token→citation→done, or error). Blocks a second send
+  // while one is in flight (also drives the composer's disabled state, AC2).
+  // `clearDraft` is false for a suggestion-chip send (AC5), since `text` there is
+  // the suggestion, not the composer's draft — clearing it would silently discard
+  // whatever the user had already typed (review fix).
+  function send(text: string, clearDraft = true): void {
+    const trimmed = text.trim();
+    // Read the ref, not the `sending` state: state updates are async/batched, so a
+    // second trigger in the same tick (e.g. Enter key-repeat) could otherwise read
+    // a stale `sending === false` and start a second concurrent stream (review fix).
+    if (!trimmed || sendingRef.current) return;
+    sendingRef.current = true;
+
+    if (clearDraft) {
+      setDraft('');
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    }
+
+    const userMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: trimmed,
+      citations: [],
+    };
+    const assistantId = crypto.randomUUID();
+    const assistantMsg: ChatMessage = {
+      id: assistantId,
+      role: 'assistant',
+      content: '',
+      citations: [],
+      streaming: true,
+    };
+    setMessages((prev) => [...prev, userMsg, assistantMsg]);
+    setSending(true);
+
+    const controller = new AbortController();
+    streamAbortRef.current = controller;
+
+    void (async () => {
+      try {
+        for await (const frame of streamChat(
+          { message: trimmed, conversationId: activeConversationId ?? undefined },
+          controller.signal,
+        )) {
+          if (frame.type === 'token') {
+            const { content } = frame;
+            setMessages((prev) =>
+              replaceMessage(prev, assistantId, (m) => ({ ...m, content: m.content + content })),
+            );
+          } else if (frame.type === 'citation') {
+            const citation: CitationType = {
+              channel: frame.channel,
+              author: frame.author,
+              date: frame.date,
+            };
+            setMessages((prev) =>
+              replaceMessage(prev, assistantId, (m) => ({
+                ...m,
+                citations: [...m.citations, citation],
+              })),
+            );
+          } else if (frame.type === 'done') {
+            const { conversationId } = frame;
+            setActiveConversationId(conversationId);
+            setMessages((prev) =>
+              replaceMessage(prev, assistantId, (m) => ({ ...m, streaming: false })),
+            );
+          } else {
+            // `error` frame: mark the bubble errored and stop the cursor.
+            setMessages((prev) =>
+              replaceMessage(prev, assistantId, (m) => ({ ...m, streaming: false, errored: true })),
+            );
+          }
+        }
+      } catch (err) {
+        // Unmount abort: the component is going away — leave state untouched.
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        // A pre-stream ChatStreamError or any other failure → errored bubble.
+        setMessages((prev) =>
+          replaceMessage(prev, assistantId, (m) => ({ ...m, streaming: false, errored: true })),
+        );
+      } finally {
+        sendingRef.current = false;
+        setSending(false);
+        if (streamAbortRef.current === controller) streamAbortRef.current = null;
+      }
+    })();
+  }
+
+  function onComposerKeyDown(e: KeyboardEvent<HTMLTextAreaElement>): void {
+    // Enter (without Shift) sends; Shift+Enter inserts a newline (default).
+    // Skip while an IME composition is active (e.g. typing Japanese/Chinese) — the
+    // Enter that confirms a candidate must not also send the partial draft (review
+    // fix).
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      send(draft);
+    }
+  }
+
+  function onDraftChange(e: React.ChangeEvent<HTMLTextAreaElement>): void {
+    setDraft(e.target.value);
+    // Auto-grow up to 120px, then scroll: reset height, then match content.
+    const el = e.target;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }
+
+  const canSend = draft.trim().length > 0 && !sending;
 
   if (!chatOpen) {
     return (
@@ -187,6 +398,7 @@ export function ChatWidget(): ReactElement {
         {launcherActive && (
           <span
             aria-hidden="true"
+            data-testid="chat-launcher-dot"
             style={{
               position: 'absolute',
               top: 1,
@@ -422,71 +634,374 @@ export function ChatWidget(): ReactElement {
           </div>
         )}
 
-        {/* 5.3 shows the empty state unconditionally while the overlay is closed —
-            there is no message rendering yet (5.4). Selecting a history item keeps
-            it visible (scope boundary). Not rendered while chatHistoryOpen: it sits
-            underneath the opaque overlay, and getFocusableElements has no notion of
-            visual stacking, so a mounted-but-covered suggestion button could still
-            become the Tab-trap's `first`/`last` boundary and silently steal focus. */}
-        {!chatHistoryOpen && (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '22px 0' }}>
-            <div style={{ margin: '0 auto', padding: '0 18px', display: 'flex', flexDirection: 'column', gap: 22 }}>
-              <div data-testid="chat-empty-state" style={{ marginTop: 40, textAlign: 'center' }}>
-                <Hexagon size={60} innerBg="bg" showDot={false} style={{ margin: '0 auto' }} />
-                <h3
-                  style={{
-                    margin: '20px 0 0',
-                    fontFamily: "'Space Grotesk', sans-serif",
-                    fontWeight: 600,
-                    fontSize: 21,
-                    color: 'var(--text-primary)',
-                  }}
-                >
-                  Preguntá lo que quieras
-                </h3>
-                <p style={{ margin: '8px 0 0', fontSize: 14, color: 'var(--text-tertiary)' }}>
-                  El agente responde con RAG sobre el conocimiento de la comunidad y cita sus fuentes.
-                </p>
-                <div
-                  style={{
-                    marginTop: 24,
-                    marginLeft: 'auto',
-                    marginRight: 'auto',
-                    maxWidth: 440,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 9,
-                  }}
-                >
-                  {SUGGESTIONS.map((text) => (
-                    <button
-                      key={text}
-                      type="button"
-                      className="kh-chat-suggestion"
-                      data-testid="chat-suggestion"
-                      // 5.3: no-op stub. 5.4 wires this to send a prefilled message.
-                      onClick={() => {}}
-                      style={{
-                        textAlign: 'left',
-                        padding: '13px 16px',
-                        borderRadius: 11,
-                        background: 'var(--surface)',
-                        color: 'var(--text-secondary)',
-                        fontSize: 13.5,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {text}
-                    </button>
-                  ))}
+        {/* Message-area content (empty state OR the message list) is rendered only
+            while the overlay is closed (D10 — same focus-trap reason as 5.3
+            round-3: an overlay-covered interactive element must not become a
+            Tab-trap boundary, since getFocusableElements ignores visual stacking).
+            The empty state renders iff there are no messages (D5). */}
+        {!chatHistoryOpen &&
+          (messages.length === 0 ? (
+            <div style={{ flex: 1, overflowY: 'auto', padding: '22px 0' }}>
+              <div style={{ margin: '0 auto', padding: '0 18px', display: 'flex', flexDirection: 'column', gap: 22 }}>
+                <div data-testid="chat-empty-state" style={{ marginTop: 40, textAlign: 'center' }}>
+                  <Hexagon size={60} innerBg="bg" showDot={false} style={{ margin: '0 auto' }} />
+                  <h3
+                    style={{
+                      margin: '20px 0 0',
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      fontWeight: 600,
+                      fontSize: 21,
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    Preguntá lo que quieras
+                  </h3>
+                  <p style={{ margin: '8px 0 0', fontSize: 14, color: 'var(--text-tertiary)' }}>
+                    El agente responde con RAG sobre el conocimiento de la comunidad y cita sus fuentes.
+                  </p>
+                  <div
+                    style={{
+                      marginTop: 24,
+                      marginLeft: 'auto',
+                      marginRight: 'auto',
+                      maxWidth: 440,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 9,
+                    }}
+                  >
+                    {SUGGESTIONS.map((text) => (
+                      <button
+                        key={text}
+                        type="button"
+                        className="kh-chat-suggestion"
+                        data-testid="chat-suggestion"
+                        onClick={() => send(text, false)}
+                        style={{
+                          textAlign: 'left',
+                          padding: '13px 16px',
+                          borderRadius: 11,
+                          background: 'var(--surface)',
+                          color: 'var(--text-secondary)',
+                          fontSize: 13.5,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {text}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div style={{ flex: 1, overflowY: 'auto' }} data-testid="chat-messages">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 22, padding: '22px 18px' }}>
+                {messages.map((m) =>
+                  m.role === 'user' ? (
+                    <UserBubble key={m.id} name={user.name} initials={user.initials} content={m.content} />
+                  ) : (
+                    <AgentBubble key={m.id} message={m} />
+                  ),
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+            </div>
+          ))}
+      </div>
+
+      {/* Composer (UX-DR22): sibling below the message area, NOT covered by the
+          history overlay — a legitimate, always-visible Tab-trap boundary (D10). */}
+      <div
+        style={{
+          flexShrink: 0,
+          padding: '12px 16px 16px',
+          borderTop: '1px solid var(--line)',
+          background: 'var(--bg)',
+        }}
+      >
+        <div
+          className="kh-chat-input-row"
+          data-testid="chat-input-row"
+          style={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: 9,
+            padding: '7px 7px 7px 14px',
+            background: 'var(--surface)',
+            borderRadius: 14,
+          }}
+        >
+          <textarea
+            ref={textareaRef}
+            data-testid="chat-input"
+            rows={1}
+            value={draft}
+            onChange={onDraftChange}
+            onKeyDown={onComposerKeyDown}
+            placeholder="Preguntá al agente…"
+            aria-label="Escribí tu mensaje"
+            style={{
+              flex: 1,
+              resize: 'none',
+              maxHeight: 120,
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              color: 'var(--text-primary)',
+              fontSize: 14,
+              lineHeight: 1.5,
+              padding: '8px 0',
+              fontFamily: 'inherit',
+            }}
+          />
+          <button
+            type="button"
+            className="kh-chat-send"
+            data-testid="chat-send"
+            aria-label="Enviar mensaje"
+            disabled={!canSend}
+            onClick={() => send(draft)}
+            style={{
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 40,
+              height: 40,
+              borderRadius: 11,
+              border: 'none',
+              transition: 'all 0.12s ease',
+              background: canSend ? AMBER : 'var(--line)',
+              color: canSend ? 'var(--on-accent)' : 'var(--text-subtle)',
+              cursor: canSend ? 'pointer' : 'not-allowed',
+            }}
+          >
+            <SendIcon size={17} />
+          </button>
+        </div>
+        <div
+          style={{
+            marginTop: 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            fontSize: 10.5,
+            color: 'var(--text-subtle)',
+          }}
+        >
+          <span aria-hidden="true" style={{ display: 'flex' }}>
+            <LockIcon size={11} />
+          </span>
+          Respuestas con fuente verificable · tools de hivly.config.yml
+        </div>
       </div>
     </div>
   );
+}
+
+// ── Bubbles ────────────────────────────────────────────────────────────────────
+
+function MessageRow({ avatar, children }: { avatar: ReactNode; children: ReactNode }): ReactElement {
+  return (
+    <div style={{ display: 'flex', gap: 14 }}>
+      <div style={{ flexShrink: 0 }}>{avatar}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+    </div>
+  );
+}
+
+const NAME_LABEL_STYLE: CSSProperties = {
+  fontSize: 12.5,
+  fontWeight: 600,
+  color: 'var(--text-tertiary)',
+  marginBottom: 8,
+};
+
+const MESSAGE_TEXT_STYLE: CSSProperties = {
+  fontSize: 15,
+  lineHeight: 1.7,
+  color: 'var(--text-primary)',
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+};
+
+function UserBubble({
+  name,
+  initials,
+  content,
+}: {
+  name: string;
+  initials: string;
+  content: string;
+}): ReactElement {
+  return (
+    <MessageRow
+      avatar={
+        // Label is "Vos" (D4); the real username surfaces as the avatar tooltip.
+        <span
+          aria-hidden="true"
+          title={name}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 30,
+            height: 30,
+            borderRadius: '50%',
+            background: DISCORD_BLURPLE,
+            color: '#fff',
+            fontSize: 11,
+            fontWeight: 600,
+          }}
+        >
+          {initials}
+        </span>
+      }
+    >
+      <div style={NAME_LABEL_STYLE}>Vos</div>
+      <div data-testid="chat-msg-user" style={MESSAGE_TEXT_STYLE}>
+        {content}
+      </div>
+    </MessageRow>
+  );
+}
+
+// The agent avatar is a single amber hexagon with an inner var(--bg) hexagon
+// (outline effect), inline like the FAB — reusing CLIP_PATH/AMBER_GRADIENT from
+// Hexagon.tsx rather than re-inlining the polygon string.
+function AgentHexAvatar(): ReactElement {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 30,
+        height: 30,
+        background: AMBER_GRADIENT,
+        clipPath: CLIP_PATH,
+      }}
+    >
+      <span style={{ width: 15, height: 15, background: 'var(--bg)', clipPath: CLIP_PATH }} />
+    </span>
+  );
+}
+
+function AgentBubble({ message }: { message: ChatMessage }): ReactElement {
+  return (
+    <MessageRow avatar={<AgentHexAvatar />}>
+      <div style={NAME_LABEL_STYLE}>Hivly</div>
+      <div data-testid="chat-msg-agent" style={MESSAGE_TEXT_STYLE}>
+        {message.content}
+        {message.streaming && (
+          <span
+            aria-hidden="true"
+            data-testid="chat-cursor"
+            style={{
+              display: 'inline-block',
+              width: 8,
+              height: 17,
+              marginLeft: 2,
+              verticalAlign: -2,
+              background: AMBER,
+              animation: 'kh-blink 1s step-end infinite',
+            }}
+          />
+        )}
+      </div>
+      {message.errored && (
+        <div data-testid="chat-error" style={{ marginTop: 8, fontSize: 13, color: 'var(--text-tertiary)' }}>
+          {message.errorNote ?? 'No se pudo completar la respuesta. Intentá de nuevo.'}
+        </div>
+      )}
+      {message.citations.length > 0 && <Citations citations={message.citations} />}
+    </MessageRow>
+  );
+}
+
+function Citations({ citations }: { citations: CitationType[] }): ReactElement {
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div
+        style={{
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: 10,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          color: 'var(--text-subtle)',
+          marginBottom: 8,
+        }}
+      >
+        Fuentes
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        {citations.map((c, i) => (
+          <CitationChip key={`${c.channel}-${c.author}-${i}`} citation={c} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CitationChip({ citation }: { citation: CitationType }): ReactElement {
+  // CitationSchema is {channel, author, date} with NO message URL, so we cannot
+  // build a real Discord deep link (that needs a message id — out of scope,
+  // backend). Use the prototype's generic placeholder; a richer link is future work.
+  return (
+    <a
+      className="kh-chat-citation"
+      data-testid="chat-citation"
+      href="https://discord.com/channels"
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '6px 11px 6px 6px',
+        borderRadius: 9,
+        background: 'var(--surface)',
+        textDecoration: 'none',
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 20,
+          height: 20,
+          borderRadius: '50%',
+          background: AMBER,
+          color: 'var(--on-accent)',
+          fontSize: 9.5,
+          fontWeight: 600,
+        }}
+      >
+        {authorInitials(citation.author)}
+      </span>
+      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, color: 'var(--accent-ink)' }}>
+        #{citation.channel}
+      </span>
+      <span style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>{citation.author}</span>
+      <span aria-hidden="true" style={{ display: 'flex', color: 'var(--text-subtle)' }}>
+        <ExternalLinkIcon size={12} />
+      </span>
+    </a>
+  );
+}
+
+// First two letters/digits of the author string, uppercased (no per-author color
+// map is in scope — the avatar uses a fixed amber background). Unicode-aware so
+// accented/non-Latin Discord usernames (e.g. "Ángela", Cyrillic/CJK) keep their
+// own initials instead of collapsing to the "?" fallback (review fix).
+function authorInitials(author: string): string {
+  const alnum = author.replace(/[^\p{L}\p{N}]/gu, '');
+  return alnum ? alnum.slice(0, 2).toUpperCase() : '?';
 }
 
 // Layout-only inline styles; the base border+color live in .kh-chat-header-btn

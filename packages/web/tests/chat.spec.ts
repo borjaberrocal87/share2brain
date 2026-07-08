@@ -1,13 +1,16 @@
-// Visual verification of the Story 5.3 chat widget shell via getComputedStyle
-// against the REAL global CSS (Epic 4 retro AI#6 — a visual AC is not done until
-// the harness asserts it). Dark theme is forced by loginAs, so the assertions use
-// the dark-theme computed tokens.
+// Visual verification of the chat widget (Story 5.3 shell + Story 5.4 chat) via
+// getComputedStyle against the REAL global CSS (Epic 4 retro AI#6 — a visual AC is
+// not done until the harness asserts it). Dark theme is forced by loginAs, so the
+// assertions use the dark-theme computed tokens.
 //
 // Discovery order: Playwright loads spec files alphabetically and runs with
-// workers:1, so `chat.spec.ts` sorts BEFORE `docs.spec.ts`. This spec is
-// read-only (the history overlay only reads GET /api/conversations; nothing
-// mutates), so the docs spec's mutating "mark all read" test still runs last and
-// stays isolated. See tests/README.md.
+// workers:1, so `chat.spec.ts` sorts BEFORE `docs.spec.ts`. Story 5.3 + the 5.4
+// composer/history-load tests are read-only; the 5.4 STREAMING test at the end
+// PERSISTS a new conversation (mutating) — it is ordered LAST in this file, and no
+// test asserts an exact conversation count after it. Conversation rows don't touch
+// the documents/user_read_status tables `docs.spec.ts` asserts on, so the docs
+// spec's mutating "mark all read" test still runs last and stays isolated. See
+// tests/README.md.
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
@@ -26,10 +29,17 @@ const BG = 'rgb(14, 17, 22)'; // --bg / --on-accent #0E1116
 const SURFACE = 'rgb(18, 22, 29)'; // --surface #12161D
 const BORDER = 'rgb(32, 38, 47)'; // --border #20262F
 const BORDER_STRONG = 'rgb(42, 49, 61)'; // --border-strong #2A313D
+const LINE = 'rgb(24, 29, 37)'; // --line #181D25 (disabled send button bg)
+const AMBER = 'rgb(245, 166, 35)'; // #F5A623 (enabled send button bg)
 
-// Must match packages/backend/src/e2e/seed.ts CONVERSATION_TITLE (derived from the
-// seeded first user message — the exact text the history row renders).
+// Must match packages/backend/src/e2e/seed.ts (the seeded conversation the history
+// overlay lists and 5.4 loads). Title is DERIVED from the first user message.
 const SEEDED_TITLE = '¿Cómo configuro las notificaciones externas?';
+const SEEDED_ANSWER =
+  'Las notificaciones externas se configuran en Hivly.config.yml bajo la sección notifications.';
+// The harness fakeChatModel (test-helpers.ts) streams a fixed token list for a
+// NEW turn, so a freshly-sent message's agent bubble ends at exactly this text.
+const FAKE_ANSWER = 'Hola desde Hivly.';
 
 test.describe('Story 5.3 — Chat widget (FAB + panel shell)', () => {
   test('FAB geometry + amber shadow + hexagon clip-path (AC1)', async ({ page }, testInfo) => {
@@ -139,5 +149,88 @@ test.describe('Story 5.3 — Chat widget (FAB + panel shell)', () => {
     await expect(items.first()).toContainText(SEEDED_TITLE);
 
     await page.screenshot({ path: testInfo.outputPath('chat-history.png'), fullPage: true });
+  });
+});
+
+test.describe('Story 5.4 — Chat messages + streaming', () => {
+  test('composer: disabled empty look → enabled amber look + footer (AC1, AC2)', async ({ page }, testInfo) => {
+    await gotoChat(page);
+
+    const send = page.getByTestId('chat-send');
+    // Disabled while the draft is empty: grey (--line) bg, not-allowed cursor.
+    await expect(send).toBeDisabled();
+    await expect(send).toHaveCSS('background-color', LINE);
+    await expect(send).toHaveCSS('cursor', 'not-allowed');
+    await expect(send).toHaveCSS('width', '40px');
+    await expect(send).toHaveCSS('height', '40px');
+    await expect(send).toHaveCSS('border-radius', '11px');
+
+    // The input row's base border turns amber on :focus-within.
+    const inputRow = page.getByTestId('chat-input-row');
+    await expect(inputRow).toHaveCSS('border-color', BORDER_STRONG);
+    await page.getByTestId('chat-input').focus();
+    await expect(inputRow).toHaveCSS('border-color', ACCENT_INK);
+
+    // Footer privacy string.
+    await expect(page.getByText(/tools de hivly\.config\.yml/)).toBeVisible();
+
+    // Typing enables the send button: amber (#F5A623) bg, pointer cursor.
+    await page.getByTestId('chat-input').fill('¿Qué es RBAC?');
+    await expect(send).toBeEnabled();
+    await expect(send).toHaveCSS('background-color', AMBER);
+    await expect(send).toHaveCSS('cursor', 'pointer');
+
+    await page.screenshot({ path: testInfo.outputPath('chat-composer.png'), fullPage: true });
+  });
+
+  test('history load: selecting the seeded row renders its messages + citation (AC6)', async ({ page }, testInfo) => {
+    await gotoChat(page);
+
+    await page.getByRole('button', { name: 'Historial de conversaciones' }).click();
+    await page.getByTestId('chat-history-item').first().click();
+
+    // Overlay closes; the seeded user + agent bubbles render.
+    await expect(page.getByTestId('chat-history-overlay')).toHaveCount(0);
+    await expect(page.getByTestId('chat-msg-user')).toContainText(SEEDED_TITLE);
+    await expect(page.getByTestId('chat-msg-agent')).toContainText(SEEDED_ANSWER);
+
+    // Its one citation chip: a #general source (mono, --accent-ink) with a hover
+    // border that turns Discord blurple.
+    const citation = page.getByTestId('chat-citation').first();
+    await expect(citation).toContainText('#general');
+    await expect(citation).toHaveCSS('border-color', BORDER);
+    await citation.hover();
+    await expect(citation).toHaveCSS('border-color', 'rgb(88, 101, 242)'); // #5865F2
+
+    // A loaded (historical) conversation is not streaming — no cursor.
+    await expect(page.getByTestId('chat-cursor')).toHaveCount(0);
+
+    await page.screenshot({ path: testInfo.outputPath('chat-history-load.png'), fullPage: true });
+  });
+
+  // MUTATES (persists a new conversation) — must be the LAST test in this file
+  // (D9). No test after this may assert an exact conversation count.
+  test('streaming: sending accumulates the fake answer + citations, cursor gone on done (AC3, AC4)', async ({
+    page,
+  }, testInfo) => {
+    await gotoChat(page);
+
+    await page.getByTestId('chat-input').fill('¿Cómo configuro Hivly?');
+    await page.getByTestId('chat-send').click();
+
+    // The user bubble echoes the sent text; the agent bubble accumulates the
+    // fake model's fixed tokens to exactly "Hola desde Hivly.".
+    await expect(page.getByTestId('chat-msg-user')).toContainText('¿Cómo configuro Hivly?');
+    await expect(page.getByTestId('chat-msg-agent')).toContainText(FAKE_ANSWER);
+
+    // The retrieve step (fake embedder + seeded member embeddings) yields ≥1
+    // citation, rendered under the agent bubble after the tokens.
+    await expect(page.getByTestId('chat-citation').first()).toBeVisible();
+    expect(await page.getByTestId('chat-citation').count()).toBeGreaterThanOrEqual(1);
+
+    // The blinking cursor is gone once the `done` frame arrives.
+    await expect(page.getByTestId('chat-cursor')).toHaveCount(0);
+
+    await page.screenshot({ path: testInfo.outputPath('chat-streaming.png'), fullPage: true });
   });
 });

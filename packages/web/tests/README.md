@@ -75,12 +75,17 @@ LIMIT 5), so the empty state is only reachable via the empty-scope identity.
 
 Playwright discovers spec files **alphabetically** and runs with `workers: 1`, so
 they execute in name order: `chat.spec.ts` → `docs.spec.ts` → `search.spec.ts`.
-`chat.spec.ts` (Story 5.3) is **read-only** — its history overlay only reads
-`GET /api/conversations`; nothing mutates state. The only mutating test is
-`docs.spec.ts`'s "mark all read", which relies on running **last** among the
-mutation-sensitive specs. Keep this invariant in mind when naming new specs: a
-new mutating spec must sort **after** any spec whose assertions depend on the
-seeded read/unread mix, or reseed explicitly.
+`chat.spec.ts` is **no longer read-only**: its Story 5.4 **streaming** test
+persists a new conversation, so it is ordered **last** in the file (after the
+Story 5.3 `toHaveCount(1)` history test and the 5.4 composer/history-load tests,
+which must run before any conversation mutation). No chat test asserts an exact
+conversation count after that mutation. The conversation rows it writes don't
+touch the `documents` / `user_read_status` tables `docs.spec.ts` asserts on, so
+`docs.spec.ts`'s "mark all read" (the cross-spec mutating test) still runs last
+and stays isolated; Playwright also reseeds on each backend boot. Keep this
+invariant in mind when naming new specs: a new mutating spec must sort **after**
+any spec whose assertions depend on the seeded read/unread mix, or reseed
+explicitly.
 
 ## Adding a spec (Stories 5.3 / 5.4)
 
