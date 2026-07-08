@@ -40,13 +40,26 @@ describe('authService.handleCallback', () => {
 
     const session = await service.handleCallback('auth-code');
 
-    expect(session).toEqual({ userId: 'user-uuid-1', discordRoles: ['admin', 'mod'] });
+    expect(session).toEqual({
+      userId: 'user-uuid-1',
+      discordRoles: ['admin', 'mod', GUILD_ID],
+    });
     expect(oauth.getGuildMember).toHaveBeenCalledWith('token-1', GUILD_ID);
     expect(users.upsertByDiscordId).toHaveBeenCalledWith({
       discordId: 'discord-1',
       username: 'ada',
       avatar: 'av1',
     });
+  });
+
+  it('should inject the @everyone role (guild ID) for a member with no assigned roles', async () => {
+    const oauth = fakeOAuth({ getGuildMember: vi.fn(async () => ({ roles: [] })) });
+    const users = fakeUsers();
+    const service = createAuthService({ users, oauth, guildId: GUILD_ID });
+
+    const session = await service.handleCallback('auth-code');
+
+    expect(session).toEqual({ userId: 'user-uuid-1', discordRoles: [GUILD_ID] });
   });
 
   it('should throw GuildMembershipError when the user is not a guild member', async () => {

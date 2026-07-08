@@ -49,7 +49,12 @@ export function createAuthService(deps: {
         avatar: discordUser.avatar,
       });
 
-      return { userId: id, discordRoles: member.roles };
+      // Discord's guild-member endpoint omits the `@everyone` role, whose ID equals
+      // the guild ID. Inject it so `@everyone` allow rules (AD-12) match every member.
+      const discordRoles = member.roles.includes(guildId)
+        ? member.roles
+        : [...member.roles, guildId];
+      return { userId: id, discordRoles };
     },
 
     async getMe(userId: string): Promise<AuthMeResponse | null> {
