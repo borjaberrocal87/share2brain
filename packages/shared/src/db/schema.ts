@@ -31,6 +31,7 @@ export interface Citation {
   channel: string;
   author: string;
   date: string;
+  link: string;
 }
 
 // 1. discord_messages — raw Discord messages captured by the Bot (owner: bot).
@@ -52,21 +53,25 @@ export const discordMessages = pgTable(
   ],
 );
 
-// 2. embeddings — vector index over grouped/chunked content (owner: workers).
+// 2. embeddings — one row per resource link extracted from a message (owner: workers).
 export const embeddings = pgTable(
   'embeddings',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    // Deterministic dedup key `"<firstMessageId>:<chunkIndex>"` (Story 3.3). The
-    // Indexer UPSERTs on this so a re-delivered stream event (redelivery or a
-    // producer duplicate) converges to the same row instead of inserting a
-    // duplicate (AD-13 at-least-once idempotency). Message snowflakes are globally
-    // unique, so the channel is implicit and never part of the key. Table is empty
-    // in every deployment, so `notNull` without a default is safe.
+    // Deterministic dedup key `"<messageId>:<urlIndex>"` (Epic 7 — one row per URL
+    // of one message; Story 3.3's `"<firstMessageId>:<chunkIndex>"` grouping/chunking
+    // semantics are superseded). The Indexer UPSERTs on this so a re-delivered stream
+    // event (redelivery or a producer duplicate) converges to the same row instead of
+    // inserting a duplicate (AD-13 at-least-once idempotency). Message snowflakes are
+    // globally unique, so the channel is implicit and never part of the key.
     chunkKey: text('chunk_key').notNull(),
-    content: text('content').notNull(),
+    title: text('title').notNull(), // AI-generated (Story 7.2)
+    description: text('description').notNull(), // AI-generated (Story 7.2)
+    link: text('link').notNull(), // the extracted URL (Story 7.2)
     embedding: vector('embedding', { dimensions: EMBEDDING_DIMENSIONS }).notNull(),
     channelId: text('channel_id').notNull(), // the RBAC filter column (AD-12)
+    // Length-1 array: `messageIds[0]` is the anchor message for the Search/Docs
+    // projection (kept as an array for compatibility with the pre-Epic-7 shape).
     messageIds: text('message_ids').array().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },

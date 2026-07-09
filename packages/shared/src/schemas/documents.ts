@@ -24,13 +24,19 @@ export type DocumentsQuery = z.infer<typeof DocumentsQuerySchema>;
 
 /**
  * A single document fragment: `SearchFragment` minus `similarity`, plus `indexedAt`
- * and `isRead` (D3). `authorName` falls back to the `authorId` string (D2, carried
- * from search). `createdAt` is the anchor message date; `indexedAt` is
- * `embeddings.created_at`.
+ * and `isRead` (D3). `title`/`description` are AI-generated (Story 7.2); `link`
+ * tolerates '' (empty) until then — the same empty-or-URL convention as
+ * `config/index.ts`'s `base_url` fields. `authorName` falls back to the `authorId`
+ * string (D2, carried from search). `createdAt` is the anchor message date;
+ * `indexedAt` is `embeddings.created_at`.
  */
 export const DocumentFragmentSchema = z.object({
   id: z.uuid(),
-  content: z.string(),
+  title: z.string(),
+  description: z.string(),
+  link: z.string().refine((val) => val === '' || /^https?:\/\//.test(val), {
+    message: 'link must be empty or a valid HTTP(S) URL',
+  }),
   channelId: z.string(),
   channelName: z.string(),
   authorId: z.string(),

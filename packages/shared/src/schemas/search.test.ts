@@ -65,7 +65,9 @@ describe('SearchQuerySchema', () => {
 describe('SearchFragmentSchema', () => {
   const valid = {
     id: '550e8400-e29b-41d4-a716-446655440000',
-    content: 'the answer is 42',
+    title: 'The Answer to Everything',
+    description: 'the answer is 42',
+    link: '',
     channelId: '1234567890',
     channelName: 'general',
     authorId: '9876543210',
@@ -77,6 +79,16 @@ describe('SearchFragmentSchema', () => {
 
   it('should parse a fully-populated fragment', () => {
     expect(SearchFragmentSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it('should parse a fragment with a valid HTTP(S) link', () => {
+    expect(
+      SearchFragmentSchema.safeParse({ ...valid, link: 'https://example.com/doc' }).success,
+    ).toBe(true);
+  });
+
+  it('should reject a fragment with a non-URL non-empty link', () => {
+    expect(SearchFragmentSchema.safeParse({ ...valid, link: 'not-a-url' }).success).toBe(false);
   });
 
   it('should reject a fragment whose id is not a uuid', () => {

@@ -7,11 +7,16 @@ import { z } from 'zod';
 
 import type { Citation } from '../db/schema.js';
 
-/** A single cited source: which channel, which author, and when. */
+/** A single cited source: which channel, which author, when, and its link.
+ * `link` tolerates '' (empty) until Story 7.2 extracts real URLs — the same
+ * empty-or-URL convention as `config/index.ts`'s `base_url` fields. */
 export const CitationSchema = z.object({
   channel: z.string(),
   author: z.string(),
   date: z.string(),
+  link: z.string().refine((val) => val === '' || /^https?:\/\//.test(val), {
+    message: 'link must be empty or a valid HTTP(S) URL',
+  }),
 });
 
 export type CitationType = z.infer<typeof CitationSchema>;

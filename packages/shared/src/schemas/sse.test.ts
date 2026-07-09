@@ -8,14 +8,47 @@ describe('SSEFrameSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should parse a citation frame when it has channel, author and date', () => {
+  it('should parse a citation frame when it has channel, author, date and an empty link', () => {
+    const result = SSEFrameSchema.safeParse({
+      type: 'citation',
+      channel: 'general',
+      author: 'ada',
+      date: '2026-07-03T00:00:00Z',
+      link: '',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should parse a citation frame with a valid HTTP(S) link', () => {
+    const result = SSEFrameSchema.safeParse({
+      type: 'citation',
+      channel: 'general',
+      author: 'ada',
+      date: '2026-07-03T00:00:00Z',
+      link: 'https://example.com/doc',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject a citation frame with a non-URL non-empty link', () => {
+    const result = SSEFrameSchema.safeParse({
+      type: 'citation',
+      channel: 'general',
+      author: 'ada',
+      date: '2026-07-03T00:00:00Z',
+      link: 'not-a-url',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject a citation frame when link is missing', () => {
     const result = SSEFrameSchema.safeParse({
       type: 'citation',
       channel: 'general',
       author: 'ada',
       date: '2026-07-03T00:00:00Z',
     });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 
   it('should parse a done frame when it has a conversationId', () => {

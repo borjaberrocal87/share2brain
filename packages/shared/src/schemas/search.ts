@@ -24,14 +24,20 @@ export const SearchQuerySchema = z.object({
 export type SearchQuery = z.infer<typeof SearchQuerySchema>;
 
 /**
- * A single search result fragment. One grouped embeddings chunk projected to a
- * single anchor message (D2: anchor = `message_ids[0]`). `authorName` falls back
+ * A single search result fragment: one curated resource link projected to its
+ * anchor message (`message_ids[0]`). `title`/`description` are AI-generated
+ * (Story 7.2); `link` tolerates '' (empty) until then — the same empty-or-URL
+ * convention as `config/index.ts`'s `base_url` fields. `authorName` falls back
  * to the `authorId` string — no display name is persisted yet (D2 follow-up).
  * `similarity` is cosine similarity clamped to [0,1] (1 = identical).
  */
 export const SearchFragmentSchema = z.object({
   id: z.uuid(),
-  content: z.string(),
+  title: z.string(),
+  description: z.string(),
+  link: z.string().refine((val) => val === '' || /^https?:\/\//.test(val), {
+    message: 'link must be empty or a valid HTTP(S) URL',
+  }),
   channelId: z.string(),
   channelName: z.string(),
   authorId: z.string(),

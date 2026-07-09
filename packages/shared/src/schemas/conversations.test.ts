@@ -69,7 +69,9 @@ describe('ConversationDetailSchema', () => {
           id: '660e8400-e29b-41d4-a716-446655440111',
           role: 'assistant',
           content: 'According to #general, Ada mentioned...',
-          citations: [{ channel: 'general', author: 'ada', date: '2026-07-06T00:00:00.000Z' }],
+          citations: [
+            { channel: 'general', author: 'ada', date: '2026-07-06T00:00:00.000Z', link: '' },
+          ],
           createdAt: '2026-07-06T00:30:00.000Z',
         },
       ],
