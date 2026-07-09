@@ -135,6 +135,7 @@ export function createChatService(deps: {
             answer += frame.content;
           } else if (frame.type === 'citation') {
             citations.push({
+              title: frame.title,
               channel: frame.channel,
               author: frame.author,
               date: frame.date,

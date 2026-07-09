@@ -180,6 +180,7 @@ export function createRagAgent(deps: {
       for (const fragment of retrievedFragments) {
         yield {
           type: 'citation',
+          title: fragment.title,
           channel: fragment.channelName,
           author: fragment.authorName,
           date: fragment.createdAt,

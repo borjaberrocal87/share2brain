@@ -2,7 +2,7 @@
 // stable error codes the endpoint emits. Mirrors search.ts.
 import { z } from 'zod';
 
-import { isEmptyOrHttpUrl, LINK_REFINE_MESSAGE } from './linkRefine.js';
+import { isHttpUrl, LINK_REFINE_MESSAGE } from './linkRefine.js';
 
 /**
  * GET /api/documents query params. Query params arrive as strings, so `page`/`limit`
@@ -27,16 +27,16 @@ export type DocumentsQuery = z.infer<typeof DocumentsQuerySchema>;
 /**
  * A single document fragment: `SearchFragment` minus `similarity`, plus `indexedAt`
  * and `isRead` (D3). `title`/`description` are AI-generated (Story 7.2); `link`
- * tolerates '' (empty) until then — the same empty-or-URL convention as
- * `config/index.ts`'s `base_url` fields. `authorName` falls back to the `authorId`
- * string (D2, carried from search). `createdAt` is the anchor message date;
- * `indexedAt` is `embeddings.created_at`.
+ * must be a valid HTTP(S) URL (Story 7.4 — strict, no more empty-string
+ * placeholder). `authorName` falls back to the `authorId` string (D2, carried
+ * from search). `createdAt` is the anchor message date; `indexedAt` is
+ * `embeddings.created_at`.
  */
 export const DocumentFragmentSchema = z.object({
   id: z.uuid(),
   title: z.string(),
   description: z.string(),
-  link: z.string().refine(isEmptyOrHttpUrl, { message: LINK_REFINE_MESSAGE }),
+  link: z.string().refine(isHttpUrl, { message: LINK_REFINE_MESSAGE }),
   channelId: z.string(),
   channelName: z.string(),
   authorId: z.string(),

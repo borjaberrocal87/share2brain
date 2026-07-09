@@ -4,6 +4,7 @@
 // where the DDD layers are wired: infrastructure adapters → application service →
 // presentation controller → routes.
 import { type Database } from '@hivly/shared/db';
+import type { Logger } from '@hivly/shared/logger';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
@@ -91,7 +92,21 @@ export interface AppOptions {
    * limiter is mounted and no request is ever 429'd.
    */
   rateLimit?: { api: RateLimitTierOptions; auth: RateLimitTierOptions; chat: RateLimitTierOptions };
+  /**
+   * Logger for the ragRetriever's per-row skip-and-warn (Story 7.4, F2). Only
+   * `main.ts` injects the real structured logger; tests/e2e default to a no-op
+   * so a malformed fixture row doesn't spam test output.
+   */
+  logger?: Logger;
 }
+
+/** Default logger for createApp callers that don't inject one (tests/e2e). */
+const noopLogger: Logger = {
+  debug: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+};
 
 /** Build the API app bound to the given startup clients + options. No listen. */
 export function createApp(db: Database, redis: RedisClient, opts: AppOptions): Express {
@@ -221,7 +236,11 @@ export function createApp(db: Database, redis: RedisClient, opts: AppOptions): E
         '(or inject a fake via buildTestAppOptions in tests).',
     );
   }
-  const ragRetriever = createDrizzleRagRetriever({ embedder: queryEmbedder, searchRepo: embeddingSearch });
+  const ragRetriever = createDrizzleRagRetriever({
+    embedder: queryEmbedder,
+    searchRepo: embeddingSearch,
+    logger: opts.logger ?? noopLogger,
+  });
   const ragAgent = createRagAgent({
     chatModel,
     ragRetriever,

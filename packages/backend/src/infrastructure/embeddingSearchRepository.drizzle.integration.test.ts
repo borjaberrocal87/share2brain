@@ -50,8 +50,8 @@ describe('EmbeddingSearchRepository (integration, real pgvector)', () => {
     const messageIdsLiteral = `{${messageIds.join(',')}}`;
     await clients.db.execute(sql`
       insert into embeddings (chunk_key, title, description, link, embedding, channel_id, message_ids, created_at)
-      values (${chunkKey}, '', ${`description ${chunkKey}`}, '', ${vecLiteral(vec)}::vector, ${channelId},
-              ${messageIdsLiteral}::text[], now())
+      values (${chunkKey}, ${`title ${chunkKey}`}, ${`description ${chunkKey}`}, ${`https://example.com/itest/${chunkKey}`},
+              ${vecLiteral(vec)}::vector, ${channelId}, ${messageIdsLiteral}::text[], now())
     `);
   }
 

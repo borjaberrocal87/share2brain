@@ -56,8 +56,8 @@ describe('GET /api/search (integration)', () => {
     const messageIdsLiteral = `{${messageIds.join(',')}}`;
     await clients.db.execute(sql`
       insert into embeddings (chunk_key, title, description, link, embedding, channel_id, message_ids, created_at)
-      values (${chunkKey}, '', ${`description ${chunkKey}`}, '', ${JSON.stringify(vec)}::vector, ${channelId},
-              ${messageIdsLiteral}::text[], now())
+      values (${chunkKey}, ${`title ${chunkKey}`}, ${`description ${chunkKey}`}, ${`https://example.com/itest/${chunkKey}`},
+              ${JSON.stringify(vec)}::vector, ${channelId}, ${messageIdsLiteral}::text[], now())
     `);
   }
 
@@ -124,6 +124,19 @@ describe('GET /api/search (integration)', () => {
     expect(frag.channelId).toBe(CH_ALLOWED);
     expect(frag.channelName).toBe('Allowed Channel');
     expect(frag.similarity).toBeCloseTo(1, 3);
+  });
+
+  it('should round-trip title/description/link from the DB row', async () => {
+    const app = createApp(clients.db, clients.redis, buildTestAppOptions({ oauth: memberOAuth(['member']) }));
+    const agent = request.agent(app);
+    await loginMember(agent);
+
+    const res = await agent.get('/api/search?q=hello');
+
+    const frag = res.body.results.find((r: { messageId: string }) => r.messageId === `${suffix}-a`);
+    expect(frag.title).toBe(`title ${suffix}-a:0`);
+    expect(frag.description).toBe(`description ${suffix}-a:0`);
+    expect(frag.link).toBe(`https://example.com/itest/${suffix}-a:0`);
   });
 
   it('should return HTTP 200 with an empty array for a user whose scope is empty (AC3)', async () => {

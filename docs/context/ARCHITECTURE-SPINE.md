@@ -62,7 +62,7 @@ graph TD
 
 - **Binds:** packages/backend (endpoint `POST /api/chat`), packages/web (cliente de chat)
 - **Prevents:** complejidad de autenticación WebSocket; configuración extra de nginx; divergencia en el wire format del stream entre cliente y servidor
-- **Rule:** El endpoint `POST /api/chat` devuelve `Content-Type: text/event-stream`. El cliente usa `fetch` con streaming (no `EventSource`, para poder hacer POST con body). No hay upgrade de protocolo WebSocket. El wire format de cada frame SSE es JSON con los tipos: `{"type":"token","content":"…"}` · `{"type":"citation","channel":"…","author":"…","date":"…","link":"…"}` · `{"type":"done","conversationId":"…"}` · `{"type":"error","code":"…","message":"…"}`. El campo `link` del frame `citation` es REQUERIDO (Epic 7, Story 7.1); tolera `''` (vacío) como placeholder hasta que la Historia 7.2 extraiga URLs reales. Este schema está definido en `packages/shared/src/schemas/sse.ts`.
+- **Rule:** El endpoint `POST /api/chat` devuelve `Content-Type: text/event-stream`. El cliente usa `fetch` con streaming (no `EventSource`, para poder hacer POST con body). No hay upgrade de protocolo WebSocket. El wire format de cada frame SSE es JSON con los tipos: `{"type":"token","content":"…"}` · `{"type":"citation","title":"…","channel":"…","author":"…","date":"…","link":"…"}` · `{"type":"done","conversationId":"…"}` · `{"type":"error","code":"…","message":"…"}`. Los campos `title` y `link` del frame `citation` son REQUERIDOS (Epic 7; `title` agregado en la Historia 7.4); `link` debe ser una URL http(s) válida (contrato estricto desde 7.4, sin tolerancia a `''`). Este schema está definido en `packages/shared/src/schemas/sse.ts`.
 
 ### AD-5 — Drizzle ORM como capa de acceso a DB
 
@@ -76,7 +76,7 @@ graph TD
 - **Binds:** packages/backend (validación runtime), packages/web (tipos TypeScript)
 - **Prevents:** divergencia silenciosa entre shapes de request/response del frontend y backend
 - **Rule:** Todo shape de request o response de la API REST está definido como Zod schema en `packages/shared/src/schemas/`. El backend valida con `schema.parse()`; el frontend infiere tipos con `z.infer<typeof schema>`. Ningún servicio define shapes de API localmente.
-- **Nota (Epic 7, Stories 7.1–7.2):** `SearchFragmentSchema`/`DocumentFragmentSchema` reemplazan `content` por `title`+`description`+`link`; `CitationSchema` gana `link` (requerido). `link` usa la convención "empty-or-URL" centralizada en `schemas/linkRefine.ts` (`isEmptyOrHttpUrl`, parse-based vía `URL.canParse`) — `''` sigue válido para seeds/placeholders (7.4 actualiza el seed), un valor no vacío debe ser una URL http(s) bien formada. **Nunca** `z.string().url()` (deprecado) ni `z.url()` estricto (ambos rechazan `''`).
+- **Nota (Epic 7, Stories 7.1–7.4):** `SearchFragmentSchema`/`DocumentFragmentSchema` reemplazan `content` por `title`+`description`+`link`; `CitationSchema` gana `title` (requerido, Historia 7.4) y `link` (requerido). `link` usa el refine `isHttpUrl` centralizado en `schemas/linkRefine.ts` (parse-based vía `URL.canParse`) — desde la Historia 7.4 es **estricto**: `''` ya NO es válido, todo `link` debe ser una URL http(s) bien formada (datos previos a 7.4 requieren el runbook de wipe, `operational-backlog.md`). **Nunca** `z.string().url()` (deprecado) ni `z.url()` estricto (semántica distinta a la convención del repo).
 
 ### AD-7 — nginx como punto de entrada HTTP único
 

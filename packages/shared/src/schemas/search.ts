@@ -4,7 +4,7 @@
 // Mirrors auth.ts.
 import { z } from 'zod';
 
-import { isEmptyOrHttpUrl, LINK_REFINE_MESSAGE } from './linkRefine.js';
+import { isHttpUrl, LINK_REFINE_MESSAGE } from './linkRefine.js';
 
 /** Upper bound on the raw query string. A search query is natural language; this
  * caps the text forwarded to the (paid) embeddings provider, closing a cost/DoS
@@ -28,16 +28,16 @@ export type SearchQuery = z.infer<typeof SearchQuerySchema>;
 /**
  * A single search result fragment: one curated resource link projected to its
  * anchor message (`message_ids[0]`). `title`/`description` are AI-generated
- * (Story 7.2); `link` tolerates '' (empty) until then — the same empty-or-URL
- * convention as `config/index.ts`'s `base_url` fields. `authorName` falls back
- * to the `authorId` string — no display name is persisted yet (D2 follow-up).
- * `similarity` is cosine similarity clamped to [0,1] (1 = identical).
+ * (Story 7.2); `link` must be a valid HTTP(S) URL (Story 7.4 — strict, no more
+ * empty-string placeholder). `authorName` falls back to the `authorId` string
+ * — no display name is persisted yet (D2 follow-up). `similarity` is cosine
+ * similarity clamped to [0,1] (1 = identical).
  */
 export const SearchFragmentSchema = z.object({
   id: z.uuid(),
   title: z.string(),
   description: z.string(),
-  link: z.string().refine(isEmptyOrHttpUrl, { message: LINK_REFINE_MESSAGE }),
+  link: z.string().refine(isHttpUrl, { message: LINK_REFINE_MESSAGE }),
   channelId: z.string(),
   channelName: z.string(),
   authorId: z.string(),

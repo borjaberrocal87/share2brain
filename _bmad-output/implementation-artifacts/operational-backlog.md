@@ -110,6 +110,13 @@
    ships, workers/backend write the Placeholder-policy values (`title:''`, `description:<old content>`,
    `link:''`) — expected and boring, not a bug.
 
+> **Story 7.4 note (2026-07-09):** the strict link contracts (`linkRefine.ts`'s `isHttpUrl`, no more
+> `''`-tolerance) and the required `Citation.title` field mean pre-7.4 persisted data — placeholder
+> embeddings (`link:''`) from steps 3-4 above, and any legacy citation missing `title` — fail Zod
+> `.parse()` at the search/documents/chat edges. **Run this exact runbook again (steps 1-2) before
+> deploying Story 7.4 over any DB the 7.4 migration path has touched**, even one already carrying
+> Story 7.2/7.3 real-resource data, if it also carries any pre-7.4 placeholder or legacy-citation row.
+
 ## Standing Definition-of-Done (adopted practices, not tasks)
 
 > Consolidated 2026-07-08 (bmad-help housekeeping). These are process norms surfaced across the Epic

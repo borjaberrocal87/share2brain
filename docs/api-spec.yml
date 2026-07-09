@@ -324,10 +324,11 @@ components:
         - type: object
           properties:
             type: { const: citation }
+            title: { type: string }
             channel: { type: string }
             author: { type: string }
             date: { type: string }
-            link: { type: string, description: "extracted URL; empty string ('') pre-Story-7.2" }
+            link: { type: string, description: "the resource's URL; must be a valid HTTP(S) URL" }
         - type: object
           properties:
             type: { const: done }
@@ -341,12 +342,13 @@ components:
     Citation:
       description: A cited source from packages/shared/src/schemas/citation.ts
       type: object
-      required: [channel, author, date, link]
+      required: [title, channel, author, date, link]
       properties:
+        title: { type: string }
         channel: { type: string }
         author: { type: string }
         date: { type: string }
-        link: { type: string, description: "extracted URL; empty string ('') pre-Story-7.2" }
+        link: { type: string, description: "the resource's URL; must be a valid HTTP(S) URL" }
 
     ConversationSummary:
       description: One item of GET /api/conversations (schemas/conversations.ts)

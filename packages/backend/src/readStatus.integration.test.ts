@@ -55,8 +55,8 @@ describe('/api/read-status (integration)', () => {
     const vec = new Array<number>(1536).fill(0);
     const result = await clients.db.execute(sql`
       insert into embeddings (chunk_key, title, description, link, embedding, channel_id, message_ids, created_at)
-      values (${chunkKey}, '', ${`description ${chunkKey}`}, '', ${JSON.stringify(vec)}::vector, ${channelId},
-              ${messageIdsLiteral}::text[], now())
+      values (${chunkKey}, ${`title ${chunkKey}`}, ${`description ${chunkKey}`}, ${`https://example.com/itest/${chunkKey}`},
+              ${JSON.stringify(vec)}::vector, ${channelId}, ${messageIdsLiteral}::text[], now())
       returning id
     `);
     return String((result.rows[0] as Record<string, unknown>).id);

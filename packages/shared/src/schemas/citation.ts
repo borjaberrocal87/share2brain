@@ -6,16 +6,18 @@
 import { z } from 'zod';
 
 import type { Citation } from '../db/schema.js';
-import { isEmptyOrHttpUrl, LINK_REFINE_MESSAGE } from './linkRefine.js';
+import { isHttpUrl, LINK_REFINE_MESSAGE } from './linkRefine.js';
 
-/** A single cited source: which channel, which author, when, and its link.
- * `link` tolerates '' (empty) until Story 7.2 extracts real URLs — the same
- * empty-or-URL convention as `config/index.ts`'s `base_url` fields. */
+/** A single cited source: the resource's title, which channel, which author,
+ * when, and its link. `link` must be a valid HTTP(S) URL (Story 7.4 — strict,
+ * no more empty-string placeholder). `title` was added in Story 7.4 (F3) so
+ * the sources chip can show the resource title. */
 export const CitationSchema = z.object({
+  title: z.string(),
   channel: z.string(),
   author: z.string(),
   date: z.string(),
-  link: z.string().refine(isEmptyOrHttpUrl, { message: LINK_REFINE_MESSAGE }),
+  link: z.string().refine(isHttpUrl, { message: LINK_REFINE_MESSAGE }),
 });
 
 export type CitationType = z.infer<typeof CitationSchema>;

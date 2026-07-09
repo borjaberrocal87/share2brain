@@ -85,7 +85,15 @@ describe('fetchConversation', () => {
         id: '550e8400-e29b-41d4-a716-446655440002',
         role: 'assistant',
         content: 'Se configura en Hivly.config.yml.',
-        citations: [{ channel: 'general', author: 'ada', date: '2026-06-01T10:00:00Z', link: '' }],
+        citations: [
+          {
+            title: 'Deploying with Docker Compose',
+            channel: 'general',
+            author: 'ada',
+            date: '2026-06-01T10:00:00Z',
+            link: 'https://example.com/doc',
+          },
+        ],
         createdAt: '2026-07-01T00:00:05.000Z',
       },
     ],

@@ -471,7 +471,7 @@ erDiagram
         uuid conversation_id FK
         string role "user | assistant | system"
         text content
-        jsonb citations "Array de fuentes (channel, author, date, link)"
+        jsonb citations "Array de fuentes (title, channel, author, date, link)"
         timestamp created_at
     }
 
@@ -718,6 +718,12 @@ async function reason(state: AgentState): Promise<Partial<AgentState>> {
 }
 ```
 
+`buildRAGContext` (`packages/backend/src/agent/prompt.ts`) renderiza cada recurso recuperado con el
+header `[n] #${channelName} — ${authorName} (${createdAt}):` seguido de la línea
+`${title} — ${description} (${link})` (Historia 7.4 reframe: el SYSTEM_PROMPT habla de "recursos
+curados", no "fragmentos de conocimiento"; instruye a citar canal+autor inline Y a incluir el
+`link` del recurso cuando se recomienda uno).
+
 ### Streaming SSE
 
 El nodo `respond` hace streaming token a token al cliente vía SSE. El wire format es:
@@ -725,11 +731,13 @@ El nodo `respond` hace streaming token a token al cliente vía SSE. El wire form
 ```
 data: {"type":"token","content":"La"}
 data: {"type":"token","content":" respuesta"}
-data: {"type":"citation","channel":"#general","author":"usuario","date":"2026-01-15","link":"https://..."}
+data: {"type":"citation","title":"Cómo configurar...","channel":"#general","author":"usuario","date":"2026-01-15","link":"https://..."}
 data: {"type":"done","conversationId":"uuid-..."}
 ```
 
-El schema de cada frame está definido en `packages/shared/src/schemas/sse.ts`.
+El schema de cada frame está definido en `packages/shared/src/schemas/sse.ts`. El campo `title` del
+frame `citation` es REQUERIDO desde la Historia 7.4 (permite renderizar el título del recurso en el
+chip de fuentes); `link` es una URL http(s) estricta (sin tolerancia a `''`).
 
 ---
 
@@ -867,7 +875,7 @@ async function* streamChat(message: string, conversationId?: string) {
 ```typescript
 export type SSEFrame =
   | { type: 'token';    content: string }
-  | { type: 'citation'; channel: string; author: string; date: string; link: string }
+  | { type: 'citation'; title: string; channel: string; author: string; date: string; link: string }
   | { type: 'done';     conversationId: string }
   | { type: 'error';    code: string; message: string }
 ```

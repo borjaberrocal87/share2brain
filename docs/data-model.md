@@ -59,9 +59,10 @@ the Backend for search, documents, and RAG.
 - `description`: AI-generated description for the linked resource, produced by `enrichment.llm`
   (Story 7.2)
 - `link`: the extracted, normalized URL (`URL.href` — lowercased scheme/host, percent-normalized;
-  Story 7.2). Empty string (`''`) remains a valid placeholder for pre-7.2 legacy rows and backend
-  seed fixtures (updated in Story 7.4) — there is intentionally **no** unique index on `link`
-  (placeholders would collide; `chunk_key` is the dedup key)
+  Story 7.2). The `link` contract is strict since Story 7.4 (`isHttpUrl`, no empty-string
+  placeholder) — an empty-link row is legacy pre-7.4 data and fails the API/RAG Zod parse, so it
+  must be purged by the Epic 7 clean-slate runbook before deploying 7.4. There is intentionally
+  **no** unique index on `link` (`chunk_key` is the dedup key)
 - `embedding`: `vector(N)` where `N = embeddings.dimensions` (pgvector; parametrized at deploy-time, default 1536)
 - `channel_id`: Discord channel snowflake (used for the RBAC filter)
 - `message_ids`: `string[]`, length 1 — `message_ids[0]` is the anchor message the Search/Docs
@@ -119,7 +120,8 @@ Individual messages within a conversation (user / assistant / system), with cita
 - `conversation_id`: FK → conversations.id
 - `role`: `"user" | "assistant" | "system"`
 - `content`: message text
-- `citations`: `jsonb` array of sources (`channel`, `author`, `date`, `link` — Epic 7)
+- `citations`: `jsonb` array of sources (`title`, `channel`, `author`, `date`, `link` — Epic 7;
+  `title` added in Story 7.4)
 - `created_at`: timestamp
 
 ### 8. user_read_status

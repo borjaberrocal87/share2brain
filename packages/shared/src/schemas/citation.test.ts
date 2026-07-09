@@ -4,20 +4,19 @@ import { CitationSchema } from './citation.js';
 
 describe('CitationSchema', () => {
   const valid = {
+    title: 'Deploying with Docker Compose',
     channel: 'general',
     author: 'ada',
     date: '2026-07-06T00:00:00.000Z',
-    link: '',
+    link: 'https://example.com/doc',
   };
 
-  it('should parse a citation with channel, author, date and an empty link', () => {
+  it('should parse a fully-populated citation', () => {
     expect(CitationSchema.safeParse(valid).success).toBe(true);
   });
 
-  it('should parse a citation with a valid HTTP(S) link', () => {
-    expect(
-      CitationSchema.safeParse({ ...valid, link: 'https://example.com/doc' }).success,
-    ).toBe(true);
+  it('should reject a citation with an empty link', () => {
+    expect(CitationSchema.safeParse({ ...valid, link: '' }).success).toBe(false);
   });
 
   it('should reject a citation with a non-URL non-empty link', () => {
@@ -47,6 +46,12 @@ describe('CitationSchema', () => {
   it('should reject a citation missing link', () => {
     const missing: Record<string, unknown> = { ...valid };
     delete missing.link;
+    expect(CitationSchema.safeParse(missing).success).toBe(false);
+  });
+
+  it('should reject a citation missing title', () => {
+    const missing: Record<string, unknown> = { ...valid };
+    delete missing.title;
     expect(CitationSchema.safeParse(missing).success).toBe(false);
   });
 

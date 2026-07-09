@@ -17,7 +17,7 @@ const ROW: DocumentFragmentRow = {
   id: '550e8400-e29b-41d4-a716-446655440000',
   title: 'The Answer to Everything',
   description: 'the answer is 42',
-  link: '',
+  link: 'https://example.com/e2e/the-answer',
   channelId: 'chan-1',
   channelName: 'general',
   authorId: 'author-anchor',

@@ -1,39 +1,39 @@
 import { describe, expect, it } from 'vitest';
 
-import { isEmptyOrHttpUrl, LINK_REFINE_MESSAGE } from './linkRefine.js';
+import { isHttpUrl, LINK_REFINE_MESSAGE } from './linkRefine.js';
 
-describe('isEmptyOrHttpUrl', () => {
-  it('should accept an empty string (placeholder convention)', () => {
-    expect(isEmptyOrHttpUrl('')).toBe(true);
+describe('isHttpUrl', () => {
+  it('should reject an empty string', () => {
+    expect(isHttpUrl('')).toBe(false);
   });
 
   it('should accept a valid http(s) URL', () => {
-    expect(isEmptyOrHttpUrl('https://example.com/doc')).toBe(true);
+    expect(isHttpUrl('https://example.com/doc')).toBe(true);
   });
 
   it('should accept an uppercase-scheme URL (case-insensitive by construction)', () => {
-    expect(isEmptyOrHttpUrl('HTTPS://Example.COM/Doc')).toBe(true);
+    expect(isHttpUrl('HTTPS://Example.COM/Doc')).toBe(true);
   });
 
   it('should reject a non-URL string', () => {
-    expect(isEmptyOrHttpUrl('not-a-url')).toBe(false);
+    expect(isHttpUrl('not-a-url')).toBe(false);
   });
 
   it('should reject a URL with embedded whitespace', () => {
-    expect(isEmptyOrHttpUrl('https://example.com/a b')).toBe(false);
+    expect(isHttpUrl('https://example.com/a b')).toBe(false);
   });
 
   it('should reject https:// with no host', () => {
-    expect(isEmptyOrHttpUrl('https://')).toBe(false);
+    expect(isHttpUrl('https://')).toBe(false);
   });
 
   it('should reject a non-http(s) scheme', () => {
-    expect(isEmptyOrHttpUrl('ftp://x')).toBe(false);
+    expect(isHttpUrl('ftp://x')).toBe(false);
   });
 });
 
 describe('LINK_REFINE_MESSAGE', () => {
   it('should be a stable, human-readable message', () => {
-    expect(LINK_REFINE_MESSAGE).toBe('link must be empty or a valid HTTP(S) URL');
+    expect(LINK_REFINE_MESSAGE).toBe('link must be a valid HTTP(S) URL');
   });
 });

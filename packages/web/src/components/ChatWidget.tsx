@@ -299,6 +299,7 @@ export function ChatWidget({ user }: ChatWidgetProps): ReactElement {
             );
           } else if (frame.type === 'citation') {
             const citation: CitationType = {
+              title: frame.title,
               channel: frame.channel,
               author: frame.author,
               date: frame.date,

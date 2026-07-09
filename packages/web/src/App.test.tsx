@@ -164,7 +164,7 @@ describe('App session flow', () => {
       id: '550e8400-e29b-41d4-a716-446655440009',
       title: 'Unread Fragment',
       description: 'unread fragment content',
-      link: '',
+      link: 'https://example.com/e2e/unread-fragment',
       channelId: 'chan-1',
       channelName: 'general',
       authorId: 'author-1',

@@ -113,6 +113,7 @@ async function main(): Promise<void> {
     allowedOrigins: config.security.allowed_origins,
     queryEmbedder,
     chatModel,
+    logger,
     agentMemoryWindow: config.agent.memory_window,
     // AC-2 (Story 6.4, note #4): only main.ts injects this — buildTestAppOptions
     // and the e2e harness omit it, so tests/e2e never see a 429.

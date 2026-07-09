@@ -28,6 +28,7 @@ const EMBEDDING_DIMENSIONS = readEmbeddingDimensions();
 
 /** A single cited source rendered alongside an assistant answer. */
 export interface Citation {
+  title: string;
   channel: string;
   author: string;
   date: string;

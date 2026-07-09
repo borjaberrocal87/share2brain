@@ -70,7 +70,13 @@ describe('ConversationDetailSchema', () => {
           role: 'assistant',
           content: 'According to #general, Ada mentioned...',
           citations: [
-            { channel: 'general', author: 'ada', date: '2026-07-06T00:00:00.000Z', link: '' },
+            {
+              title: 'Deploying with Docker Compose',
+              channel: 'general',
+              author: 'ada',
+              date: '2026-07-06T00:00:00.000Z',
+              link: 'https://example.com/doc',
+            },
           ],
           createdAt: '2026-07-06T00:30:00.000Z',
         },
