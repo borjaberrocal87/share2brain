@@ -505,14 +505,6 @@ embeddings:
   base_url: "${EMBEDDINGS_BASE_URL}"  # opcional; OBLIGATORIO si provider: custom
   api_key: "${EMBEDDINGS_API_KEY}"    # ref a secreto (.env)
 
-# Knowledge
-knowledge:
-  chunk_size: 500          # tokens por fragmento (LangChain default; ajustar post-MVP)
-  chunk_overlap: 50        # tokens de solapamiento entre fragmentos
-  grouping_window: 10      # vestigial (Epic 7, Story 7.2): el Indexer ya no agrupa/chunkea
-  # chunk_size/chunk_overlap: usados solo por sync/processUpdate.ts al re-indexar una edición
-  # (hasta la Historia 7.3). El Indexer indexa por URL — ver §embeddings y TECHNICAL-DESIGN §7.
-
 # Read Tracking
 read_tracking:
   enabled: true

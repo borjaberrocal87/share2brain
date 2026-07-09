@@ -15,21 +15,13 @@ import { discordMessages, embeddings, inArray, sql } from '@hivly/shared/db';
 import type { Database } from '@hivly/shared/db';
 import { assertEmbeddingDimensions } from '@hivly/shared/providers';
 
-import { buildEmbeddingText, enrich, type EnrichmentChatModel } from '../enrichment/enrich.js';
-import { extractPageHints } from '../enrichment/htmlText.js';
+import { buildEmbeddingText, type EnrichmentChatModel } from '../enrichment/enrich.js';
+import { buildResourceRows, type ResourceRow } from '../enrichment/resourceRows.js';
 import type { GuardedDispatcher } from '../enrichment/ssrfGuard.js';
-import { fetchUrl } from '../enrichment/urlFetcher.js';
-import { extractUrls } from '../enrichment/extractUrls.js';
 import type { Logger } from '../logger.js';
 import { parseCreatedEvent } from './events.js';
 import { partitionByIndexState } from './partition.js';
 import type { Embedder, IndexStateRow, ParsedEntry, RawStreamEntry } from './types.js';
-
-/** Per-message cap on the URLs actually fetched+enriched. Bounds the paid
- *  fetch/LLM/embed fan-out one crafted message can trigger (the old
- *  `MAX_GROUPING_WINDOW=50` bound was demolished with the grouping stage). URLs
- *  beyond the cap are dropped (first-N in extraction order) and logged. */
-const MAX_URLS_PER_MESSAGE = 20;
 
 export interface IndexBatchDeps {
   entries: RawStreamEntry[];
@@ -51,67 +43,6 @@ export interface IndexBatchResult {
   /** Stream ids safe to XACK: malformed entries, already-indexed entries, and
    *  entries whose row(s) were stamped `indexed_at` in a committed tx this pass. */
   ackIds: string[];
-}
-
-interface ResourceRow {
-  urlIndex: number;
-  title: string;
-  description: string;
-  link: string;
-}
-
-type MessageOutcome = { kind: 'discard' } | { kind: 'rows'; rows: ResourceRow[] };
-
-/**
- * Process one message's content into either a discard (no URLs / all blocked)
- * or the set of resource rows to persist. Throws on an enrichment hard failure
- * for ANY of the message's URLs — the whole message is a processing failure
- * (D1); the caller leaves it entirely un-ACKed. `fetchUrl`/`enrich` never throw
- * on their own account (typed outcomes / {@link EnrichmentError}), so a throw
- * here always means enrichment failed.
- */
-async function processMessage(
-  content: string,
-  deps: Pick<IndexBatchDeps, 'config' | 'enrichModel' | 'guard' | 'signal' | 'logger'>,
-): Promise<MessageOutcome> {
-  const { config, enrichModel, guard, signal, logger } = deps;
-  const extracted = extractUrls(content, config.enrichment.fetch.allowed_schemes);
-  if (extracted.length === 0) return { kind: 'discard' };
-
-  const urls = extracted.slice(0, MAX_URLS_PER_MESSAGE);
-  if (extracted.length > urls.length) {
-    logger.warn('message exceeds the per-message URL cap — indexing the first N, dropping the rest', {
-      extracted: extracted.length,
-      cap: MAX_URLS_PER_MESSAGE,
-      dropped: extracted.length - urls.length,
-    });
-  }
-
-  const rows: ResourceRow[] = [];
-  for (let urlIndex = 0; urlIndex < urls.length; urlIndex++) {
-    if (signal.aborted) {
-      throw new Error('aborted while processing message URLs — leaving entry un-ACKed for replay');
-    }
-
-    const url = urls[urlIndex];
-    const outcome = await fetchUrl(url, config.enrichment.fetch, guard, signal);
-
-    if (!outcome.ok && (outcome.reason === 'ssrf_blocked' || outcome.reason === 'scheme_disallowed')) {
-      continue; // D2: skip this URL entirely — no row, not a failure.
-    }
-
-    const pageHints = outcome.ok ? extractPageHints(outcome.body, outcome.contentType) : null;
-    const result = await enrich(
-      enrichModel,
-      { messageText: content, pageHints, language: config.enrichment.language },
-      signal,
-    );
-
-    rows.push({ urlIndex, title: result.title, description: result.description, link: url });
-  }
-
-  if (rows.length === 0) return { kind: 'discard' }; // D2's all-blocked case converges here.
-  return { kind: 'rows', rows };
 }
 
 /**
@@ -244,7 +175,7 @@ export async function indexBatch(deps: IndexBatchDeps): Promise<IndexBatchResult
     const extraStreamIds = extraStreamIdsByMessageId.get(messageId) ?? [];
 
     try {
-      const outcome = await processMessage(content, { config, enrichModel, guard, signal, logger });
+      const outcome = await buildResourceRows(content, { config, enrichModel, guard, signal, logger });
 
       let stamped: boolean;
       if (outcome.kind === 'discard') {

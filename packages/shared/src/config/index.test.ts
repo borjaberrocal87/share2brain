@@ -30,10 +30,6 @@ embeddings:
   model: "text-embedding-3-small"
   dimensions: 1536
   api_key: "sk-openai-test"
-knowledge:
-  chunk_size: 500
-  chunk_overlap: 50
-  grouping_window: 10
 sync:
   enabled: true
   sync_on_start: true

@@ -37,7 +37,9 @@ Raw Discord messages captured by the Bot. The Bot is the only writer.
 - `content`: message text
 - `created_at`: message creation timestamp
 - `updated_at`: last edit timestamp
-- `indexed_at`: set by the Indexer once embeddings are produced (nullable)
+- `indexed_at`: stamped by the Indexer on first index, and re-stamped by the Sync worker on every
+  edit (link-diff reconciliation, Story 7.3) — even a discard/zero-URL outcome stamps it, so the
+  column means "evaluated", not "has resource rows" (nullable)
 - `deleted_at`: soft-delete marker (nullable; NULL if not deleted)
 
 **Notes:** the Bot tracks `last_seen_message_id` per channel (the highest snowflake seen) to reconcile backfill after downtime.

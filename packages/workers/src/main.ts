@@ -4,9 +4,10 @@
 // consumer loops. A config or missing-secret failure aborts BEFORE any network
 // I/O.
 //
-// The Indexer (Story 3.3) drains hivly:discord:messages, embeds and upserts
-// into pgvector. The Sync consumer (Story 6.2) drains the updated/deleted
-// streams, re-indexing edits and purging deletes — gated by config.sync.enabled.
+// The Indexer (Story 7.2) drains hivly:discord:messages, extracts+enriches
+// resource links and upserts into pgvector. The Sync consumer (Story 7.3)
+// drains the updated/deleted streams, re-indexing edits by link-diff and
+// purging deletes — gated by config.sync.enabled.
 import { loadConfig } from '@hivly/shared';
 import { createDatabase, type Database } from '@hivly/shared/db';
 import { createNotifier } from '@hivly/shared/notifier';
@@ -15,7 +16,6 @@ import { createRedisClient, type RedisClient } from '@hivly/shared/redis';
 
 import { createGuardedDispatcher } from './enrichment/ssrfGuard.js';
 import { runIndexer } from './indexer/consumer.js';
-import { MAX_CHUNK_SIZE } from './indexer/chunking.js';
 import { createLogger, type Logger } from './logger.js';
 import { runSync } from './sync/consumer.js';
 import { resolveStreamsConfig, runStreamTrimmer } from './trim/streamTrimmer.js';
@@ -84,17 +84,6 @@ async function main(): Promise<void> {
   // FR21 (Story 6.4): a no-op when notifications.enabled is false/absent — the
   // workers process behaves exactly as before this story (AC-1).
   const notifier = createNotifier(config.notifications, logger);
-
-  // The chunk-size cap is silently applied per-batch (chunking.ts, still used by
-  // the Sync worker until Story 7.3) so a misconfigured value never fails a
-  // batch; warn once at boot instead so an operator relying on a larger
-  // configured value isn't left guessing why.
-  if (config.knowledge.chunk_size > MAX_CHUNK_SIZE) {
-    logger.warn('configured chunk_size exceeds the safety cap — will be clamped', {
-      configured: config.knowledge.chunk_size,
-      cap: MAX_CHUNK_SIZE,
-    });
-  }
 
   // Shared with the SIGTERM/SIGINT drain below: a fatal handler must not abort an
   // in-flight graceful shutdown (nor fire a spurious crash alert for a clean exit).
@@ -243,6 +232,8 @@ async function main(): Promise<void> {
       embedder,
       config,
       logger,
+      enrichModel,
+      guard,
       signal: shutdownSignal.signal,
     });
   }

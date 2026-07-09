@@ -77,11 +77,6 @@ export const HivlyConfigSchema = z.object({
     }).optional(),
     api_key: z.string().min(1, 'embeddings.api_key cannot be empty'),
   }),
-  knowledge: z.object({
-    chunk_size: z.number(),
-    chunk_overlap: z.number(),
-    grouping_window: z.number(),
-  }),
   sync: z.object({
     enabled: z.boolean(),
     sync_on_start: z.boolean(),

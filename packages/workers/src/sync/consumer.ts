@@ -15,6 +15,8 @@ import type { Database } from '@hivly/shared/db';
 import type { RedisClient } from '@hivly/shared/redis';
 import { CONSUMER_GROUPS, STREAM_KEYS } from '@hivly/shared/types/events';
 
+import type { EnrichmentChatModel } from '../enrichment/enrich.js';
+import type { GuardedDispatcher } from '../enrichment/ssrfGuard.js';
 import type { Embedder, RawStreamEntry } from '../indexer/types.js';
 import type { Logger } from '../logger.js';
 import { parseDeletedEvent, parseUpdatedEvent } from './events.js';
@@ -35,6 +37,11 @@ export interface RunSyncDeps {
   embedder: Embedder;
   config: HivlyConfig;
   logger: Logger;
+  /** The enrichment chat model — built once at boot, injected (AC-7, the SAME
+   *  instance given to the Indexer). Only the updated-stream loop uses it. */
+  enrichModel: EnrichmentChatModel;
+  /** The SSRF-guarded dispatcher — built once at boot, injected (AC-7). */
+  guard: GuardedDispatcher;
   /** Aborted on SIGTERM/SIGINT — both loops exit at their next iteration boundary. */
   signal: AbortSignal;
 }
@@ -45,7 +52,7 @@ export interface RunSyncDeps {
  * clients — a failure in one never affects the other.
  */
 export async function runSync(deps: RunSyncDeps): Promise<void> {
-  const { redisUpdated, redisDeleted, db, embedder, config, logger, signal } = deps;
+  const { redisUpdated, redisDeleted, db, embedder, config, logger, enrichModel, guard, signal } = deps;
   const group = CONSUMER_GROUPS.SYNC;
   const updatedStream = STREAM_KEYS.DISCORD_MESSAGES_UPDATED;
   const deletedStream = STREAM_KEYS.DISCORD_MESSAGES_DELETED;
@@ -74,6 +81,9 @@ export async function runSync(deps: RunSyncDeps): Promise<void> {
           embedder,
           config,
           logger,
+          enrichModel,
+          guard,
+          signal,
         });
       },
     }),

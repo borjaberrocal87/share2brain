@@ -35,13 +35,20 @@ describe('parseUpdatedEvent', () => {
     expect(parseUpdatedEvent({ ...valid, channelId: '' })).toBeNull();
   });
 
-  it('should reject a blank (whitespace-only) newContent', () => {
-    expect(parseUpdatedEvent({ ...valid, newContent: '   ' })).toBeNull();
+  it('should accept a blank (whitespace-only) newContent — Story 7.3 F3, a zero-URL edit', () => {
+    const event = parseUpdatedEvent({ ...valid, newContent: '   ' });
+    expect(event?.newContent).toBe('   ');
   });
 
-  it('should reject a missing newContent field', () => {
-    const rest = { type: valid.type, messageId: valid.messageId, channelId: valid.channelId };
-    expect(parseUpdatedEvent(rest)).toBeNull();
+  it('should default a missing newContent field to an empty string', () => {
+    const rest = {
+      type: valid.type,
+      messageId: valid.messageId,
+      channelId: valid.channelId,
+      timestamp: valid.timestamp,
+    };
+    const event = parseUpdatedEvent(rest);
+    expect(event?.newContent).toBe('');
   });
 
   it('should reject a missing timestamp (would poison the updated_at write)', () => {

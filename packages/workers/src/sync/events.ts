@@ -11,10 +11,11 @@ import type { MessageDeletedEvent, MessageUpdatedEvent } from '@hivly/shared/typ
  * Validate and narrow a raw stream field map to a MessageUpdatedEvent.
  *
  * Returns `null` unless `type === 'discord.message.updated'` and
- * `messageId`/`channelId` are non-blank and `newContent` is non-blank
- * (whitespace-only is rejected — mirrors `parseCreatedEvent`'s blank-content
- * rule). `timestamp` is ALSO validated non-blank: `processUpdate` writes it into
- * the `NOT NULL timestamptz` column `discord_messages.updated_at`, so a blank
+ * `messageId`/`channelId` are non-blank. `newContent` MAY be blank or absent
+ * (Story 7.3 F3) — an edit to zero indexable URLs, or to blank content, is a
+ * valid update that purges the message's resource rows; it defaults to `''`.
+ * `timestamp` is ALSO validated non-blank: `processUpdate` writes it into the
+ * `NOT NULL timestamptz` column `discord_messages.updated_at`, so a blank
  * value would poison the update transaction (invalid-timestamp → rollback →
  * PENDING forever). A blank timestamp is therefore treated as malformed
  * (warn + ack + skip, AC-2) rather than let through into a doomed SQL write.
@@ -28,9 +29,9 @@ export function parseUpdatedEvent(
   const messageId = fields.messageId?.trim();
   const channelId = fields.channelId?.trim();
   const timestamp = fields.timestamp?.trim();
-  const newContent = fields.newContent;
+  const newContent = fields.newContent ?? '';
 
-  if (!messageId || !channelId || !timestamp || newContent == null || newContent.trim() === '') {
+  if (!messageId || !channelId || !timestamp) {
     return null;
   }
 

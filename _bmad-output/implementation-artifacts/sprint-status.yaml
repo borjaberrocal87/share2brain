@@ -41,7 +41,35 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-06-30
-last_updated: 2026-07-09  # story 7-2 review → done (bmad-code-review): 3 layers (Blind/Edge/Auditor), acceptance clean (11 ACs + D1–D4). 8 patches applied+verified (lint/build/165 affected unit green): P1 HIGH — readCappedBody throw escaped fetchUrl's never-throws contract → poison message (wrapped→typed timeout/network_error); D1 MED — MAX_URLS_PER_MESSAGE=20 cap (grouping window was deleted, nothing replaced it); D2 MED — delimit untrusted page/message text in the LLM prompt; P2 MED — bound title(200)/description(1000) output; P3/P4/P5/P6 LOW/nit (abort rethrow in enrich, HTML hex+astral entities, spine link-refine note, types.ts grouping comment). 3 deferred (UTF-8 charset decoding, surrogate-split truncation, meta regex on full HTML). 2 dismissed as verified false positives (markdown-parens truncation, IPv4-mapped IPv6 SSRF). Patches UNCOMMITTED on feat/7-2-indexer-url-enrichment — commit+push to PR #46 + run integration before merge.
+last_updated: 2026-07-09  # story 7-3 review → done (bmad-code-review): 3 layers (Blind/Edge/Auditor), 0 AC violations. 2 Low patches applied+verified (lint/build/48 affected unit green): reused-embedding dimension assertion now covers the full row set; abort mid-update logs debug not error. Re-review adversarially confirmed both patches (0 regressions) + 2 regression tests added (revert-and-rerun discrimination-checked, 19/19 processUpdate unit green). 4 deferred (content-update ordering, Indexer/Sync race, unbounded newContent regex, embedder no abort signal — all pre-existing/design). 7 dismissed (F3 empty-purge=ratified + bot fetches full content; updated-before-created=AC-3; kept-link read-status loss=F1; cap-20 kept link; extractUrls dedupes; warn caller-context nit; EnrichmentError messages verified content-free). Patches UNCOMMITTED on feat/7-3-sync-link-diff-reindex.
+# as the link-diff reconciler (FR6). Kept links reuse title/description/embedding (zero fetch/
+# LLM/embed); new/changed links run the 7.2 pipeline via buildResourceRows (relocated from
+# indexer/indexBatch.ts to enrichment/resourceRows.ts with an optional reuse hook); persistence is
+# a single-tx wipe-and-reinsert keyed on the new positional chunk_key. Zero-URL/blank edits purge
+# all rows (parseUpdatedEvent relaxed); tombstoned/unknown-message updates are ack'd no-ops.
+# enrichModel/guard now injected into runSync/processUpdate from the same boot-built instances the
+# Indexer uses. Demolished chunking.ts, @langchain/textsplitters, and the knowledge config block
+# repo-wide (code + Hivly.config.yml(.example) + fixtures + stale doc references in
+# TECHNICAL-DESIGN.md/ARCHITECTURE-SPINE.md/PRD.md/backend-standards.md). Gate green: lint 0 / 787
+# unit+web / build clean (5 pkgs) / 118 integration (19 files, +convergence-on-redelivery
+# idempotency evidence) / 13 e2e chromium unchanged. No migration, no schema change, no new dep,
+# no bot/backend/web behavior change. Unblocks Story 7.4 (backend projection).
+# story 7-3 ready-for-dev → in-progress (bmad-dev-story)
+# story 7-3 backlog → ready-for-dev (bmad-create-story): sync worker rewritten
+# as the link-diff reconciler (FR6). 3 forks confirmed with Borja: F1 rebuild-by-diff — in-memory diff
+# by normalized link decides COST (kept links reuse title/description/embedding: 0 fetch/LLM/embed;
+# only new links run the 7.2 pipeline), persistence is one-tx wipe+reinsert at new positional
+# chunk_keys (avoids unique-index collisions when URL positions rotate; read-status loss on edit
+# accepted = 6.2 precedent); F2 kept links NOT re-enriched on text-only edits (FR6 covers new/changed
+# links; LLM cost control); F3 zero-URL/blank edit PURGES all rows + refreshes content + stamps
+# indexed_at (parseUpdatedEvent relaxed to accept blank newContent, timestamp stays non-blank;
+# closes the 6.2 "edit-to-blank keeps stale chunks" deferral). Embedded: tombstone guard
+# (deleted_at set → ack no-op, closes 6.2 resurrect hazard), processDelete survives UNCHANGED,
+# MAX_URLS cap=20 applies to edits, UPSERT kept for AD-13 convergence, demolition of
+# chunking.ts/@langchain/textsplitters/main.ts clamp/knowledge config block (Zod strips unknown
+# keys → old ymls keep booting), processMessage relocated indexBatch→enrichment/resourceRows.ts
+# with an optional reuse hook. No migration, no schema change, no new dep.
+# story 7-2 review → done (bmad-code-review): 3 layers (Blind/Edge/Auditor), acceptance clean (11 ACs + D1–D4). 8 patches applied+verified (lint/build/165 affected unit green): P1 HIGH — readCappedBody throw escaped fetchUrl's never-throws contract → poison message (wrapped→typed timeout/network_error); D1 MED — MAX_URLS_PER_MESSAGE=20 cap (grouping window was deleted, nothing replaced it); D2 MED — delimit untrusted page/message text in the LLM prompt; P2 MED — bound title(200)/description(1000) output; P3/P4/P5/P6 LOW/nit (abort rethrow in enrich, HTML hex+astral entities, spine link-refine note, types.ts grouping comment). 3 deferred (UTF-8 charset decoding, surrogate-split truncation, meta regex on full HTML). 2 dismissed as verified false positives (markdown-parens truncation, IPv4-mapped IPv6 SSRF). Patches UNCOMMITTED on feat/7-2-indexer-url-enrichment — commit+push to PR #46 + run integration before merge.
 # story 7-2 in-progress → review (bmad-dev-story)
 # story 7-2 ready-for-dev → review (bmad-dev-story 2026-07-09): Indexer rewritten as the resource
 # pipeline — extractUrls (Discord angle-bracket/markdown unwrap, trailing-punctuation+balanced-
@@ -220,7 +248,7 @@ development_status:
   epic-7: in-progress
   7-1-shared-modelo-datos-contratos-config-enriquecimiento: done
   7-2-workers-indexer-extraccion-urls-fetch-ssrf-generacion-ia: done
-  7-3-workers-sync-reindexacion-por-diff-de-links-y-purgado: backlog
+  7-3-workers-sync-reindexacion-por-diff-de-links-y-purgado: done
   7-4-backend-proyeccion-search-documents-rag-citas-seed: backlog
   7-5-web-searchview-docsview-citas-title-description-link: backlog
   7-6-e2e-extender-harness-visual-campos-nuevos: backlog

@@ -4,6 +4,8 @@ import type { RedisClient } from '@hivly/shared/redis';
 import { STREAM_KEYS } from '@hivly/shared/types/events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { EnrichmentChatModel } from '../enrichment/enrich.js';
+import type { GuardedDispatcher } from '../enrichment/ssrfGuard.js';
 import type { Embedder } from '../indexer/types.js';
 import type { Logger } from '../logger.js';
 import { runSync as runSyncImpl } from './consumer.js';
@@ -13,6 +15,11 @@ import { processUpdate } from './processUpdate.js';
 // runSync now takes one dedicated client per loop (updated/deleted). The fake
 // redis below routes reads by stream key, so a single fake stands in for both
 // clients — map the one `redis` onto both to keep the call sites focused.
+// processUpdate/processDelete are mocked below, so enrichModel/guard are never
+// actually invoked — fixed fakes just satisfy RunSyncDeps' shape (AC-7).
+const enrichModel = {} as unknown as EnrichmentChatModel;
+const guard = {} as unknown as GuardedDispatcher;
+
 function runSync(deps: {
   redis: RedisClient;
   db: Database;
@@ -22,7 +29,7 @@ function runSync(deps: {
   signal: AbortSignal;
 }) {
   const { redis, ...rest } = deps;
-  return runSyncImpl({ redisUpdated: redis, redisDeleted: redis, ...rest });
+  return runSyncImpl({ redisUpdated: redis, redisDeleted: redis, enrichModel, guard, ...rest });
 }
 
 // Isolate the loop mechanics from the processors: processUpdate/processDelete
