@@ -3,7 +3,7 @@
 # Copy to `Hivly.config.yml` and edit with real values:
 #   cp Hivly.config.yml.example Hivly.config.yml
 #
-# This file holds BEHAVIOR only (channels, models, RBAC, knowledge tuning,
+# This file holds BEHAVIOR only (channels, models, RBAC, enrichment tuning,
 # rate limits). Secrets (tokens, API keys, DB/Redis URLs) live ONLY in `.env`
 # and are referenced here as ${...} placeholders. Never mix the two (AD Consistency
 # Conventions). Validated by `loadConfig()` in `@hivly/shared`; the service
@@ -69,12 +69,6 @@ enrichment:
     user_agent: "HivlyBot/1.0"
     allowed_schemes: ["https"]
     block_private_ips: true   # SSRF mitigation (Story 7.2)
-
-# --- Knowledge / ingestion tuning --------------------------------------------
-knowledge:
-  chunk_size: 500
-  chunk_overlap: 50
-  grouping_window: 10   # consecutive same-channel messages grouped before chunking
 
 # --- Sync (edits/deletes from Discord) ---------------------------------------
 sync:
