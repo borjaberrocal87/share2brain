@@ -9,7 +9,7 @@
 ## Priority 1 — real operational impact, pick up first
 
 ### P1.1 — `MAXLEN` / stream trimming on all Redis Streams
-> **Story created 2026-07-08:** `ops-1-maxlen-stream-trimming.md` (status ready-for-dev). Design landed as a PEL-safe `XTRIM … MINID` trimmer (not naive `MAXLEN` on `xAdd`).
+> **DONE 2026-07-08:** `ops-1-maxlen-stream-trimming.md` (status done, code review passed; merged PR #39). Shipped as a PEL-safe `XTRIM … MINID` trimmer in a dedicated loop with its own Redis client — the naive `MAXLEN` on `xAdd` was explicitly rejected (it trims by count with no PEL awareness, which would drop unacked entries and violate AD-13). The four `xAdd` producers were deliberately left untouched.
 - **Why now:** Deferred three times (Epic 3 AI#4 → Epic 5 retro → Epic 6). Story 6.1 added two new
   unbounded streams (`hivly:discord:messages:updated`, `:deleted`) on top of `hivly:discord:messages`.
   No `MAXLEN`, unbounded growth in a long-running self-hosted deployment.
