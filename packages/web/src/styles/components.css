@@ -89,6 +89,18 @@
   color: #5865f2;
 }
 
+/* Resource link (Story 7.5): the "ver recurso" anchor in SearchView/DocsView.
+   Base color lives here (not inline) so :hover can override it — an inline
+   color would outrank this rule regardless of pseudo-class (cascade rule,
+   Epic 4 retro Action Item #4). Amber hover, unlike the blurple Discord-only
+   links above. */
+.kh-resource-link {
+  color: var(--text-muted);
+}
+.kh-resource-link:hover {
+  color: var(--accent-ink);
+}
+
 /* Documentos view (Story 4.4). */
 .kh-doc-row:hover {
   background: var(--hover-row);

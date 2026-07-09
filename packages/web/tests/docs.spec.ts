@@ -35,7 +35,7 @@ test.describe('Story 4.4 — Documentos (retroactive visual verification)', () =
     );
 
     // Header cells (source lowercase, uppercased by CSS): mono, 10.5px, uppercase, subtle.
-    const header = page.getByText('chunk', { exact: true });
+    const header = page.getByText('recurso', { exact: true });
     await expect(header).toHaveCSS('font-family', /IBM Plex Mono/);
     await expect(header).toHaveCSS('font-size', '10.5px');
     await expect(header).toHaveCSS('text-transform', 'uppercase');

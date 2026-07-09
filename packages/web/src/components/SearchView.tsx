@@ -339,12 +339,25 @@ function ResultCard({ fragment, guildId }: { fragment: SearchFragment; guildId: 
         </div>
       </div>
 
-      <p
+      <h3
         style={{
           margin: '12px 0 0',
-          fontSize: 14.5,
-          lineHeight: 1.6,
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontWeight: 600,
+          fontSize: 15.5,
           color: 'var(--text-primary)',
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {fragment.title}
+      </h3>
+
+      <p
+        style={{
+          margin: '6px 0 0',
+          fontSize: 14,
+          lineHeight: 1.6,
+          color: 'var(--text-secondary)',
           overflowWrap: 'anywhere',
         }}
       >
@@ -371,23 +384,41 @@ function ResultCard({ fragment, guildId }: { fragment: SearchFragment; guildId: 
           </div>
           <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{fragment.authorName}</span>
         </div>
-        <a
-          href={link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="kh-discord-link"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            fontSize: 12.5,
-            color: 'var(--text-muted)',
-            textDecoration: 'none',
-          }}
-        >
-          <span>ver en Discord</span>
-          <ExternalLinkIcon size={13} />
-        </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <a
+            href={fragment.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="kh-resource-link"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 12.5,
+              textDecoration: 'none',
+            }}
+          >
+            <span>ver recurso</span>
+            <ExternalLinkIcon size={13} />
+          </a>
+          <a
+            href={link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="kh-discord-link"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 12.5,
+              color: 'var(--text-muted)',
+              textDecoration: 'none',
+            }}
+          >
+            <span>ver en Discord</span>
+            <ExternalLinkIcon size={13} />
+          </a>
+        </div>
       </div>
     </div>
   );

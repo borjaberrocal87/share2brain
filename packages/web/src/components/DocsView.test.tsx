@@ -75,7 +75,7 @@ describe('DocsView', () => {
     renderView();
 
     expect(screen.getByText('Documentos indexados')).toBeTruthy();
-    expect(await screen.findByText('chunk')).toBeTruthy();
+    expect(await screen.findByText('recurso')).toBeTruthy();
     expect(screen.getByText('canal')).toBeTruthy();
     expect(screen.getByText('autor')).toBeTruthy();
     expect(screen.getByText('indexado')).toBeTruthy();
@@ -89,6 +89,48 @@ describe('DocsView', () => {
 
     expect(await screen.findByText('unread fragment content')).toBeTruthy();
     expect(screen.getByText('already read fragment')).toBeTruthy();
+  });
+
+  it('should render the title and description separately on their own testids (AC3, D3)', async () => {
+    fetchChannels.mockResolvedValue([]);
+    fetchDocuments.mockResolvedValue(page([DOC_UNREAD], 1));
+
+    renderView();
+
+    const title = await screen.findByText('Unread Fragment');
+    expect(title.getAttribute('data-testid')).toBe('doc-row-content');
+    const description = screen.getByText('unread fragment content');
+    expect(description.getAttribute('data-testid')).toBe('doc-row-description');
+  });
+
+  it('should switch read-state color/weight on doc-row-content between unread and read (AC3)', async () => {
+    fetchChannels.mockResolvedValue([]);
+    fetchDocuments.mockResolvedValue(page([DOC_UNREAD, DOC_READ], 2));
+
+    renderView();
+
+    const unreadTitle = await screen.findByText('Unread Fragment');
+    const readTitle = screen.getByText('Already Read Fragment');
+    expect(unreadTitle.style.color).toBe('var(--text-primary)');
+    expect(unreadTitle.style.fontWeight).toBe('500');
+    expect(readTitle.style.color).toBe('var(--text-muted)');
+    expect(readTitle.style.fontWeight).toBe('400');
+  });
+
+  it('should link "ver recurso" to doc.link and mark the row read on click (AC3, F2, D6)', async () => {
+    fetchChannels.mockResolvedValue([]);
+    fetchDocuments.mockResolvedValue(page([DOC_UNREAD], 1));
+    markRead.mockResolvedValue();
+
+    renderView();
+    await screen.findByText('unread fragment content');
+
+    const link = screen.getByRole('link', { name: /ver recurso/i }) as HTMLAnchorElement;
+    expect(link.href).toBe(DOC_UNREAD.link);
+
+    fireEvent.click(link);
+
+    expect(markRead).toHaveBeenCalledWith(DOC_UNREAD.id);
   });
 
   it('should mark an unread row read on click and call markRead with its id (AC3)', async () => {
@@ -168,7 +210,7 @@ describe('DocsView', () => {
     fetchDocuments.mockResolvedValue(page([], 0));
 
     renderView();
-    await screen.findByText('chunk');
+    await screen.findByText('recurso');
 
     fireEvent.click(screen.getByRole('button', { name: /Sin leer/i }));
 
