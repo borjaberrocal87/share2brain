@@ -41,7 +41,14 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-06-30
-last_updated: 2026-07-09  # story 7-4 ready-for-dev → review (bmad-dev-story): strict link contract
+last_updated: 2026-07-09  # story 7-4 review → done (bmad-code-review): 3 layers @ Opus, all 8 ACs
+# FULLY SATISFIED, no scope leaks; 1 patch applied (ragRetriever warn now logs structural Zod
+# issue path+code, not error.message — content-free invariant made structural; test discriminates,
+# 3/3 + tsc + eslint clean); 1 decision dismissed (accept ratified D3 fail-fast asymmetry on
+# search/documents/conversation read-parse — clean-slate runbook covers deploy); 2 deferred to
+# deferred-work.md (title z.string() accepts '' vs F3 chip intent; all-rows-malformed → false
+# "not enough info"); 4 dismissed as noise.
+# story 7-4 ready-for-dev → review (bmad-dev-story): strict link contract
 # (isHttpUrl, no more '' tolerance) + Citation.title landed in shared (bidirectional satisfies
 # guard enforced both sides in one edit); mechanical compile ripples through graph.ts/chatService.ts/
 # ChatWidget.tsx; SYSTEM_PROMPT reframed to curated-resource semantics (FR13, new prompt.test.ts,
@@ -274,7 +281,7 @@ development_status:
   7-1-shared-modelo-datos-contratos-config-enriquecimiento: done
   7-2-workers-indexer-extraccion-urls-fetch-ssrf-generacion-ia: done
   7-3-workers-sync-reindexacion-por-diff-de-links-y-purgado: done
-  7-4-backend-proyeccion-search-documents-rag-citas-seed: review
+  7-4-backend-proyeccion-search-documents-rag-citas-seed: done
   7-5-web-searchview-docsview-citas-title-description-link: backlog
   7-6-e2e-extender-harness-visual-campos-nuevos: backlog
   epic-7-retrospective: optional

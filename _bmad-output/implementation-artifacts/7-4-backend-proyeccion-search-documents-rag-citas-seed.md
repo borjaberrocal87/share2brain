@@ -8,7 +8,7 @@ baseline_commit: a0e7edbda49439c267209f765243c23b2bf01fa8
 
 # Story 7.4: backend — proyección search/documents/RAG/citas + seed e2e
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created
      (2 parallel deep-dives: backend current-state + shared contracts/docs; prior-story intel from 7.1/7.2/7.3). -->
@@ -469,3 +469,14 @@ assertions (only the fixture flip) since it doesn't exercise search/documents re
   salted fixtures + first title/description/link round-trip assertions; docs/runbook synced.
   Gate green: lint 0 / 800 unit+web (+9) / build clean (5 pkgs) / 120 integration (+2) / 13 e2e
   chromium unchanged. No DDL, no migration, no new dependency. Status: review.
+
+## Review Findings (bmad-code-review 2026-07-09)
+
+_3 layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor), all at Opus. Auditor verified all 8
+ACs FULLY SATISFIED with no scope leaks; grep-confirmed zero `isEmptyOrHttpUrl` and zero active
+`link: ''`. 1 decision, 1 patch, 2 deferred, 3 dismissed as noise._
+
+- [x] [Review][Decision → DISMISSED by Borja 2026-07-09: accept the ratified D3 asymmetry — fail-fast on search/documents is the intended diagnostic signal; the clean-slate runbook covers deploy and steady-state is assumed clean] Read-back parse 500 blast radius on corrupt/legacy persisted rows — `/api/search` + `/api/documents` still `.parse()` the whole aggregate (D3 fail-fast, unchanged), so a single unparseable row (e.g. `link: ''`) 500s the endpoint and discards every valid result too; `getConversation` parses raw `citations` jsonb through the now-strict schema, so one legacy citation 500s the conversation on open while it still lists in the sidebar. Ratified for DEPLOY-time via the clean-slate wipe (D3/F1/runbook), but STEADY-STATE single-row corruption (partial enrichment write, manual insert, future migration) was not weighed. Asymmetric vs chat's F2 skip-and-warn. [blind+edge]
+- [x] [Review][Patch] APPLIED 2026-07-09 — now logs `parsed.error.issues.map((i) => ({ path, code }))` (structural, content-free); test updated to assert the new shape (3/3 green, tsc + eslint clean). ragRetriever logged full `parsed.error.message` (whole ZodError dump) instead of structural issue codes/paths [packages/backend/src/infrastructure/ragRetriever.drizzle.ts:51] — no content leak today (Zod v4 messages carry no input values; link failures emit the static LINK_REFINE_MESSAGE — both reviewers verified), but it leaves the "never log content" DoD invariant incidental not structural, and the dump is verbose. Fix: log `parsed.error.issues.map((i) => ({ path: i.path, code: i.code }))`.
+- [x] [Review][Defer] Citation/fragment `title: z.string()` accepts `''` [packages/shared/src/schemas/citation.ts:16] — deferred, consistent with the ratified D2 plain-z.string() convention for descriptive fields (channel/author/title); contract enforces link quality but not title non-emptiness despite F3's chip intent. Future: `.min(1)` if 7.5 needs the guarantee.
+- [x] [Review][Defer] All-rows-malformed retrieval returns `[]` → chat answers a false "not enough information" [packages/backend/src/infrastructure/ragRetriever.drizzle.ts:57] — deferred, edge (post-wipe should not occur); F2 handles availability but there is no observability distinction between skipped-all and genuinely-found-none. Future: a skipped-count metric/flag.
