@@ -69,7 +69,7 @@ graph TD
 - **Binds:** packages/shared, packages/bot, packages/backend, packages/workers
 - **Prevents:** definiciones de tabla duplicadas o divergentes entre servicios; migraciones en lenguajes o herramientas distintas
 - **Rule:** El schema de todas las tablas se define en `packages/shared/src/db/schema.ts` con Drizzle. Las migraciones se generan con `drizzle-kit` como SQL explícito. Ningún servicio define tablas ni hace DDL fuera de `packages/shared`. Las queries a pgvector usan la extensión de vector de drizzle-orm. La dimensión de la columna `vector` (tabla `embeddings`) se parametriza a **deploy-time** desde `embeddings.dimensions` (leída por `schema.ts` en generate-time con un lector mínimo de YAML, no `loadConfig()`); `schema.ts` sigue siendo la fuente de verdad del DDL. Cambiar la dimensión con datos ya indexados exige migración + re-indexado completo.
-- **Nota (Epic 7, Story 7.1):** la tabla `embeddings` pasó de `content` (texto agrupado/chunkeado) a `title`+`description`+`link` (un recurso por URL, generados por IA en la Historia 7.2). `chunk_key` cambió su semántica a `"<messageId>:<urlIndex>"` (antes `"<firstMessageId>:<chunkIndex>"`, Story 3.3) pero sigue siendo el único índice/target de UPSERT (AD-13) — la migración `0003_*` es destructiva (`DROP COLUMN content` + `ADD COLUMN … NOT NULL`) y exige el runbook de wipe-completo documentado en la Historia 7.1.
+- **Nota (Epic 7, Stories 7.1+7.2):** la tabla `embeddings` pasó de `content` (texto agrupado/chunkeado) a `title`+`description`+`link` (un recurso por URL, generados por IA — Historia 7.2). `chunk_key` cambió su semántica a `"<messageId>:<urlIndex>"` (antes `"<firstMessageId>:<chunkIndex>"`, Story 3.3) pero sigue siendo el único índice/target de UPSERT (AD-13) — la migración `0003_*` es destructiva (`DROP COLUMN content` + `ADD COLUMN … NOT NULL`) y exige el runbook de wipe-completo documentado en la Historia 7.1.
 
 ### AD-6 — Contrato API mediante Zod schemas en shared
 
@@ -127,12 +127,14 @@ graph TD
 | `hivly:discord:messages:deleted` | bot | `hivly:sync` | workers/sync |
 | `hivly:knowledge:events` | bot (desde 3.2: `discord.backfill.completed`); workers *(Epic 6)* | `hivly:notifier` | notifier *(deferred — Epic 6)* |
 
-**Nueva capacidad de ingesta (Epic 7, Story 7.1 — config; comportamiento en Story 7.2):** el Worker
-Indexer va a realizar fetch saliente de las URLs extraídas de cada mensaje (timeout, tope de
-tamaño, límite de redirects, allowlist de esquemas y bloqueo de IPs privadas — mitigación SSRF) y
-una llamada generativa a un LLM (`enrichment.llm`) para producir `title`+`description` en el
-idioma de `enrichment.language`. El bloque `enrichment` requerido en `HivlyConfigSchema` (`config/
-index.ts`) valida esta configuración desde ya; el fetch/LLM en sí lo implementa la Historia 7.2.
+**Capacidad de ingesta (Epic 7 — config en Story 7.1, comportamiento en Story 7.2):** el Worker
+Indexer realiza fetch saliente de las URLs extraídas de cada mensaje (timeout, tope de
+tamaño, límite de redirects, allowlist de esquemas y bloqueo de IPs privadas — mitigación SSRF,
+Layer A IP-literal + Layer B `connect.lookup`) y una llamada generativa a un LLM
+(`enrichment.llm`) para producir `title`+`description` en el idioma de `enrichment.language`. Un
+mensaje sin URL (o con todas sus URLs bloqueadas por SSRF) se descarta (se marca `indexed_at`,
+sin fila en `embeddings`). El bloque `enrichment` requerido en `HivlyConfigSchema` (`config/
+index.ts`) valida esta configuración.
 
 Campos mínimos obligatorios en cada mensaje de stream: `messageId` (snowflake string), `channelId` (string), `guildId` (string), `timestamp` (ISO 8601). Los tipos de evento están definidos en `packages/shared/src/types/events.ts`. Los Workers hacen ACK (`XACK`) solo tras procesar con éxito; no hacen ACK si el procesamiento falla (permite reintento automático por otro consumer del mismo group).
 
@@ -318,7 +320,7 @@ hivly/
 - **TLS / HTTPS en nginx:** Configuración de certificados (Let's Encrypt, cert manual) deferred a la guía de operaciones.
 - **Health checks de Compose:** Scripts de probe para cada servicio deferred al builder de docker-compose.
 - **Abstracción explícita del proveedor LLM/embeddings:** implementada en Story 3.0 — provider-factory en `shared` selecciona el adaptador de LangChain según config: LLM `ChatAnthropic`/`ChatOpenAI(baseURL)` (anthropic/openai/custom) y embeddings `OpenAIEmbeddings(baseURL)` (openai/custom). Anthropic no ofrece API de embeddings.
-- **Estrategia de batching del Indexer:** El `grouping_window` y `chunk_overlap` están en config. **Resuelto en Story 3.3:** dentro de un batch `XREADGROUP`, las entradas se particionan por `channelId` (orden de stream preservado) en grupos de ≤ `grouping_window` mensajes; cada grupo se concatena con `'\n'` y se trocea con `RecursiveCharacterTextSplitter` usando una heurística de ~4 chars/token para que `chunk_size` cuente tokens aproximados.
+- **Estrategia de batching del Indexer *(superseded, Epic 7 — Story 7.2):*** El diseño de Story 3.3 agrupaba entradas de un batch `XREADGROUP` por `channelId` en grupos de ≤ `grouping_window` mensajes y las troceaba con `RecursiveCharacterTextSplitter` (`chunk_size`/`chunk_overlap`). El pivote a índice curado de recursos retira esa agrupación/chunking del Indexer: cada mensaje se procesa individualmente, una fila de `embeddings` por URL extraída — `chunking.ts`/`knowledge.*` siguen vivos solo para `sync/processUpdate.ts` hasta la Historia 7.3.
 - **Observabilidad detallada:** Sentry está referenciado en el PRD vía `SENTRY_DSN`; la estrategia de instrumentación (qué errores, qué traces) es deferred.
 - **Topología de desarrollo local:** En dev, el builder de `packages/web` levanta el Vite dev server (puerto 5173) mientras el Backend corre en el puerto 3000 — los orígenes son distintos. La configuración CORS del Backend (variable `FRONTEND_URL`) y el proxy de Vite (`vite.config.ts`) para `/api/*` son deferred al setup de desarrollo; no afectan la topología de producción gobernada por AD-7.
 - **nginx image tag explícito:** Para evitar actualizaciones silenciosas en producción, el `docker-compose.yml` DEBE pintar `nginx:1.27-alpine` (o la versión exacta que elija el builder) en lugar de `nginx:latest`. Deferred al builder de docker-compose.

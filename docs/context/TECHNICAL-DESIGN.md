@@ -250,18 +250,24 @@ El Backfiller almacena el `last_seen_message_id` (Discord snowflake) por canal e
 
 **Responsabilidad:** Consumir eventos de Redis Streams y mantener el índice vectorial en PostgreSQL. Dos consumers en el mismo proceso, cada uno con su consumer group.
 
-**Indexer** — consume `hivly:discord:messages` (consumer group `hivly:indexer`):
+**Indexer** — consume `hivly:discord:messages` (consumer group `hivly:indexer`); indexa solo
+mensajes con URL (FR5, Story 7.2):
 
 ```
 1. XREADGROUP GROUP hivly:indexer consumer-1 COUNT 10 STREAMS hivly:discord:messages >
 2. Para cada mensaje:
-   a. Agrupar con mensajes consecutivos del mismo canal (grouping_window)
-   b. Generar chunk_text concatenado
-   c. Dividir en fragmentos de chunk_size tokens con chunk_overlap
-   d. Para cada fragmento: llamar al proveedor de embeddings configurado → vector de `embeddings.dimensions`
-   e. INSERT INTO embeddings (content, embedding, channel_id, message_ids, ...)
-   f. Actualizar discord_messages SET indexed_at = now()
-3. XACK hivly:discord:messages hivly:indexer <message-id>
+   a. urls = extractUrls(content, enrichment.fetch.allowed_schemes) — ordenado, deduplicado
+   b. Si urls.length === 0: marcar indexed_at = now(), XACK, sin filas → siguiente mensaje
+   c. Para cada url (en orden, index = posición):
+      - fetchUrl(url) tras la guarda SSRF (Layer A IP-literal + Layer B connect.lookup)
+      - ssrf_blocked / scheme_disallowed → omitir esa URL, sin fila (D2)
+      - fetch ok → pageHints (title/meta/OG + texto); fetch falló por otra razón → solo texto del mensaje
+      - enrich(messageText, pageHints?) → {title, description} (enrichment.language)
+      - enrich falla (LLM) → todo el mensaje es un fallo de procesamiento, sin XACK (D1)
+   d. Si quedó ≥1 fila: embedder.embedDocuments(['${title}\n\n${description}', ...]) → vector[dimensions]
+   e. Una transacción: INSERT/UPSERT embeddings (chunk_key=`${messageId}:${urlIndex}`, title,
+      description, link, embedding, channel_id, message_ids=[messageId]) + UPDATE indexed_at
+3. XACK hivly:discord:messages hivly:indexer <message-id> (gated por el RETURNING del UPDATE)
 ```
 
 **Sync Worker** — consume `hivly:discord:messages:updated` y `hivly:discord:messages:deleted` (consumer group `hivly:sync`):
@@ -487,15 +493,15 @@ CREATE INDEX idx_user_read_status_embedding ON user_read_status(embedding_id);
 
 ## 7. Pipeline de ingestión
 
-> **Superseded (Epic 7).** El pipeline de agrupación/chunking descrito abajo (grouping_window,
-> chunk_size, chunk_overlap → `embeddings.content`) corresponde al diseño pre-Epic-7. El pivote a
-> índice curado de recursos (Story 7.1 — este documento) reemplaza `content` por
-> `title`+`description`+`link` por URL extraída; la reescritura completa de este pipeline
-> (extracción de URLs, fetch con guarda SSRF, generación IA) llega en la Historia 7.2 — ver
-> `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09.md` §4.1.
+El Indexer indexa **solo mensajes que contienen una URL** (FR5, pivote Epic 7 — Story 7.2). Un
+mensaje sin URL (o cuyas URLs quedan todas bloqueadas por la guarda SSRF) se descarta: se marca
+`indexed_at` y se hace `XACK`, pero no genera ninguna fila en `embeddings`. Por cada URL extraída
+se hace fetch (guardado contra SSRF), se genera `title`+`description` vía IA, y se persiste una
+fila de `embeddings` (`title`/`description`/`link`) — el chunking/agrupación por canal del
+diseño pre-Epic-7 queda retirado del Indexer (sigue vivo en `sync/processUpdate.ts` hasta la
+Historia 7.3).
 
-El flujo completo desde que un mensaje aparece en Discord hasta que es buscable (diseño
-pre-Epic-7; reescrito en la Historia 7.2):
+El flujo completo desde que un mensaje aparece en Discord hasta que es buscable:
 
 ```mermaid
 sequenceDiagram
@@ -503,6 +509,8 @@ sequenceDiagram
     participant Bot
     participant RS as Redis Streams
     participant Idx as Workers/Indexer
+    participant Web as Sitio enlazado (fetch SSRF-guardado)
+    participant LLM as Enrichment LLM (config)
     participant EMB as Embeddings Provider (config)
     participant PG as PostgreSQL+pgvector
 
@@ -512,16 +520,30 @@ sequenceDiagram
     Bot->>RS: XADD hivly:discord:messages {messageId, channelId, content, ...}
 
     RS->>Idx: XREADGROUP hivly:indexer (at-least-once)
-    Idx->>Idx: Agrupar mensajes consecutivos (grouping_window)
-    Idx->>Idx: Dividir en fragmentos (chunk_size, chunk_overlap)
-    Idx->>EMB: POST /embeddings (embeddings.model)
-    EMB-->>Idx: vector[dimensions]
-    Idx->>PG: INSERT embeddings (content, embedding, channel_id, message_ids)
-    Idx->>PG: UPDATE discord_messages SET indexed_at = now()
-    Idx->>RS: XACK hivly:discord:messages hivly:indexer <id>
+    Idx->>Idx: extractUrls(content, allowed_schemes) — ordenado, deduplicado
+    alt Sin URLs (o todas bloqueadas por SSRF)
+        Idx->>PG: UPDATE discord_messages SET indexed_at = now() (0 filas)
+        Idx->>RS: XACK hivly:discord:messages hivly:indexer <id>
+    else Por cada URL (en orden)
+        Idx->>Web: fetch(url) tras Layer A/B SSRF (redirect: 'manual')
+        Web-->>Idx: body + content-type (o fallo: timeout/http_error/…)
+        Idx->>LLM: enrich(messageText, pageHints?) → {title, description}
+        LLM-->>Idx: title + description (enrichment.language)
+        Idx->>EMB: POST /embeddings (`${title}\n\n${description}`)
+        EMB-->>Idx: vector[dimensions]
+        Idx->>PG: INSERT embeddings (title, description, link, embedding, channel_id, message_ids)
+        Idx->>PG: UPDATE discord_messages SET indexed_at = now()
+        Idx->>RS: XACK hivly:discord:messages hivly:indexer <id>
+    end
 ```
 
-**Chunking:** Los mensajes de Discord son cortos, pero varios mensajes consecutivos del mismo canal se agrupan antes de hacer chunk. Esto mejora la coherencia semántica de los fragmentos: una conversación de 5 mensajes sobre un mismo tema queda en el mismo embedding, no fragmentada en 5 vectores independientes.
+**Clasificación de fallos por URL (D1/D2, AD-13):** un fetch fallido (timeout, http_error,
+network_error, too_large, too_many_redirects) NO es un fallo de procesamiento — se enriquece con
+el texto del mensaje solamente (fallback) y el recurso se indexa igual. Un bloqueo SSRF
+(`ssrf_blocked`/`scheme_disallowed`) tampoco es un fallo: esa URL se omite sin fila (nunca se
+publica un enlace privado/interno como cita). Solo un fallo de LLM o de embeddings es un fallo de
+procesamiento real: el mensaje completo queda sin `XACK` (PEL replay, sin límite de reintentos —
+P2.2 sigue diferido).
 
 **Backfill al arrancar:**
 
@@ -1110,7 +1132,7 @@ Estas decisiones están conscientemente pospuestas. No son olvidos — son área
 | **TLS en nginx** | Let's Encrypt vs cert manual | AD-7 establece que nginx termina TLS |
 | **Health checks Compose** | Scripts de probe por servicio | Sin restricción |
 | **Abstracción proveedor LLM/embeddings** | Implementada en Story 3.0 (provider-factory en shared: ChatAnthropic / ChatOpenAI(baseURL) / OpenAIEmbeddings(baseURL)) | Cubre LLM (anthropic/openai/custom) y embeddings (openai/custom) |
-| **Batching del Indexer** | Lógica exacta de grouping_window | El config fija los parámetros |
+| **Batching del Indexer** *(superseded, Epic 7)* | Lógica de grouping_window (diseño Story 3.3, pre-pivote) | Retirado del Indexer en Story 7.2 — el pipeline indexa por URL, sin agrupar mensajes |
 | **Observabilidad** | Qué errores y traces van a Sentry | `SENTRY_DSN` en config |
 | **Topología dev local** | Vite proxy, CORS config en Backend | No afecta producción (AD-7) |
 | **nginx image tag** | `nginx:1.27-alpine` o versión exacta | No usar `nginx:latest` |

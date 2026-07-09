@@ -62,6 +62,16 @@
   window is bounded by `backfill.limit`, so edits/deletes older than the window are missed.
 - **Scope:** a periodic or on-demand full-channel reconcile that does not rely on the anchor cursor.
 
+### P2.5 — FR21 knowledge-lifecycle notification ("recurso enriquecido indexado")
+- **Why:** Épico 7 (`epics.md`) lists FR21 as covered, but no 7.x story implements a
+  knowledge-lifecycle notification. The Story 6.4 Notifier (`@hivly/shared/notifier`) is
+  deliberately **crash-alerts-only** by design (Epic 6) — it is never wired into the Indexer's
+  success path. Story 7.2 (workers/indexer resource pipeline) explicitly must NOT emit
+  notifications from `indexBatch` (out of scope), so this gap persists post-7.2.
+- **Scope:** decide whether/how to notify an operator when a resource is enriched+indexed
+  (e.g. a low-noise digest, not per-URL spam) — needs a design decision before implementation,
+  not just wiring the existing crash-alert Notifier.
+
 ## Future product capability (retained goal, needs a real epic)
 
 ### F1 — Execution-trace panel (agentic capabilities)

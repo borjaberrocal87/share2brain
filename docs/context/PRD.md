@@ -56,7 +56,7 @@ Este documento define el **sistema core de Hivly** que cada operador despliega e
 | **Miembro** | Integrante autenticado de la comunidad Discord que usa la web app para buscar y chatear |
 | **Guild** | Servidor de Discord identificado por su `guild_id` |
 | **Mensaje** | Mensaje original publicado en un canal de Discord (`discord_messages`) |
-| **Fragmento** | Unidad de conocimiento indexado generada al chunkear uno o varios mensajes agrupados (`embeddings`). Es el concepto de cara al usuario. |
+| **Fragmento** | Recurso curado indexado: un enlace extraído de un mensaje, enriquecido con `title`+`description` generados por IA (`embeddings`, Epic 7 — Story 7.2). Es el concepto de cara al usuario. |
 | **Embedding** | Vector numérico de dimensión configurable (`embeddings.dimensions`, default 1536) que representa semánticamente un Fragmento. Término interno de infraestructura. |
 | **Conversación** | Sesión de chat entre un Miembro y el agente RAG (`conversations`) |
 | **Backfill** | Proceso de indexación de mensajes históricos al iniciar el sistema |
@@ -509,8 +509,9 @@ embeddings:
 knowledge:
   chunk_size: 500          # tokens por fragmento (LangChain default; ajustar post-MVP)
   chunk_overlap: 50        # tokens de solapamiento entre fragmentos
-  grouping_window: 10      # mensajes consecutivos a agrupar antes de chunkear
-  # Pipeline: agrupa N mensajes → genera chunk_text concatenado → divide en fragmentos de chunk_size tokens
+  grouping_window: 10      # vestigial (Epic 7, Story 7.2): el Indexer ya no agrupa/chunkea
+  # chunk_size/chunk_overlap: usados solo por sync/processUpdate.ts al re-indexar una edición
+  # (hasta la Historia 7.3). El Indexer indexa por URL — ver §embeddings y TECHNICAL-DESIGN §7.
 
 # Read Tracking
 read_tracking:

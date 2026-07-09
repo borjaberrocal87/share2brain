@@ -52,11 +52,14 @@ the Backend for search, documents, and RAG.
 - `chunk_key`: deterministic dedup key, `"<messageId>:<urlIndex>"` — one key per URL of one
   message (message snowflakes are globally unique, so the channel is implicit and never part of
   the key). Unique-indexed (`idx_embeddings_chunk_key`); this is the UPSERT target, not `id`.
-- `title`: AI-generated title for the linked resource (Story 7.2)
-- `description`: AI-generated description for the linked resource (Story 7.2)
-- `link`: the extracted URL (Story 7.2). Empty string (`''`) is a valid placeholder pre-7.2 —
-  there is intentionally **no** unique index on `link` (placeholders would collide; `chunk_key` is
-  the dedup key)
+- `title`: AI-generated title for the linked resource, produced by `enrichment.llm` in
+  `enrichment.language` (Story 7.2)
+- `description`: AI-generated description for the linked resource, produced by `enrichment.llm`
+  (Story 7.2)
+- `link`: the extracted, normalized URL (`URL.href` — lowercased scheme/host, percent-normalized;
+  Story 7.2). Empty string (`''`) remains a valid placeholder for pre-7.2 legacy rows and backend
+  seed fixtures (updated in Story 7.4) — there is intentionally **no** unique index on `link`
+  (placeholders would collide; `chunk_key` is the dedup key)
 - `embedding`: `vector(N)` where `N = embeddings.dimensions` (pgvector; parametrized at deploy-time, default 1536)
 - `channel_id`: Discord channel snowflake (used for the RBAC filter)
 - `message_ids`: `string[]`, length 1 — `message_ids[0]` is the anchor message the Search/Docs
