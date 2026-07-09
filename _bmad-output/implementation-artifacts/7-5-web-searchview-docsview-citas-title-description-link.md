@@ -8,7 +8,7 @@ baseline_commit: 889c11e5a4a41a12a41cc6ac0af7823fdba9de77
 
 # Story 7.5: web — SearchView/DocsView/citas render de title/description/link + UX
 
-Status: review
+Status: done
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created
      (2 parallel deep-dives: web current-state + UX/prototype/prior-story intel from 4.3/4.4/5.4/7.4). -->
@@ -494,3 +494,37 @@ None — no blocking issues; all tests went red-then-green on first implementati
   chromium (unchanged, only the `docs.spec.ts` anchor patch). New-field visual/CSS ACs (title
   typography, link hovers, chip title styling) explicitly flagged as deferred to Story 7.6 per
   the epic plan — not silently passed. Status: review.
+
+### Review Findings
+
+Code review 2026-07-09 (bmad-code-review, 3 adversarial layers @ Opus: Blind Hunter /
+Edge Case Hunter / Acceptance Auditor). Acceptance Auditor: all 8 ACs satisfied, 0 violations,
+no do-not-touch breach, tests discriminating. 3 findings dismissed as noise (anchor-re-marks
+already-read = false positive, handleRowClick early-returns on isRead; `doc-row-content` testid
+carrying title = intentional per D3, no consumer breaks; §12→§9 spec-ref drift = self-noted,
+content correct).
+
+- [x] [Review][Patch] Harden resource `title` to `.trim().min(1)` [citation.ts / search.ts /
+  documents.ts] — APPLIED (Borja, 2026-07-09). `.min(1)` accepted `" "`, `"\n"`, zero-width-space
+  → blank `<h3>`/`doc-row-content`/chip. Made the "non-empty" doc-comment promise structural in the
+  shared contract instead of relying solely on the enrichment write-path guard. Added whitespace-
+  only reject cases to citation/search/documents/sse tests. Gate re-run: lint 0 / 813 unit+web
+  (+4) / build clean (5 pkgs) / shared typecheck clean (satisfies guards compile). Integration+e2e
+  not re-run (whitespace-only tightening; no fixture/seed carries such a title — risk nil).
+- [x] [Review][Defer] "ver recurso" mark-read misses middle-click / context-menu open-in-new-tab
+  [DocsView.tsx] — deferred (Borja, 2026-07-09): accepted as a known F2 limitation. The context
+  menu fires no event at all, so covering only middle-click (`auxclick`) would be partial anyway;
+  primary/modifier click + keyboard cover the main interaction (row click / link click).
+- [x] [Review][Defer] `.min(1)` widens the whole-response parse-poison blast radius — deferred,
+  pre-existing (ratified D3). `searchService.ts:52` / `documentService.ts:75` `.parse()` the whole
+  response (one empty-title row → 500 for the entire page) while `ragRetriever.drizzle.ts:30`
+  `safeParse`s per row and skips-and-warns. Only theoretical given the write-path guard; Story 7.4
+  review ratified this fail-fast asymmetry — spec says don't reopen.
+- [x] [Review][Defer] New per-card `<h3>` title may skip heading hierarchy (a11y) [SearchView.tsx]
+  — deferred, minor. If the page has no `<h2>` ancestor the result cards emit orphan h3s; a
+  screen-reader-navigation nit, not a functional break. Low value.
+- [x] [Review][Defer] Completion-note AC-1 grep under-reports [sync.integration.test.ts:589,633]
+  — deferred, doc-accuracy only. Two more `title: ''` raw-DB seeds exist (`seedEmbedding` for the
+  soft/hard-delete path tests, in `workers` do-not-touch, never contract-parsed, ratified pre-pivot
+  seeds). AC-1's substantive guarantee holds; only the note's literal "no `title: ''` in active
+  fixtures/seeds" phrasing is imprecise.

@@ -41,7 +41,13 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-06-30
-last_updated: 2026-07-09  # story 7-5 in-progress → review (bmad-dev-story): shared title
+last_updated: 2026-07-09  # story 7-5 review → done (bmad-code-review): 3 layers @ Opus (Blind/Edge/Auditor),
+# all 8 ACs satisfied, 0 violations. 1 patch applied (title tightened .min(1)→.trim().min(1) across
+# citation/search/documents + 4 whitespace-reject tests; re-gate lint 0 / 813 unit+web / build clean).
+# 1 decision deferred (F2 mark-read misses middle-click/context-menu open-in-new-tab — accepted F2 limit).
+# 3 deferred (parse-poison blast-radius ratified D3; per-card h3 a11y; AC-1 note under-reports 2 raw seeds).
+# 3 dismissed (anchor re-marks read = false positive, doc-row-content testid = by-design D3, §12→§9 self-noted).
+# --- prior: story 7-5 in-progress → review (bmad-dev-story): shared title
 # tightened to .min(1) (F1); SearchView h3 title + "ver recurso" link (D1/D2); DocsView main cell
 # restructured into title/description/bubbling-anchor (D3/F2) + de-chunked copy (F4);
 # CitationChip shows resource title + links to citation.link (D4/F3); UX-DR11/12/13/21 + api-spec
@@ -307,7 +313,7 @@ development_status:
   7-2-workers-indexer-extraccion-urls-fetch-ssrf-generacion-ia: done
   7-3-workers-sync-reindexacion-por-diff-de-links-y-purgado: done
   7-4-backend-proyeccion-search-documents-rag-citas-seed: done
-  7-5-web-searchview-docsview-citas-title-description-link: review
+  7-5-web-searchview-docsview-citas-title-description-link: done
   7-6-e2e-extender-harness-visual-campos-nuevos: backlog
   epic-7-retrospective: optional
 
