@@ -15,6 +15,10 @@ const TEXT_MUTED = 'rgb(124, 132, 148)'; // --text-muted #7C8494
 const TEXT_SUBTLE = 'rgb(100, 108, 124)'; // --text-subtle #646C7C
 const BORDER_STRONG = 'rgb(42, 49, 61)'; // --border-strong #2A313D
 
+// The first DocsView row (ORDER BY created_at DESC → newest) is e2e-msg-g1, the
+// same resource as the top search result; its link is the exact seed value.
+const FIRST_DOC_RESOURCE_LINK = 'https://example.com/e2e/configurar-canales-indexados';
+
 async function gotoDocs(page: import('@playwright/test').Page): Promise<void> {
   await loginAs(page, 'e2e-member');
   await page.getByRole('button', { name: /Documentos/ }).click();
@@ -76,7 +80,96 @@ test.describe('Story 4.4 — Documentos (retroactive visual verification)', () =
     await page.screenshot({ path: testInfo.outputPath('docs-table.png'), fullPage: true });
   });
 
-  // MUTATING — marks every fragment read for the member; runs LAST in this file.
+});
+
+// Story 7.5 restructured the DocsView main cell into a title (single-line ellipsis)
+// + a 2-line-clamped description + a "ver recurso" resource link. jsdom can't verify
+// the clamp/typography/hover; this harness does (Epic 4 retro AI#6). Both tests run
+// AFTER the 4.4 dots test (which needs the seeded read/unread mix) and BEFORE the
+// terminal mark-all mutation below.
+test.describe('Story 7.6 — DocsView description + resource link', () => {
+  test('first row: clamped description, ellipsis title, resource link (AC2)', async ({
+    page,
+  }, testInfo) => {
+    await gotoDocs(page);
+    const firstRow = page.locator('.kh-doc-row').first();
+
+    // Description: muted, 2-line -webkit-box clamp. NOTE: with -webkit-line-clamp
+    // engaged, Chromium reports the *computed* `display` as `flow-root` (not
+    // `-webkit-box`) even though the specified/used value is -webkit-box and the
+    // clamp works — so we assert the clamp via the properties that DO compute
+    // meaningfully (line-clamp + box-orient + overflow), which a non-clamped span
+    // would lack. (A bare `display:-webkit-box` element still computes -webkit-box;
+    // it's the line-clamp interaction that serializes to flow-root.)
+    const description = firstRow.getByTestId('doc-row-description');
+    await expect(description).toHaveCSS('color', TEXT_MUTED);
+    await expect(description).toHaveCSS('-webkit-line-clamp', '2');
+    await expect(description).toHaveCSS('-webkit-box-orient', 'vertical');
+    await expect(description).toHaveCSS('overflow-x', 'hidden');
+    // overflow-y is the axis the 2-line clamp needs to hide the 3rd+ line; without
+    // it the clamp is inert, so assert it too (not just overflow-x).
+    await expect(description).toHaveCSS('overflow-y', 'hidden');
+
+    // Title stays single-line (read/unread color+weight already covered by the 4.4 test).
+    const title = firstRow.getByTestId('doc-row-content');
+    await expect(title).toHaveCSS('white-space', 'nowrap');
+    await expect(title).toHaveCSS('text-overflow', 'ellipsis');
+    // Ellipsis only truncates when overflow is clipped — guard the necessary pair.
+    await expect(title).toHaveCSS('overflow-x', 'hidden');
+
+    // Resource link: seed href, mono, new tab, base muted color, hover amber. Base
+    // color lives in .kh-resource-link (components.css), not inline — the hover
+    // assertion is the cascade guard (7.5 fix, Epic 4 retro AI#4).
+    const resourceLink = firstRow.locator('.kh-resource-link');
+    await expect(resourceLink).toHaveAttribute('href', FIRST_DOC_RESOURCE_LINK);
+    await expect(resourceLink).toHaveAttribute('target', '_blank');
+    await expect(resourceLink).toHaveCSS('font-family', /IBM Plex Mono/);
+    await expect(resourceLink).toHaveCSS('color', TEXT_MUTED);
+    await resourceLink.hover();
+    await expect(resourceLink).toHaveCSS('color', ACCENT_INK);
+
+    await page.screenshot({ path: testInfo.outputPath('docs-resource.png'), fullPage: true });
+  });
+
+  // MUTATING — clicking "ver recurso" on an UNREAD row bubbles to handleRowClick
+  // (the anchor has no stopPropagation, 7.5 F2) and flips the row read. Ordered
+  // before the terminal mark-all so the file's last mutation stays mark-all. The
+  // external host is route-blocked so the target="_blank" popup never egresses.
+  test('"ver recurso" bubbles to mark the row read (AC3)', async ({ page }, testInfo) => {
+    await gotoDocs(page);
+
+    // Block the resource host so the popup opens but never hits the network.
+    await page.context().route('https://example.com/**', (route) => route.abort());
+
+    // Anchor on the resource href (STABLE), not on [data-read="false"] — that
+    // filter re-evaluates after the flip and would follow onto a DIFFERENT still-
+    // unread row, so the assertion would never see 'true'.
+    const firstUnread = page.locator('.kh-doc-row[data-read="false"]').first();
+    await expect(firstUnread).toBeVisible();
+    const href = await firstUnread.locator('.kh-resource-link').getAttribute('href');
+    const row = page.locator('.kh-doc-row', {
+      has: page.locator(`.kh-resource-link[href="${href}"]`),
+    });
+    await expect(row).toHaveAttribute('data-read', 'false');
+
+    // Capture the popup BEFORE the click, then close it — the mark-read is driven
+    // by the bubbled click on the SPA page, independent of the popup.
+    const popupPromise = page.waitForEvent('popup');
+    await row.locator('.kh-resource-link').click();
+    const popup = await popupPromise;
+    await popup.close();
+
+    // The optimistic handleRowClick flips data-read synchronously on the same click.
+    await expect(row).toHaveAttribute('data-read', 'true');
+
+    await page.screenshot({ path: testInfo.outputPath('docs-bubble-read.png'), fullPage: true });
+  });
+});
+
+// MUTATING — marks every fragment read for the member; the TERMINAL mutation of
+// this file. Moved into its own describe (7.6) so the bubbling test can flip one
+// row before it while mark-all stays last. No later spec reads user_read_status.
+test.describe('Story 4.4 — mark all read (mutating, terminal)', () => {
   test('all-read empty state + badge disappearance (4.4)', async ({ page }, testInfo) => {
     await gotoDocs(page);
 
