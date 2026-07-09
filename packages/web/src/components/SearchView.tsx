@@ -348,7 +348,7 @@ function ResultCard({ fragment, guildId }: { fragment: SearchFragment; guildId: 
           overflowWrap: 'anywhere',
         }}
       >
-        {fragment.content}
+        {fragment.description}
       </p>
 
       <div style={{ marginTop: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

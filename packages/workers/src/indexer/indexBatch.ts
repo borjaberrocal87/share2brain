@@ -185,7 +185,12 @@ async function persistGroup(
           // Message snowflakes are globally unique, so `<firstId>:<chunkIndex>`
           // is a stable, channel-implicit key — redelivery converges here.
           chunkKey: `${group.messageIds[0]}:${i}`,
-          content: chunks[i],
+          // Placeholder policy (Epic 7, Story 7.1): title/link are AI-generated /
+          // extracted in Story 7.2 — `description` carries the old `content` text
+          // as its semantic successor until then.
+          title: '',
+          description: chunks[i],
+          link: '',
           embedding: vectors[i],
           channelId: group.channelId,
           messageIds: group.messageIds,
@@ -193,7 +198,9 @@ async function persistGroup(
         .onConflictDoUpdate({
           target: embeddings.chunkKey,
           set: {
-            content: sql`excluded.content`,
+            title: sql`excluded.title`,
+            description: sql`excluded.description`,
+            link: sql`excluded.link`,
             embedding: sql`excluded.embedding`,
             channelId: sql`excluded.channel_id`,
             messageIds: sql`excluded.message_ids`,

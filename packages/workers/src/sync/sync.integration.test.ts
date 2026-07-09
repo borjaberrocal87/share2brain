@@ -84,13 +84,13 @@ describe('Sync worker (integration)', () => {
     chunkKey: string,
     channelId: string,
     messageIds: string[],
-    content: string,
+    description: string,
   ): Promise<string> {
     const messageIdsLiteral = `{${messageIds.join(',')}}`;
     const vec = new Array(DIMENSIONS).fill(0.01);
     const result = await clients.db.execute(sql`
-      insert into embeddings (chunk_key, content, embedding, channel_id, message_ids, created_at)
-      values (${chunkKey}, ${content}, ${JSON.stringify(vec)}::vector, ${channelId},
+      insert into embeddings (chunk_key, title, description, link, embedding, channel_id, message_ids, created_at)
+      values (${chunkKey}, '', ${description}, '', ${JSON.stringify(vec)}::vector, ${channelId},
               ${messageIdsLiteral}::text[], now())
       returning id
     `);
@@ -115,7 +115,7 @@ describe('Sync worker (integration)', () => {
 
   async function fetchEmbeddingRows(messageId: string): Promise<Record<string, unknown>[]> {
     const result = await clients.db.execute(
-      sql`select id, chunk_key, content, message_ids, vector_dims(embedding) as dims
+      sql`select id, chunk_key, description, message_ids, vector_dims(embedding) as dims
           from embeddings where ${messageId} = ANY(message_ids)`,
     );
     return result.rows as Record<string, unknown>[];
@@ -158,7 +158,7 @@ describe('Sync worker (integration)', () => {
     const rows = await fetchEmbeddingRows(id);
     expect(rows).toHaveLength(1);
     expect(rows[0].chunk_key).toBe(`${id}:0`);
-    expect(rows[0].content).toBe('brand new edited content');
+    expect(rows[0].description).toBe('brand new edited content');
     expect(rows[0].dims).toBe(DIMENSIONS);
     expect(rows[0].message_ids).toEqual([id]);
     expect(rows[0].id).not.toBe(oldEmbeddingId); // old chunk was actually purged, not reused

@@ -20,7 +20,9 @@ const GUILD_ID = '999888777666555444';
 
 const FRAGMENT_GENERAL: SearchFragment = {
   id: '550e8400-e29b-41d4-a716-446655440001',
-  content: 'the answer is 42',
+  title: 'The Answer to Everything',
+  description: 'the answer is 42',
+  link: '',
   channelId: 'chan-general',
   channelName: 'general',
   authorId: 'author-1',
@@ -32,7 +34,9 @@ const FRAGMENT_GENERAL: SearchFragment = {
 
 const FRAGMENT_RANDOM: SearchFragment = {
   id: '550e8400-e29b-41d4-a716-446655440002',
-  content: 'unrelated content',
+  title: 'Unrelated Topic',
+  description: 'unrelated content',
+  link: '',
   channelId: 'chan-random',
   channelName: 'random',
   authorId: 'author-2',

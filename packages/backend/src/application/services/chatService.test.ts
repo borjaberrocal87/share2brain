@@ -176,7 +176,7 @@ describe('createChatService().streamChat', () => {
   it('should forward the agent frames unchanged', async () => {
     const agentFrames: SSEFrame[] = [
       { type: 'token', content: 'Hello' },
-      { type: 'citation', channel: 'general', author: 'ada', date: '2026-07-06T00:00:00.000Z' },
+      { type: 'citation', channel: 'general', author: 'ada', date: '2026-07-06T00:00:00.000Z', link: '' },
       { type: 'done', conversationId: 'conv-1' },
     ];
     const service = createChatService({ agent: fakeAgent(agentFrames), conversationRepo: repo });
@@ -207,7 +207,7 @@ describe('createChatService().streamChat', () => {
     const agentFrames: SSEFrame[] = [
       { type: 'token', content: 'The ' },
       { type: 'token', content: 'answer.' },
-      { type: 'citation', channel: 'general', author: 'ada', date: '2026-07-06T00:00:00.000Z' },
+      { type: 'citation', channel: 'general', author: 'ada', date: '2026-07-06T00:00:00.000Z', link: '' },
       { type: 'done', conversationId: 'conv-1' },
     ];
     const service = createChatService({ agent: fakeAgent(agentFrames), conversationRepo: repo });
@@ -219,7 +219,7 @@ describe('createChatService().streamChat', () => {
       conversationId: 'conv-1',
       role: 'assistant',
       content: 'The answer.',
-      citations: [{ channel: 'general', author: 'ada', date: '2026-07-06T00:00:00.000Z' }],
+      citations: [{ channel: 'general', author: 'ada', date: '2026-07-06T00:00:00.000Z', link: '' }],
     });
   });
 

@@ -316,7 +316,7 @@ describe('ChatWidget — streaming (5.4)', () => {
         yield { type: 'token', content: 'Hola' };
         yield { type: 'token', content: ' mundo' };
         await gate.promise;
-        yield { type: 'citation', channel: 'general', author: 'ada', date: '2026-06-01T10:00:00Z' };
+        yield { type: 'citation', channel: 'general', author: 'ada', date: '2026-06-01T10:00:00Z', link: '' };
         yield { type: 'done', conversationId: UUID };
       })(),
     );
@@ -449,7 +449,7 @@ describe('ChatWidget — history load (5.4)', () => {
         id: '550e8400-e29b-41d4-a716-446655440002',
         role: 'assistant',
         content: 'Se configuran en Hivly.config.yml.',
-        citations: [{ channel: 'general', author: 'e2e-author-ada', date: '2026-06-01T10:00:00Z' }],
+        citations: [{ channel: 'general', author: 'e2e-author-ada', date: '2026-06-01T10:00:00Z', link: '' }],
         createdAt: '2026-07-01T00:00:05.000Z',
       },
     ],

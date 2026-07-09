@@ -26,7 +26,9 @@ export function createDrizzleRagRetriever(deps: {
       return rows.map((r) =>
         SearchFragmentSchema.parse({
           id: r.id,
-          content: r.content,
+          title: r.title,
+          description: r.description,
+          link: r.link,
           channelId: r.channelId,
           channelName: r.channelName,
           authorId: r.authorId,

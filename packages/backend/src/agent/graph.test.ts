@@ -31,7 +31,9 @@ function recordingChatModel(): ChatModel & { received: ChatTurn[][] } {
 function fakeFragment(overrides: Partial<SearchFragment> = {}): SearchFragment {
   return {
     id: '550e8400-e29b-41d4-a716-446655440000',
-    content: 'the answer is 42',
+    title: 'The Answer to Everything',
+    description: 'the answer is 42',
+    link: '',
     channelId: 'chan-1',
     channelName: 'general',
     authorId: 'author-1',
@@ -77,7 +79,7 @@ describe('createRagAgent().runChat', () => {
     expect(frames).toEqual([
       { type: 'token', content: 'Hello' },
       { type: 'token', content: ' world' },
-      { type: 'citation', channel: 'general', author: 'ada', date: '2026-07-06T00:00:00.000Z' },
+      { type: 'citation', channel: 'general', author: 'ada', date: '2026-07-06T00:00:00.000Z', link: '' },
       { type: 'done', conversationId: 'conv-1' },
     ]);
   });
@@ -125,6 +127,7 @@ describe('createRagAgent().runChat', () => {
       channel: 'random',
       author: 'grace',
       date: '2026-01-01T00:00:00.000Z',
+      link: '',
     });
   });
 

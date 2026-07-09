@@ -162,7 +162,9 @@ describe('App session flow', () => {
     fetchMe.mockResolvedValue(PROFILE);
     const docUnread: DocumentFragment = {
       id: '550e8400-e29b-41d4-a716-446655440009',
-      content: 'unread fragment content',
+      title: 'Unread Fragment',
+      description: 'unread fragment content',
+      link: '',
       channelId: 'chan-1',
       channelName: 'general',
       authorId: 'author-1',

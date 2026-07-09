@@ -24,7 +24,9 @@ const markAll = vi.mocked(readStatusApi.markAll);
 
 const DOC_UNREAD: DocumentFragment = {
   id: '550e8400-e29b-41d4-a716-446655440001',
-  content: 'unread fragment content',
+  title: 'Unread Fragment',
+  description: 'unread fragment content',
+  link: '',
   channelId: 'chan-general',
   channelName: 'general',
   authorId: 'author-1',
@@ -37,7 +39,9 @@ const DOC_UNREAD: DocumentFragment = {
 
 const DOC_READ: DocumentFragment = {
   id: '550e8400-e29b-41d4-a716-446655440002',
-  content: 'already read fragment',
+  title: 'Already Read Fragment',
+  description: 'already read fragment',
+  link: '',
   channelId: 'chan-general',
   channelName: 'general',
   authorId: 'author-2',

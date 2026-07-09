@@ -34,7 +34,9 @@ export function createDrizzleEmbeddingSearchRepository(
       const result = await db.execute(sql`
         SELECT
           e.id                                    AS "id",
-          e.content                               AS "content",
+          e.title                                 AS "title",
+          e.description                           AS "description",
+          e.link                                  AS "link",
           e.channel_id                            AS "channelId",
           cp.name                                 AS "channelName",
           dm.author_id                            AS "authorId",
@@ -71,7 +73,9 @@ export function createDrizzleEmbeddingSearchRepository(
             : new Date(String(row.createdAt));
         return {
           id: String(row.id),
-          content: String(row.content),
+          title: String(row.title),
+          description: String(row.description),
+          link: String(row.link),
           channelId: String(row.channelId),
           channelName: String(row.channelName),
           authorId: String(row.authorId),

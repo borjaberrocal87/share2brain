@@ -106,7 +106,7 @@ describe('GET /api/conversations (integration)', () => {
     const convA1 = await insertConversation(userA, '2026-07-01T00:00:00.000Z', '2026-07-01T00:00:00.000Z');
     await insertMessage(convA1, 'user', 'First conversation question', '2026-07-01T00:00:01.000Z');
     await insertMessage(convA1, 'assistant', 'Answer one', '2026-07-01T00:00:02.000Z', [
-      { channel: 'general', author: 'ada', date: '2026-07-01T00:00:00.000Z' },
+      { channel: 'general', author: 'ada', date: '2026-07-01T00:00:00.000Z', link: '' },
     ]);
 
     const convA2 = await insertConversation(userA, '2026-07-02T00:00:00.000Z', '2026-07-05T00:00:00.000Z');
@@ -204,7 +204,7 @@ describe('GET /api/conversations (integration)', () => {
     expect(body.messages.map((m) => m.role)).toEqual(['user', 'assistant']); // created_at ASC
     expect(body.messages[0].content).toBe('First conversation question');
     expect(body.messages[1].citations).toEqual([
-      { channel: 'general', author: 'ada', date: '2026-07-01T00:00:00.000Z' },
+      { channel: 'general', author: 'ada', date: '2026-07-01T00:00:00.000Z', link: '' },
     ]);
   });
 

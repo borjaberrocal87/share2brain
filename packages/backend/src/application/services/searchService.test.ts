@@ -19,7 +19,9 @@ function fakeRepo(rows: SearchFragmentRow[]): EmbeddingSearchRepository {
 
 const ROW: SearchFragmentRow = {
   id: '550e8400-e29b-41d4-a716-446655440000',
-  content: 'the answer is 42',
+  title: 'The Answer to Everything',
+  description: 'the answer is 42',
+  link: '',
   channelId: 'chan-1',
   channelName: 'general',
   authorId: 'author-anchor',
@@ -62,7 +64,9 @@ describe('searchService.search', () => {
 
     expect(results[0]).toEqual({
       id: ROW.id,
-      content: ROW.content,
+      title: ROW.title,
+      description: ROW.description,
+      link: ROW.link,
       channelId: ROW.channelId,
       channelName: ROW.channelName,
       authorId: ROW.authorId,

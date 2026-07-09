@@ -55,8 +55,8 @@ describe('GET /api/search (integration)', () => {
   async function seedEmbedding(chunkKey: string, channelId: string, messageIds: string[], vec: number[]): Promise<void> {
     const messageIdsLiteral = `{${messageIds.join(',')}}`;
     await clients.db.execute(sql`
-      insert into embeddings (chunk_key, content, embedding, channel_id, message_ids, created_at)
-      values (${chunkKey}, ${`content ${chunkKey}`}, ${JSON.stringify(vec)}::vector, ${channelId},
+      insert into embeddings (chunk_key, title, description, link, embedding, channel_id, message_ids, created_at)
+      values (${chunkKey}, '', ${`description ${chunkKey}`}, '', ${JSON.stringify(vec)}::vector, ${channelId},
               ${messageIdsLiteral}::text[], now())
     `);
   }

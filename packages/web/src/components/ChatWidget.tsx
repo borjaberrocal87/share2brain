@@ -302,6 +302,7 @@ export function ChatWidget({ user }: ChatWidgetProps): ReactElement {
               channel: frame.channel,
               author: frame.author,
               date: frame.date,
+              link: frame.link,
             };
             setMessages((prev) =>
               replaceMessage(prev, assistantId, (m) => ({

@@ -58,7 +58,9 @@ export function createDocumentService(deps: { documentRepo: DocumentRepository }
 
       const results = rows.map((r) => ({
         id: r.id,
-        content: r.content,
+        title: r.title,
+        description: r.description,
+        link: r.link,
         channelId: r.channelId,
         channelName: r.channelName,
         authorId: r.authorId,

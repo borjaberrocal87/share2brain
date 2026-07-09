@@ -39,7 +39,7 @@ const embedder: Embedder = {
 
 interface InsertedRow {
   chunkKey: string;
-  content: string;
+  description: string;
   channelId: string;
   messageIds: string[];
 }
@@ -169,7 +169,7 @@ describe('processUpdate', () => {
     expect(inserted).toHaveLength(1);
     expect(inserted[0].chunkKey).toBe('m1:0');
     expect(inserted[0].messageIds).toEqual(['m1']);
-    expect(inserted[0].content).toBe('edited content');
+    expect(inserted[0].description).toBe('edited content');
     expect(inserted[0].channelId).toBe('c1');
   });
 

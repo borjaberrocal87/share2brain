@@ -32,7 +32,7 @@ const embedder: Embedder = {
 interface InsertedRow {
   chunkKey: string;
   messageIds: string[];
-  content: string;
+  description: string;
 }
 
 /** A fake Drizzle db: `select…where` yields the given dedup rows; `transaction`
@@ -50,7 +50,7 @@ function makeFakeDb(dedupRows: IndexStateRow[], stampMiss = new Set<string>()) {
       const tx = {
         insert: () => ({
           values: (v: InsertedRow) => {
-            inserted.push({ chunkKey: v.chunkKey, messageIds: v.messageIds, content: v.content });
+            inserted.push({ chunkKey: v.chunkKey, messageIds: v.messageIds, description: v.description });
             txInserted.push(...v.messageIds);
             return { onConflictDoUpdate: () => Promise.resolve() };
           },
@@ -139,7 +139,7 @@ describe('indexBatch', () => {
     expect(ackIds).toEqual(['s1']);
     expect(inserted).toHaveLength(1);
     expect(inserted[0].chunkKey).toBe('m1:0');
-    expect(inserted[0].content).toBe('hello world');
+    expect(inserted[0].description).toBe('hello world');
   });
 
   it('should not ack a group failing the dimension guard, but ack a healthy group', async () => {

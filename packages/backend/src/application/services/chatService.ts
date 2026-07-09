@@ -134,7 +134,12 @@ export function createChatService(deps: {
           if (frame.type === 'token') {
             answer += frame.content;
           } else if (frame.type === 'citation') {
-            citations.push({ channel: frame.channel, author: frame.author, date: frame.date });
+            citations.push({
+              channel: frame.channel,
+              author: frame.author,
+              date: frame.date,
+              link: frame.link,
+            });
           } else if (frame.type === 'done') {
             // Commit the answer BEFORE emitting `done` — a persistence failure
             // here throws to the controller, which emits an `error` frame

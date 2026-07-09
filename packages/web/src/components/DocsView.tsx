@@ -445,7 +445,7 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
             WebkitBoxOrient: 'vertical',
           }}
         >
-          {doc.content}
+          {doc.description}
         </span>
       </div>
 

@@ -75,8 +75,8 @@ describe('POST /api/chat (integration)', () => {
   async function seedEmbedding(chunkKey: string, channelId: string, messageIds: string[], vec: number[]): Promise<void> {
     const messageIdsLiteral = `{${messageIds.join(',')}}`;
     await clients.db.execute(sql`
-      insert into embeddings (chunk_key, content, embedding, channel_id, message_ids, created_at)
-      values (${chunkKey}, ${`content ${chunkKey}`}, ${JSON.stringify(vec)}::vector, ${channelId},
+      insert into embeddings (chunk_key, title, description, link, embedding, channel_id, message_ids, created_at)
+      values (${chunkKey}, '', ${`description ${chunkKey}`}, '', ${JSON.stringify(vec)}::vector, ${channelId},
               ${messageIdsLiteral}::text[], now())
     `);
   }
@@ -190,6 +190,7 @@ describe('POST /api/chat (integration)', () => {
       const citations = frames.filter((f): f is Extract<SSEFrame, { type: 'citation' }> => f.type === 'citation');
       expect(citations).toHaveLength(1);
       expect(citations[0].channel).toBe('Allowed Channel');
+      expect(citations[0].link).toBe('');
 
       const done = frames.at(-1) as Extract<SSEFrame, { type: 'done' }>;
       expect(done.conversationId).toMatch(/^[0-9a-f-]{36}$/);
@@ -204,7 +205,7 @@ describe('POST /api/chat (integration)', () => {
       expect(rows).toHaveLength(2);
       expect(rows[0]).toMatchObject({ role: 'user', content: 'what is the answer?' });
       expect(rows[1].role).toBe('assistant');
-      expect(rows[1].citations).toEqual([{ channel: 'Allowed Channel', author: `author-${suffix}-allowed`, date: expect.any(String) }]);
+      expect(rows[1].citations).toEqual([{ channel: 'Allowed Channel', author: `author-${suffix}-allowed`, date: expect.any(String), link: '' }]);
     },
   );
 

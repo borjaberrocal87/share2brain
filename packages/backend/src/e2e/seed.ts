@@ -47,7 +47,7 @@ interface MessageSpec {
 
 interface EmbeddingSpec {
   chunkKey: string;
-  content: string;
+  description: string;
   channelId: string;
   anchorMessageId: string;
   vector: number[];
@@ -77,11 +77,11 @@ const MESSAGES: MessageSpec[] = [
 // embeddings.created_at drives the Documentos ordering (newest first). The vectors
 // give a descending similarity spread against one-hot(0): 1.0, 0.8, 0.6, 0.5, 0.3.
 const EMBEDDINGS: EmbeddingSpec[] = [
-  { chunkKey: 'e2e-msg-g1:0', content: 'Para indexar canales, listalos en Hivly.config.yml y reiniciá el bot.', channelId: 'e2e-ch-general', anchorMessageId: 'e2e-msg-g1', vector: unitVector(1), createdAt: '2026-06-06T10:00:00Z' },
-  { chunkKey: 'e2e-msg-g2:0', content: 'El Indexer consume hivly:discord:messages y hace XACK sólo tras éxito.', channelId: 'e2e-ch-general', anchorMessageId: 'e2e-msg-g2', vector: unitVector(0.8), createdAt: '2026-06-05T10:00:00Z' },
-  { chunkKey: 'e2e-msg-g3:0', content: 'Cada query pgvector lleva WHERE channel_id = ANY(:allowedChannelIds).', channelId: 'e2e-ch-general', anchorMessageId: 'e2e-msg-g3', vector: unitVector(0.6), createdAt: '2026-06-04T10:00:00Z' },
-  { chunkKey: 'e2e-msg-r1:0', content: 'pgvector ordena por distancia coseno ascendente para similitud descendente.', channelId: 'e2e-ch-random', anchorMessageId: 'e2e-msg-r1', vector: unitVector(0.5), createdAt: '2026-06-03T10:00:00Z' },
-  { chunkKey: 'e2e-msg-r2:0', content: 'connect-redis respalda express-session; la cookie sólo lleva el sid.', channelId: 'e2e-ch-random', anchorMessageId: 'e2e-msg-r2', vector: unitVector(0.3), createdAt: '2026-06-02T10:00:00Z' },
+  { chunkKey: 'e2e-msg-g1:0', description: 'Para indexar canales, listalos en Hivly.config.yml y reiniciá el bot.', channelId: 'e2e-ch-general', anchorMessageId: 'e2e-msg-g1', vector: unitVector(1), createdAt: '2026-06-06T10:00:00Z' },
+  { chunkKey: 'e2e-msg-g2:0', description: 'El Indexer consume hivly:discord:messages y hace XACK sólo tras éxito.', channelId: 'e2e-ch-general', anchorMessageId: 'e2e-msg-g2', vector: unitVector(0.8), createdAt: '2026-06-05T10:00:00Z' },
+  { chunkKey: 'e2e-msg-g3:0', description: 'Cada query pgvector lleva WHERE channel_id = ANY(:allowedChannelIds).', channelId: 'e2e-ch-general', anchorMessageId: 'e2e-msg-g3', vector: unitVector(0.6), createdAt: '2026-06-04T10:00:00Z' },
+  { chunkKey: 'e2e-msg-r1:0', description: 'pgvector ordena por distancia coseno ascendente para similitud descendente.', channelId: 'e2e-ch-random', anchorMessageId: 'e2e-msg-r1', vector: unitVector(0.5), createdAt: '2026-06-03T10:00:00Z' },
+  { chunkKey: 'e2e-msg-r2:0', description: 'connect-redis respalda express-session; la cookie sólo lleva el sid.', channelId: 'e2e-ch-random', anchorMessageId: 'e2e-msg-r2', vector: unitVector(0.3), createdAt: '2026-06-02T10:00:00Z' },
 ];
 
 // Which chunks start READ for the member — the rest stay unread (amber dot +
@@ -100,7 +100,7 @@ const CONVERSATION_UPDATED_AT = '2026-07-01T09:00:05Z';
 const CONVERSATION_ANSWER =
   'Las notificaciones externas se configuran en Hivly.config.yml bajo la sección notifications.';
 const CONVERSATION_CITATIONS = [
-  { channel: 'general', author: 'e2e-author-ada', date: '2026-06-01T10:00:00Z' },
+  { channel: 'general', author: 'e2e-author-ada', date: '2026-06-01T10:00:00Z', link: '' },
 ];
 
 export interface SeedSummary {
@@ -154,9 +154,9 @@ export async function resetAndSeed(db: Database): Promise<SeedSummary> {
 
   for (const e of EMBEDDINGS) {
     await db.execute(sql`
-      insert into embeddings (chunk_key, content, embedding, channel_id, message_ids, created_at)
+      insert into embeddings (chunk_key, title, description, link, embedding, channel_id, message_ids, created_at)
       values (
-        ${e.chunkKey}, ${e.content}, ${JSON.stringify(e.vector)}::vector,
+        ${e.chunkKey}, '', ${e.description}, '', ${JSON.stringify(e.vector)}::vector,
         ${e.channelId}, ${`{${e.anchorMessageId}}`}::text[], ${e.createdAt}
       )
     `);

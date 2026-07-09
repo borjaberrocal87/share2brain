@@ -99,7 +99,12 @@ export async function processUpdate(deps: ProcessUpdateDeps): Promise<ProcessRes
           .insert(embeddings)
           .values({
             chunkKey: `${messageId}:${i}`,
-            content: chunks[i],
+            // Placeholder policy (Epic 7, Story 7.1): title/link are AI-generated /
+            // extracted in Story 7.2 — `description` carries the old `content` text
+            // as its semantic successor until then.
+            title: '',
+            description: chunks[i],
+            link: '',
             embedding: vectors[i],
             channelId,
             messageIds: [messageId],
@@ -107,7 +112,9 @@ export async function processUpdate(deps: ProcessUpdateDeps): Promise<ProcessRes
           .onConflictDoUpdate({
             target: embeddings.chunkKey,
             set: {
-              content: sql`excluded.content`,
+              title: sql`excluded.title`,
+              description: sql`excluded.description`,
+              link: sql`excluded.link`,
               embedding: sql`excluded.embedding`,
               channelId: sql`excluded.channel_id`,
               messageIds: sql`excluded.message_ids`,

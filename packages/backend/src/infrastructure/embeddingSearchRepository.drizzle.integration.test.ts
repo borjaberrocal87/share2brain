@@ -49,8 +49,8 @@ describe('EmbeddingSearchRepository (integration, real pgvector)', () => {
     // JS array in a drizzle `sql` template is expanded into comma-separated params.
     const messageIdsLiteral = `{${messageIds.join(',')}}`;
     await clients.db.execute(sql`
-      insert into embeddings (chunk_key, content, embedding, channel_id, message_ids, created_at)
-      values (${chunkKey}, ${`content ${chunkKey}`}, ${vecLiteral(vec)}::vector, ${channelId},
+      insert into embeddings (chunk_key, title, description, link, embedding, channel_id, message_ids, created_at)
+      values (${chunkKey}, '', ${`description ${chunkKey}`}, '', ${vecLiteral(vec)}::vector, ${channelId},
               ${messageIdsLiteral}::text[], now())
     `);
   }

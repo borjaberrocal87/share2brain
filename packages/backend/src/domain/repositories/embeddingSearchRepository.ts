@@ -14,7 +14,9 @@
  */
 export interface SearchFragmentRow {
   id: string;
-  content: string;
+  title: string;
+  description: string;
+  link: string;
   channelId: string;
   channelName: string;
   authorId: string;

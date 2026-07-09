@@ -20,7 +20,7 @@ export function buildRAGContext(fragments: SearchFragment[]): string {
   const rendered = fragments
     .map(
       (f, i) =>
-        `[${i + 1}] #${f.channelName} — ${f.authorName} (${f.createdAt}):\n${f.content}`,
+        `[${i + 1}] #${f.channelName} — ${f.authorName} (${f.createdAt}):\n${f.title} — ${f.description} (${f.link})`,
     )
     .join('\n\n');
 

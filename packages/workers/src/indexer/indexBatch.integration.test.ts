@@ -123,7 +123,7 @@ describe('Indexer (integration)', () => {
     // Embeddings row: correct dims, channel, message_ids, and the EVENT content
     // (reconciliation note 5 — never the DB row's content).
     const rows = await clients.db.execute(
-      sql`select chunk_key, content, channel_id, message_ids, vector_dims(embedding) as dims
+      sql`select chunk_key, description, channel_id, message_ids, vector_dims(embedding) as dims
           from embeddings where chunk_key = ${`${id}:0`}`,
     );
     expect(rows.rows).toHaveLength(1);
@@ -131,7 +131,7 @@ describe('Indexer (integration)', () => {
     expect(row.channel_id).toBe(channelId);
     expect(row.dims).toBe(DIMENSIONS);
     expect(row.message_ids).toEqual([id]);
-    expect(row.content).toBe('real event content to index');
+    expect(row.description).toBe('real event content to index');
 
     // indexed_at stamped; PEL drained.
     const dm = await clients.db.execute(sql`select indexed_at from discord_messages where id = ${id}`);

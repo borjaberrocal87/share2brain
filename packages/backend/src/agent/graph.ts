@@ -183,6 +183,7 @@ export function createRagAgent(deps: {
           channel: fragment.channelName,
           author: fragment.authorName,
           date: fragment.createdAt,
+          link: fragment.link,
         };
       }
 

@@ -108,7 +108,7 @@ describe('conversationService.getConversation', () => {
       id: '660e8400-e29b-41d4-a716-446655440002',
       role: 'assistant',
       content: 'hello',
-      citations: [{ channel: 'general', author: 'ada', date: TS }],
+      citations: [{ channel: 'general', author: 'ada', date: TS, link: '' }],
       createdAt: '2026-07-06T00:01:00.000Z',
     },
   ];
@@ -144,7 +144,7 @@ describe('conversationService.getConversation', () => {
           id: messages[1].id,
           role: 'assistant',
           content: 'hello',
-          citations: [{ channel: 'general', author: 'ada', date: TS }],
+          citations: [{ channel: 'general', author: 'ada', date: TS, link: '' }],
           createdAt: '2026-07-06T00:01:00.000Z',
         },
       ],

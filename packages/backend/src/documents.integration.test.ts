@@ -54,8 +54,8 @@ describe('GET /api/documents (integration)', () => {
     const messageIdsLiteral = `{${messageIds.join(',')}}`;
     const vec = new Array<number>(1536).fill(0);
     await clients.db.execute(sql`
-      insert into embeddings (chunk_key, content, embedding, channel_id, message_ids, created_at)
-      values (${chunkKey}, ${`content ${chunkKey}`}, ${JSON.stringify(vec)}::vector, ${channelId},
+      insert into embeddings (chunk_key, title, description, link, embedding, channel_id, message_ids, created_at)
+      values (${chunkKey}, '', ${`description ${chunkKey}`}, '', ${JSON.stringify(vec)}::vector, ${channelId},
               ${messageIdsLiteral}::text[], now())
     `);
   }

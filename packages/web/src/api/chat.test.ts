@@ -48,7 +48,7 @@ describe('streamChat', () => {
       streamingFetch([
         frame({ type: 'token', content: 'Hola' }),
         frame({ type: 'token', content: ' mundo' }),
-        frame({ type: 'citation', channel: 'general', author: 'ada', date: '2026-06-01T10:00:00Z' }),
+        frame({ type: 'citation', channel: 'general', author: 'ada', date: '2026-06-01T10:00:00Z', link: '' }),
         frame({ type: 'done', conversationId: '550e8400-e29b-41d4-a716-446655440000' }),
       ]),
     );
