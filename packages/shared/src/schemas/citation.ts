@@ -13,9 +13,11 @@ import { isHttpUrl, LINK_REFINE_MESSAGE } from './linkRefine.js';
  * no more empty-string placeholder). `title` was added in Story 7.4 (F3) so
  * the sources chip can show the resource title; it is AI-generated and
  * non-empty (Story 7.5 — the enrichment pipeline treats an empty result as
- * failure, so a persisted resource always has a real title). */
+ * failure, so a persisted resource always has a real title). `trim().min(1)`
+ * makes the non-blank guarantee structural: whitespace-only titles are
+ * rejected, not just the empty string (code-review 7.5). */
 export const CitationSchema = z.object({
-  title: z.string().min(1),
+  title: z.string().trim().min(1),
   channel: z.string(),
   author: z.string(),
   date: z.string(),

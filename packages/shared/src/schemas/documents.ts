@@ -35,7 +35,9 @@ export type DocumentsQuery = z.infer<typeof DocumentsQuerySchema>;
  */
 export const DocumentFragmentSchema = z.object({
   id: z.uuid(),
-  title: z.string().min(1),
+  // `trim().min(1)`: non-blank guarantee is structural — whitespace-only
+  // titles are rejected, not just '' (code-review 7.5).
+  title: z.string().trim().min(1),
   description: z.string(),
   link: z.string().refine(isHttpUrl, { message: LINK_REFINE_MESSAGE }),
   channelId: z.string(),

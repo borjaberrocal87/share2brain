@@ -128,6 +128,10 @@ describe('DocumentFragmentSchema', () => {
     expect(DocumentFragmentSchema.safeParse({ ...valid, title: '' }).success).toBe(false);
   });
 
+  it('should reject a fragment with a whitespace-only title', () => {
+    expect(DocumentFragmentSchema.safeParse({ ...valid, title: '   ' }).success).toBe(false);
+  });
+
   it('should reject a fragment with a non-URL non-empty link', () => {
     expect(DocumentFragmentSchema.safeParse({ ...valid, link: 'not-a-url' }).success).toBe(false);
   });

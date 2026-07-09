@@ -53,6 +53,11 @@ describe('CitationSchema', () => {
     expect(CitationSchema.safeParse({ ...valid, title: '' }).success).toBe(false);
   });
 
+  it('should reject a citation with a whitespace-only title', () => {
+    expect(CitationSchema.safeParse({ ...valid, title: '   ' }).success).toBe(false);
+    expect(CitationSchema.safeParse({ ...valid, title: '\n\t' }).success).toBe(false);
+  });
+
   it('should reject a citation missing title', () => {
     const missing: Record<string, unknown> = { ...valid };
     delete missing.title;
