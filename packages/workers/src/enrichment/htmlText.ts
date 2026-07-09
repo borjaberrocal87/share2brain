@@ -27,11 +27,27 @@ const ENTITY_MAP: Record<string, string> = {
   '&nbsp;': ' ',
 };
 
+/** Decode a numeric char reference safely: `fromCodePoint` (not `fromCharCode`,
+ *  which truncates astral code points), rejecting NUL, negatives, and
+ *  out-of-range values. */
+function decodeCodePoint(code: number): string {
+  if (!Number.isFinite(code) || code <= 0 || code > 0x10ffff) return '';
+  try {
+    return String.fromCodePoint(code);
+  } catch {
+    return '';
+  }
+}
+
 function decodeEntities(text: string): string {
-  return text.replace(/&amp;|&lt;|&gt;|&quot;|&apos;|&#39;|&nbsp;|&#(\d+);/g, (match, code) => {
-    if (code) return String.fromCharCode(Number(code));
-    return ENTITY_MAP[match] ?? match;
-  });
+  return text.replace(
+    /&amp;|&lt;|&gt;|&quot;|&apos;|&#39;|&nbsp;|&#x([0-9a-fA-F]+);|&#(\d+);/g,
+    (match, hex: string | undefined, dec: string | undefined) => {
+      if (hex !== undefined) return decodeCodePoint(parseInt(hex, 16));
+      if (dec !== undefined) return decodeCodePoint(Number(dec));
+      return ENTITY_MAP[match] ?? match;
+    },
+  );
 }
 
 function collapseWhitespace(text: string): string {
