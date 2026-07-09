@@ -444,4 +444,31 @@ describe('loadConfig', () => {
 
     expect(() => loadConfig(path)).toThrow(/max_bytes/);
   });
+
+  it('should reject a non-empty invalid enrichment.llm.base_url', () => {
+    const yaml = VALID_YAML.replace(
+      'api_key: "sk-ant-enrichment-test"',
+      'api_key: "sk-ant-enrichment-test"\n    base_url: "not-a-url"',
+    );
+    const path = writeFixture('enrichment-bad-base-url.yml', yaml);
+
+    expect(() => loadConfig(path)).toThrow(/base_url/);
+  });
+
+  it('should reject an empty enrichment.fetch.allowed_schemes list', () => {
+    const yaml = VALID_YAML.replace(
+      'allowed_schemes:\n      - "https"',
+      'allowed_schemes: []',
+    );
+    const path = writeFixture('enrichment-empty-schemes.yml', yaml);
+
+    expect(() => loadConfig(path)).toThrow(/allowed_schemes/);
+  });
+
+  it('should reject a negative enrichment.fetch.max_redirects', () => {
+    const yaml = VALID_YAML.replace('max_redirects: 3', 'max_redirects: -1');
+    const path = writeFixture('enrichment-bad-max-redirects.yml', yaml);
+
+    expect(() => loadConfig(path)).toThrow(/max_redirects/);
+  });
 });
