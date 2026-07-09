@@ -1016,7 +1016,7 @@ const [dbOk, redisOk] = await Promise.all([
 ])
 ```
 
-- **Batch** ingestion: the Indexer groups consecutive same-channel messages (`grouping_window`) before chunking to improve semantic coherence and reduce embedding calls.
+- **Batch** ingestion: the Indexer/Sync worker process one message at a time per `XREADGROUP` batch — one `embeddings` row per extracted URL, no cross-message grouping or chunking (Epic 7 pivot).
 - **Backpressure**: `XREADGROUP` with `COUNT`/`BLOCK`; do not fetch unbounded batches.
 
 ### Error Handling Performance

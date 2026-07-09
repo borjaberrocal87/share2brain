@@ -270,19 +270,40 @@ mensajes con URL (FR5, Story 7.2):
 3. XACK hivly:discord:messages hivly:indexer <message-id> (gated por el RETURNING del UPDATE)
 ```
 
-**Sync Worker** — consume `hivly:discord:messages:updated` y `hivly:discord:messages:deleted` (consumer group `hivly:sync`):
+**Sync Worker** — consume `hivly:discord:messages:updated` y `hivly:discord:messages:deleted` (consumer group `hivly:sync`); reconcilia por diff de links, no re-chunkea (Story 7.3):
 
 ```
 Para messageUpdate:
-  1. DELETE FROM embeddings WHERE message_id = :id
-  2. Re-indexar el mensaje con el nuevo contenido
-  3. XACK
+  1. Guarda: mensaje inexistente en discord_messages, o deleted_at IS NOT NULL (tombstone) →
+     debug + XACK, sin escrituras (create/delete path ya lo resolvió)
+  2. oldRows = SELECT id, chunk_key, link, title, description, embedding FROM embeddings
+     WHERE :messageId = ANY(message_ids) → Map<link, row>
+  3. urls = extractUrls(newContent, enrichment.fetch.allowed_schemes) — cap
+     MAX_URLS_PER_MESSAGE=20 + warn con el recuento descartado
+  4. Para cada url (en orden, index = nueva posición):
+     - Si oldRows tiene esa url: reutiliza title/description/embedding — SIN fetch,
+       SIN LLM, SIN embed (link conservado)
+     - Si no: fetchUrl → SSRF guard → enrich (mismo pipeline que el Indexer, D1/D2)
+  5. Si quedó ≥1 fila fresca: embedder.embedDocuments(...) → vector[dimensions] SOLO para
+     esas filas, fuera de la transacción
+  6. Una transacción: DELETE user_read_status (por embedding_id de las filas del mensaje) →
+     DELETE embeddings WHERE :messageId = ANY(message_ids) (TODAS, incl. las conservadas) →
+     UPDATE discord_messages SET content, updated_at → UPSERT el set nuevo
+     (chunk_key=`${messageId}:${urlIndex}`, posición nueva) → UPDATE indexed_at = now()
+  7. XACK solo tras el COMMIT. Cero URLs indexables (ninguna extraída, todas bloqueadas por
+     SSRF, o contenido vacío) converge en el MISMO flujo con el set nuevo vacío → purga total.
 
 Para messageDelete:
-  Si delete_policy = "soft": UPDATE discord_messages SET deleted_at = now()
-  Si delete_policy = "hard": DELETE FROM embeddings WHERE message_id = :id
-  3. XACK
+  Si delete_policy = "soft": UPDATE discord_messages SET deleted_at = now() (embeddings intactos)
+  Si delete_policy = "hard": una tx — DELETE user_read_status → DELETE embeddings
+    WHERE :messageId = ANY(message_ids) → UPDATE discord_messages SET deleted_at = now()
+  XACK tras el resultado (0 filas afectadas = éxito idempotente).
 ```
+
+El rebuild-por-diff (wipe-and-reinsert en una sola tx, en vez de un diff parcial) evita colisiones
+del unique index posicional de `chunk_key` cuando las posiciones de las URLs rotan entre ediciones
+— la identidad de FILA es posicional, pero la identidad de RECURSO (y por tanto el ahorro de
+fetch/LLM/embed) es por `link`.
 
 **Regla de ACK:** Los Workers hacen `XACK` **solo** tras procesar con éxito. Si el procesamiento falla, no se hace ACK y Redis reintenta automáticamente con otro consumer del mismo group. El `pending entries list` (PEL) de Redis actúa como DLQ implícita.
 
@@ -498,8 +519,9 @@ mensaje sin URL (o cuyas URLs quedan todas bloqueadas por la guarda SSRF) se des
 `indexed_at` y se hace `XACK`, pero no genera ninguna fila en `embeddings`. Por cada URL extraída
 se hace fetch (guardado contra SSRF), se genera `title`+`description` vía IA, y se persiste una
 fila de `embeddings` (`title`/`description`/`link`) — el chunking/agrupación por canal del
-diseño pre-Epic-7 queda retirado del Indexer (sigue vivo en `sync/processUpdate.ts` hasta la
-Historia 7.3).
+diseño pre-Epic-7 queda retirado tanto del Indexer como del Sync Worker (Story 7.3): una edición
+reconcilia por diff de links, reutilizando la enrichment de los links conservados en vez de
+re-chunkear el mensaje completo.
 
 El flujo completo desde que un mensaje aparece en Discord hasta que es buscable:
 
@@ -661,7 +683,7 @@ async function retrieve(state: AgentState): Promise<Partial<AgentState>> {
     .from(embeddings)
     .where(inArray(embeddings.channelId, state.allowedChannelIds))
     .orderBy(sql`embedding <=> ${queryVector}`)
-    .limit(config.knowledge.topK ?? 5)
+    .limit(RETRIEVE_TOP_K) // module constant (5) — there is no `knowledge.topK` in config
   
   return { retrievedFragments: fragments }
 }
@@ -908,11 +930,6 @@ embeddings:
   dimensions: 1536           # deploy-time; parametriza la columna vector(N)
   base_url: "${EMBEDDINGS_BASE_URL}"  # opcional; OBLIGATORIO si provider: custom
   api_key: "${EMBEDDINGS_API_KEY}"
-
-knowledge:
-  chunk_size: 500
-  chunk_overlap: 50
-  grouping_window: 10
 
 # Enrichment pipeline (Epic 7 — índice curado de recursos). REQUERIDO desde la
 # Historia 7.1; el Indexer de la Historia 7.2 lo necesita para extraer/fetch/generar.
