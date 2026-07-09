@@ -181,6 +181,21 @@ development_status:
   6-3-sincronizacion-al-arranque-y-reconciliacion-offline: done
   6-4-notificaciones-externas-seguridad-y-graceful-shutdown: done
   epic-6-retrospective: done
+
+  # ── Épico 7: Índice Curado de Recursos con IA ───────────────────────────────
+  # Added 2026-07-09 via bmad-correct-course (sprint-change-proposal-2026-07-09.md).
+  # Post-roadmap product pivot: index ONLY messages containing a URL, one embedding
+  # per URL enriched with AI title+description, stored with its link; drop `content`
+  # + grouping/chunking. Approved by Borja incl. destructive migration + full re-index.
+  epic-7: backlog
+  7-1-shared-modelo-datos-contratos-config-enriquecimiento: backlog
+  7-2-workers-indexer-extraccion-urls-fetch-ssrf-generacion-ia: backlog
+  7-3-workers-sync-reindexacion-por-diff-de-links-y-purgado: backlog
+  7-4-backend-proyeccion-search-documents-rag-citas-seed: backlog
+  7-5-web-searchview-docsview-citas-title-description-link: backlog
+  7-6-e2e-extender-harness-visual-campos-nuevos: backlog
+  epic-7-retrospective: optional
+
   # ── Operational backlog (post-roadmap) — no epic; see operational-backlog.md ─
   # Numbered ops-N to stay outside the epic sequence (Borja chose an explicit backlog
   # over a hardening epic at the Epic 6 retro, 2026-07-08). Not auto-discovered by
