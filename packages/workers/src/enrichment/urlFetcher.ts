@@ -150,7 +150,21 @@ export async function fetchUrl(
       }
     }
 
-    const bodyResult = await readCappedBody(response, fetchConfig.max_bytes);
+    // The body drain can reject — a mid-body stall trips `hopSignal`
+    // (TimeoutError / shutdown abort) and a socket reset errors the stream. Map
+    // both to a typed outcome so `fetchUrl` keeps its "never throws" contract;
+    // otherwise the throw escapes to `processMessage`, which would misread a
+    // transient fetch failure as a D1 enrichment failure and poison the message.
+    let bodyResult: { text: string } | { tooLarge: true };
+    try {
+      bodyResult = await readCappedBody(response, fetchConfig.max_bytes);
+    } catch (err) {
+      await cancelBody(response);
+      if (err instanceof DOMException && err.name === 'TimeoutError') {
+        return { ok: false, reason: 'timeout' };
+      }
+      return { ok: false, reason: 'network_error' };
+    }
     if ('tooLarge' in bodyResult) {
       return { ok: false, reason: 'too_large' };
     }

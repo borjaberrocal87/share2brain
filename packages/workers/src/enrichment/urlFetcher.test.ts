@@ -57,6 +57,27 @@ describe('fetchUrl', () => {
             res.end('late');
           }, 2000);
           break;
+        case '/slow-body':
+          // Headers arrive immediately (200), then the BODY stalls past
+          // timeout_ms — exercises a mid-body `reader.read()` timeout, the path
+          // the header-only `/slow` never reaches.
+          res.writeHead(200, { 'Content-Type': 'text/plain' });
+          res.write('partial');
+          setTimeout(() => {
+            try {
+              res.end('late');
+            } catch {
+              /* socket may be gone */
+            }
+          }, 2000);
+          break;
+        case '/reset-body':
+          // Headers arrive, then the socket is destroyed mid-body — exercises a
+          // stream error (not a timeout) during the body drain.
+          res.writeHead(200, { 'Content-Type': 'text/plain' });
+          res.write('partial');
+          setTimeout(() => res.socket?.destroy(), 50);
+          break;
         case '/not-found':
           res.writeHead(404);
           res.end('nope');
@@ -138,6 +159,30 @@ describe('fetchUrl', () => {
   it('should time out on a slow response', async () => {
     const outcome = await fetchUrl(`${baseUrl}/slow`, FETCH_CONFIG, unguarded, neverAbortedSignal());
     expect(outcome).toEqual({ ok: false, reason: 'timeout' });
+  });
+
+  it('should map a mid-body stall to timeout without throwing (never-throws contract)', async () => {
+    // Regression: `readCappedBody`'s `reader.read()` runs outside the fetch
+    // try/catch — a mid-body timeout must resolve to a typed outcome, not throw
+    // out of fetchUrl (which indexBatch would misread as an enrichment failure
+    // and poison the message).
+    const outcome = await fetchUrl(
+      `${baseUrl}/slow-body`,
+      FETCH_CONFIG,
+      unguarded,
+      neverAbortedSignal(),
+    );
+    expect(outcome).toEqual({ ok: false, reason: 'timeout' });
+  });
+
+  it('should map a socket reset mid-body to network_error without throwing', async () => {
+    const outcome = await fetchUrl(
+      `${baseUrl}/reset-body`,
+      FETCH_CONFIG,
+      unguarded,
+      neverAbortedSignal(),
+    );
+    expect(outcome).toEqual({ ok: false, reason: 'network_error' });
   });
 
   it('should map a non-2xx final response to http_error', async () => {
