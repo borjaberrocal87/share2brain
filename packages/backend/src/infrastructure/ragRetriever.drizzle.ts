@@ -48,7 +48,9 @@ export function createDrizzleRagRetriever(deps: {
           logger.warn('skipping malformed search fragment row', {
             embeddingId: r.id,
             channelId: r.channelId,
-            reason: parsed.error.message,
+            // Structural, content-free reason: Zod issue paths + codes only —
+            // never `error.message` (a full dump that could echo input values).
+            reason: parsed.error.issues.map((i) => ({ path: i.path, code: i.code })),
           });
           continue;
         }

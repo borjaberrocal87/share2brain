@@ -73,7 +73,10 @@ describe('createDrizzleRagRetriever().retrieve', () => {
     expect(context).toEqual({
       embeddingId: '550e8400-e29b-41d4-a716-446655440002',
       channelId: 'chan-1',
-      reason: expect.any(String),
+      // Structural, content-free reason: an array of { path, code } Zod issues.
+      reason: expect.arrayContaining([
+        expect.objectContaining({ code: expect.any(String) }),
+      ]),
     });
     const serialized = JSON.stringify(context);
     expect(serialized).not.toContain('The Answer to Everything');
