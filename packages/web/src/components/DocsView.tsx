@@ -14,7 +14,7 @@ import { fetchDocuments } from '../api/documents';
 import { markAll, markRead } from '../api/readStatus';
 import { authorColor } from '../lib/authorColor';
 import { initialsFromUsername } from '../lib/initials';
-import { CheckIcon } from './icons';
+import { CheckIcon, ExternalLinkIcon } from './icons';
 
 interface DocsViewProps {
   unreadCounts: UnreadCountResponse;
@@ -176,8 +176,9 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
           Documentos indexados
         </h2>
         <p style={{ margin: '7px 0 0', fontSize: 14, color: 'var(--text-tertiary)' }}>
-          Cada chunk proviene de mensajes agrupados por autor y ventana temporal. El punto ámbar
-          marca las fuentes sin leer — tocá una fila para marcarla como leída.
+          Cada recurso es un link compartido en la comunidad, enriquecido con título y
+          descripción por IA. El punto ámbar marca los recursos sin leer — tocá una fila para
+          marcarla como leída.
         </p>
 
         <div
@@ -317,7 +318,7 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
                 color: 'var(--text-subtle)',
               }}
             >
-              <span>chunk</span>
+              <span>recurso</span>
               <span>canal</span>
               <span>autor</span>
               <span style={{ textAlign: 'right' }}>indexado</span>
@@ -431,22 +432,57 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
             boxShadow: doc.isRead ? 'none' : '0 0 0 3px rgba(245,166,35,0.16)',
           }}
         />
-        <span
-          data-testid="doc-row-content"
-          style={{
-            fontSize: 13.5,
-            lineHeight: 1.5,
-            color: doc.isRead ? 'var(--text-muted)' : 'var(--text-primary)',
-            fontWeight: doc.isRead ? 400 : 500,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-          }}
-        >
-          {doc.description}
-        </span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <span
+            data-testid="doc-row-content"
+            style={{
+              display: 'block',
+              fontSize: 13.5,
+              lineHeight: 1.5,
+              color: doc.isRead ? 'var(--text-muted)' : 'var(--text-primary)',
+              fontWeight: doc.isRead ? 400 : 500,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {doc.title}
+          </span>
+          <span
+            data-testid="doc-row-description"
+            style={{
+              display: '-webkit-box',
+              marginTop: 2,
+              fontSize: 12.5,
+              lineHeight: 1.5,
+              color: 'var(--text-muted)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+            }}
+          >
+            {doc.description}
+          </span>
+          <a
+            href={doc.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="kh-resource-link"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              marginTop: 4,
+              fontFamily: "'IBM Plex Mono', monospace",
+              fontSize: 11.5,
+              textDecoration: 'none',
+            }}
+          >
+            <span>ver recurso</span>
+            <ExternalLinkIcon size={12} />
+          </a>
+        </div>
       </div>
 
       <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'var(--accent-ink)' }}>

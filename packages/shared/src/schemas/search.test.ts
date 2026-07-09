@@ -85,6 +85,14 @@ describe('SearchFragmentSchema', () => {
     expect(SearchFragmentSchema.safeParse({ ...valid, link: '' }).success).toBe(false);
   });
 
+  it('should reject a fragment with an empty title', () => {
+    expect(SearchFragmentSchema.safeParse({ ...valid, title: '' }).success).toBe(false);
+  });
+
+  it('should reject a fragment with a whitespace-only title', () => {
+    expect(SearchFragmentSchema.safeParse({ ...valid, title: '   ' }).success).toBe(false);
+  });
+
   it('should reject a fragment with a non-URL non-empty link', () => {
     expect(SearchFragmentSchema.safeParse({ ...valid, link: 'not-a-url' }).success).toBe(false);
   });

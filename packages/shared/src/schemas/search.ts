@@ -28,14 +28,17 @@ export type SearchQuery = z.infer<typeof SearchQuerySchema>;
 /**
  * A single search result fragment: one curated resource link projected to its
  * anchor message (`message_ids[0]`). `title`/`description` are AI-generated
- * (Story 7.2); `link` must be a valid HTTP(S) URL (Story 7.4 — strict, no more
- * empty-string placeholder). `authorName` falls back to the `authorId` string
- * — no display name is persisted yet (D2 follow-up). `similarity` is cosine
- * similarity clamped to [0,1] (1 = identical).
+ * (Story 7.2); `title` is non-empty (Story 7.5 — the enrichment pipeline
+ * treats an empty result as failure). `link` must be a valid HTTP(S) URL
+ * (Story 7.4 — strict, no more empty-string placeholder). `authorName` falls
+ * back to the `authorId` string — no display name is persisted yet (D2
+ * follow-up). `similarity` is cosine similarity clamped to [0,1] (1 = identical).
  */
 export const SearchFragmentSchema = z.object({
   id: z.uuid(),
-  title: z.string(),
+  // `trim().min(1)`: non-blank guarantee is structural — whitespace-only
+  // titles are rejected, not just '' (code-review 7.5).
+  title: z.string().trim().min(1),
   description: z.string(),
   link: z.string().refine(isHttpUrl, { message: LINK_REFINE_MESSAGE }),
   channelId: z.string(),

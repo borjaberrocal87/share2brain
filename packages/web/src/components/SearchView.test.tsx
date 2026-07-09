@@ -140,4 +140,27 @@ describe('SearchView', () => {
       `https://discord.com/channels/${GUILD_ID}/${FRAGMENT_GENERAL.channelId}/${FRAGMENT_GENERAL.messageId}`,
     );
   });
+
+  it('should render the resource title as a heading above the description (AC2)', async () => {
+    fetchChannels.mockResolvedValue([]);
+    search.mockResolvedValue({ results: [FRAGMENT_GENERAL] });
+    render(<SearchView guildId={GUILD_ID} />);
+
+    typeQuery('hola');
+
+    expect(await screen.findByText('The Answer to Everything')).toBeTruthy();
+    expect(screen.getByText('the answer is 42')).toBeTruthy();
+  });
+
+  it('should link "ver recurso" to the fragment link (AC2)', async () => {
+    fetchChannels.mockResolvedValue([]);
+    search.mockResolvedValue({ results: [FRAGMENT_GENERAL] });
+    render(<SearchView guildId={GUILD_ID} />);
+
+    typeQuery('hola');
+    await screen.findByText('The Answer to Everything');
+
+    const link = screen.getByRole('link', { name: /ver recurso/i }) as HTMLAnchorElement;
+    expect(link.href).toBe(FRAGMENT_GENERAL.link);
+  });
 });

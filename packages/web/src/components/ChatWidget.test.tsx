@@ -343,7 +343,9 @@ describe('ChatWidget — streaming (5.4)', () => {
 
     // Let the rest of the stream through: citation chip renders, cursor disappears.
     gate.resolve();
-    expect(await screen.findByTestId('chat-citation')).toBeTruthy();
+    const chip = (await screen.findByTestId('chat-citation')) as HTMLAnchorElement;
+    expect(chip.textContent).toContain('Deploying with Docker Compose');
+    expect(chip.href).toBe('https://example.com/doc');
     await waitFor(() => expect(screen.queryByTestId('chat-cursor')).toBeNull());
   });
 
@@ -500,7 +502,9 @@ describe('ChatWidget — history load (5.4)', () => {
     expect(screen.getByTestId('chat-msg-agent').textContent).toContain(
       'Se configuran en Hivly.config.yml.',
     );
-    expect(screen.getByTestId('chat-citation')).toBeTruthy();
+    const chip = screen.getByTestId('chat-citation') as HTMLAnchorElement;
+    expect(chip.textContent).toContain('Deploying with Docker Compose');
+    expect(chip.href).toBe('https://example.com/doc');
     // No streaming cursor on a loaded (historical) conversation.
     expect(screen.queryByTestId('chat-cursor')).toBeNull();
   });

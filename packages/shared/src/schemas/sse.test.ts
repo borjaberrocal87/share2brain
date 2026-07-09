@@ -55,6 +55,30 @@ describe('SSEFrameSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('should reject a citation frame with an empty title', () => {
+    const result = SSEFrameSchema.safeParse({
+      type: 'citation',
+      title: '',
+      channel: 'general',
+      author: 'ada',
+      date: '2026-07-03T00:00:00Z',
+      link: 'https://example.com/doc',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject a citation frame with a whitespace-only title', () => {
+    const result = SSEFrameSchema.safeParse({
+      type: 'citation',
+      title: '   ',
+      channel: 'general',
+      author: 'ada',
+      date: '2026-07-03T00:00:00Z',
+      link: 'https://example.com/doc',
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('should reject a citation frame when title is missing', () => {
     const result = SSEFrameSchema.safeParse({
       type: 'citation',

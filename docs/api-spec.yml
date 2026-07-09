@@ -109,7 +109,7 @@ paths:
         - { name: q, in: query, required: true, schema: { type: string } }
         - { name: limit, in: query, required: false, schema: { type: integer, default: 5 } }
       responses:
-        "200": { description: "Ranked resource fragments (title, description, link) with source metadata" }
+        "200": { description: "Ranked resource fragments (non-empty title, description, link) with source metadata" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
@@ -153,7 +153,7 @@ paths:
         - { name: channelId, in: query, required: false, schema: { type: string } }
         - { name: unreadOnly, in: query, required: false, schema: { type: boolean, default: false } }
       responses:
-        "200": { description: "Paginated resource documents (title, description, link, RBAC-scoped) with isRead" }
+        "200": { description: "Paginated resource documents (non-empty title, description, link, RBAC-scoped) with isRead" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
@@ -324,7 +324,7 @@ components:
         - type: object
           properties:
             type: { const: citation }
-            title: { type: string }
+            title: { type: string, minLength: 1, description: "AI-generated resource title; never empty (Story 7.5)" }
             channel: { type: string }
             author: { type: string }
             date: { type: string }
@@ -344,7 +344,7 @@ components:
       type: object
       required: [title, channel, author, date, link]
       properties:
-        title: { type: string }
+        title: { type: string, minLength: 1, description: "AI-generated resource title; never empty (Story 7.5)" }
         channel: { type: string }
         author: { type: string }
         date: { type: string }

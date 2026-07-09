@@ -949,14 +949,11 @@ function Citations({ citations }: { citations: CitationType[] }): ReactElement {
 }
 
 function CitationChip({ citation }: { citation: CitationType }): ReactElement {
-  // CitationSchema is {channel, author, date} with NO message URL, so we cannot
-  // build a real Discord deep link (that needs a message id — out of scope,
-  // backend). Use the prototype's generic placeholder; a richer link is future work.
   return (
     <a
       className="kh-chat-citation"
       data-testid="chat-citation"
-      href="https://discord.com/channels"
+      href={citation.link}
       target="_blank"
       rel="noopener noreferrer"
       style={{
@@ -988,6 +985,18 @@ function CitationChip({ citation }: { citation: CitationType }): ReactElement {
       </span>
       <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, color: 'var(--accent-ink)' }}>
         #{citation.channel}
+      </span>
+      <span
+        style={{
+          fontSize: 11.5,
+          color: 'var(--text-primary)',
+          maxWidth: 180,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {citation.title}
       </span>
       <span style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>{citation.author}</span>
       <span aria-hidden="true" style={{ display: 'flex', color: 'var(--text-subtle)' }}>

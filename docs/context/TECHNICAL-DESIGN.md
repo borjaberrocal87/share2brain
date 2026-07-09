@@ -352,9 +352,9 @@ La Web App es una **SPA estática**. No tiene servidor Node. El build de Vite pr
 
 | Vista | Descripción |
 |---|---|
-| **Search** | Búsqueda semántica con filtros por canal y por estado de lectura |
-| **Documents** | Listado paginado de fragmentos indexados |
-| **Chat** | Conversación streaming con el agente RAG |
+| **Search** | Búsqueda semántica con filtros por canal y por estado de lectura; cada card renderiza el `title` del recurso (heading) + `description` + enlace "ver recurso" (`link`) junto al deep link "ver en Discord" (Historia 7.5) |
+| **Documents** | Listado paginado de fragmentos indexados; cada fila muestra `title` + `description` (clamp 2 líneas) + enlace "ver recurso" que abre `link` y marca la fila como leída al burbujear (Historia 7.5) |
+| **Chat** | Conversación streaming con el agente RAG; el chip de cita ("Fuentes") muestra el `title` del recurso citado y enlaza a `citation.link` (Historia 7.5) |
 | **ReadStatus** | Gestión de lectura: badges, mark-all, conteo en sidebar |
 
 **Contrato con el Backend:** todos los tipos de request y response se infieren de los Zod schemas de `@hivly/shared/schemas`. Si el Backend cambia el shape de un endpoint y actualiza el schema, el compilador TypeScript rompe el frontend antes de que llegue a producción.
@@ -737,7 +737,8 @@ data: {"type":"done","conversationId":"uuid-..."}
 
 El schema de cada frame está definido en `packages/shared/src/schemas/sse.ts`. El campo `title` del
 frame `citation` es REQUERIDO desde la Historia 7.4 (permite renderizar el título del recurso en el
-chip de fuentes); `link` es una URL http(s) estricta (sin tolerancia a `''`).
+chip de fuentes) y es no-vacío desde la Historia 7.5 (`z.string().min(1)`); `link` es una URL http(s)
+estricta (sin tolerancia a `''`).
 
 ---
 

@@ -77,6 +77,7 @@ graph TD
 - **Prevents:** divergencia silenciosa entre shapes de request/response del frontend y backend
 - **Rule:** Todo shape de request o response de la API REST está definido como Zod schema en `packages/shared/src/schemas/`. El backend valida con `schema.parse()`; el frontend infiere tipos con `z.infer<typeof schema>`. Ningún servicio define shapes de API localmente.
 - **Nota (Epic 7, Stories 7.1–7.4):** `SearchFragmentSchema`/`DocumentFragmentSchema` reemplazan `content` por `title`+`description`+`link`; `CitationSchema` gana `title` (requerido, Historia 7.4) y `link` (requerido). `link` usa el refine `isHttpUrl` centralizado en `schemas/linkRefine.ts` (parse-based vía `URL.canParse`) — desde la Historia 7.4 es **estricto**: `''` ya NO es válido, todo `link` debe ser una URL http(s) bien formada (datos previos a 7.4 requieren el runbook de wipe, `operational-backlog.md`). **Nunca** `z.string().url()` (deprecado) ni `z.url()` estricto (semántica distinta a la convención del repo).
+- **Nota (Historia 7.5):** `title` en `CitationSchema`/`SearchFragmentSchema`/`DocumentFragmentSchema` es `z.string().min(1)` — no-vacío, no solo requerido. Seguro porque el pipeline de enriquecimiento (Historia 7.2, D1) trata un resultado vacío como fallo, así que todo recurso persistido siempre tiene un título real.
 
 ### AD-7 — nginx como punto de entrada HTTP único
 
