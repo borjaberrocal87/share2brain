@@ -12,6 +12,7 @@
   "dependencies": {
     "@hivly/shared": "*",
     "@langchain/textsplitters": "^1.0.1",
-    "redis": "^6.1.0"
+    "redis": "^6.1.0",
+    "undici": "^7.28.0"
   }
 }
