@@ -49,6 +49,10 @@ describe('CitationSchema', () => {
     expect(CitationSchema.safeParse(missing).success).toBe(false);
   });
 
+  it('should reject a citation with an empty title', () => {
+    expect(CitationSchema.safeParse({ ...valid, title: '' }).success).toBe(false);
+  });
+
   it('should reject a citation missing title', () => {
     const missing: Record<string, unknown> = { ...valid };
     delete missing.title;

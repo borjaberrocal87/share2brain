@@ -11,9 +11,11 @@ import { isHttpUrl, LINK_REFINE_MESSAGE } from './linkRefine.js';
 /** A single cited source: the resource's title, which channel, which author,
  * when, and its link. `link` must be a valid HTTP(S) URL (Story 7.4 — strict,
  * no more empty-string placeholder). `title` was added in Story 7.4 (F3) so
- * the sources chip can show the resource title. */
+ * the sources chip can show the resource title; it is AI-generated and
+ * non-empty (Story 7.5 — the enrichment pipeline treats an empty result as
+ * failure, so a persisted resource always has a real title). */
 export const CitationSchema = z.object({
-  title: z.string(),
+  title: z.string().min(1),
   channel: z.string(),
   author: z.string(),
   date: z.string(),
