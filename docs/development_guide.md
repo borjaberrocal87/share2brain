@@ -17,7 +17,7 @@ Ensure you have the following installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Share2Brain/share2brain.git
+git clone https://github.com/borjaberrocal87/share2brain.git
 cd share2brain
 ```
 

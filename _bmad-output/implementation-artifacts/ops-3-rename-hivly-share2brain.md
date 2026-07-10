@@ -4,7 +4,7 @@ baseline_commit: 5788e592874eb16073e14f93101bd8af7762dbdc
 
 # Story ops-3: Rename `hivly` → `share2brain`
 
-Status: review
+Status: done
 
 <!-- Post-roadmap operational chore (ops-N convention, outside the epic sequence). -->
 <!-- Source: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-10-rename-share2brain.md (approved). -->
@@ -219,3 +219,15 @@ Full mechanical inventory: `git diff --name-only main...chore/rename-share2brain
 ### Change Log
 
 - 2026-07-10 — Implemented ops-3 rename `hivly` → `share2brain` (bmad-dev-story). 7 commits on `chore/rename-share2brain` (shared → services → web → repo/infra ×2 → docs → bmad). Gate green (lint 0 / test 892+1skip / build 5 pkgs / e2e 23). Status → review.
+
+### Review Findings
+
+<!-- bmad-code-review 2026-07-10 (Opus 4.8): 3 layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor). 9/9 ACs PASS. All correctness-critical surfaces (eslint AD-2/AD-3 guards, events.ts stream keys, config loader, docker-compose, package-lock symlinks) verified clean at source. 1 decision-needed, 3 patch, 3 defer, 3 dismissed. -->
+
+- [x] [Review][Patch] (resolved from Decision) `git mv` dated planning-snapshot directory NAMES to drop `hivly` path segment for full-sweep consistency (Borja chose rename over keep-as-provenance): `architecture-hivly-2026-06-30/` → `architecture-share2brain-2026-06-30/` and `prd-hivly-2026-06-30/` → `prd-share2brain-2026-06-30/`. **APPLIED** — `git mv`, no internal refs to the old paths. [_bmad-output/planning-artifacts/architecture/, .../prds/]
+- [x] [Review][Patch] PRD example Postgres identifiers left capitalized `Share2Brain` while sibling `DATABASE_URL` is lowercase `share2brain` — internally contradictory; a copy-paste of the example fails auth ("role share2brain does not exist"). Contradicts the dev's own "lowercase Postgres identifiers" normalization intent. **APPLIED** — both example blocks lowercased. [docs/context/PRD.md:1055-1057,1062,1124-1126,1132]
+- [x] [Review][Patch] Design-mock file not renamed: 4 comments/citations now reference `Share2Brain Web.dc.html` but the tracked file was still `docs/context/design/KeepHive Web.dc.html` — references dangled. **APPLIED** — `git mv` file to `Share2Brain Web.dc.html` (honors AC7 sweep); refs now resolve. [packages/web/src/styles/global.css:6, packages/web/src/components/icons.tsx:4,191, packages/web/src/components/Hexagon.tsx:16]
+- [x] [Review][Patch] Clone URL owner segment mechanically capitalized to `Share2Brain/share2brain`; real remote is `borjaberrocal87/share2brain` (Task 8). **APPLIED**. [docs/development_guide.md:20]
+- [x] [Review][Defer] Untracked local `Hivly.config.yml` is now un-gitignored (`.gitignore`/`.dockerignore` only ignore `Share2Brain.config.yml`) — AD-8 behavior config exposed to accidental `git add`. Resolved by Borja's Task 8 ops step (rename/delete local file). [.gitignore:7, .dockerignore:17] — deferred, out of code-PR scope (Borja's ops step)
+- [x] [Review][Defer] Slack channel `#Share2Brain-alerts` uses invalid casing (Slack channels are lowercase-only). Pre-existing (`#Hivly-alerts` was already capitalized), faithfully carried through. [docs/context/PRD.md:569,1234] — deferred, pre-existing
+- [x] [Review][Defer] Story record says "7 commits"; branch has 8 (8th = the story→review tracking commit `0c264ee`). Cosmetic record accuracy; self-corrects on the done-flip commit. [ops-3-rename-hivly-share2brain.md:174,221] — deferred, pre-existing/cosmetic

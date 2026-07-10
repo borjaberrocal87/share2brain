@@ -1052,14 +1052,14 @@ services:
     ports:
       - "127.0.0.1:5432:5432"  # solo localhost en desarrollo; nunca exponer en 0.0.0.0
     environment:
-      - POSTGRES_USER=Share2Brain
-      - POSTGRES_PASSWORD=Share2Brain
-      - POSTGRES_DB=Share2Brain
+      - POSTGRES_USER=share2brain
+      - POSTGRES_PASSWORD=share2brain
+      - POSTGRES_DB=share2brain
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./src/infrastructure/database/migrations:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U Share2Brain"]
+      test: ["CMD-SHELL", "pg_isready -U share2brain"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -1121,15 +1121,15 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     environment:
-      - POSTGRES_USER=Share2Brain
+      - POSTGRES_USER=share2brain
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=Share2Brain
+      - POSTGRES_DB=share2brain
     volumes:
       - postgres_data:/var/lib/postgresql/data
     secrets:
       - postgres_password
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U Share2Brain"]
+      test: ["CMD-SHELL", "pg_isready -U share2brain"]
       interval: 10s
       timeout: 5s
       retries: 5
