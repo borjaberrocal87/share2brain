@@ -213,8 +213,11 @@ CREATE UNIQUE INDEX idx_embeddings_chunk_key ON embeddings(chunk_key);
 -- Vector search (HNSW, cosine)
 CREATE INDEX idx_embeddings_vector ON embeddings USING hnsw (embedding vector_cosine_ops);
 
--- RBAC filter on vector search
-CREATE INDEX idx_embeddings_channel ON embeddings(channel_id);
+-- RBAC filter on vector search + the stats endpoint's 14-day activity aggregation
+-- (Story 9.1, D2 — composite replaces the old single-column idx_embeddings_channel;
+-- (channel_id) is a prefix of (channel_id, created_at DESC), so every prior query
+-- served by the old index is served by the new one).
+CREATE INDEX idx_embeddings_channel_created ON embeddings(channel_id, created_at DESC);
 
 -- Channel/date lookups over Discord messages
 CREATE INDEX idx_discord_messages_channel ON discord_messages(channel_id, created_at DESC);

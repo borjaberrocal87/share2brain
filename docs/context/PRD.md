@@ -406,6 +406,7 @@ Se usa `ConversationSummaryBufferMemory` de LangChain con los siguientes paráme
 | **Documents** | Listado de todos los documentos indexados |
 | **Chat** | Conversación con el agente |
 | **Read Status** | Filtrado por leído/no leído |
+| **Statistics** | KPIs de conocimiento, actividad de indexado (14 días), volumen por canal y cobertura de lectura personal — RBAC-scoped (AD-12), agrega sobre datos existentes |
 
 ### 4.4 Base de datos
 

@@ -25,6 +25,7 @@ tags:
   - name: search
   - name: channels
   - name: documents
+  - name: stats
   - name: chat
   - name: conversations
   - name: read-status
@@ -155,6 +156,24 @@ paths:
       responses:
         "200": { description: "Paginated resource documents (non-empty title, description, link, RBAC-scoped) with isRead" }
         "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/stats:
+    get:
+      tags: [stats]
+      summary: Aggregate knowledge KPIs, 14-day activity, per-channel volume, and personal read coverage (RBAC-scoped)
+      description: >
+        Every channel-scoped aggregation is filtered by the caller's
+        allowedChannelIds inside the SQL (not a post-filter, AD-12); a denied
+        channel never surfaces, not even its existence in channels[]. The
+        per-user queries KPI has no channel_id and always reflects the
+        caller's own agent usage (Story 9.1).
+      responses:
+        "200":
+          description: RBAC-scoped stats
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StatsResponse" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/chat:
@@ -390,6 +409,52 @@ components:
         createdAt: { type: string, description: ISO 8601 }
         updatedAt: { type: string, description: ISO 8601 }
         messages: { type: array, items: { $ref: "#/components/schemas/ConversationMessage" } }
+
+    StatsKpi:
+      description: One KPI tile (schemas/stats.ts)
+      type: object
+      required: [key, label, value, sub]
+      properties:
+        key: { type: string, enum: [resources, channels, authors, queries] }
+        label: { type: string, minLength: 1 }
+        value: { type: integer, minimum: 0 }
+        sub: { type: string }
+
+    StatsActivityPoint:
+      description: One day of the 14-day indexing activity series (schemas/stats.ts)
+      type: object
+      required: [date, count]
+      properties:
+        date: { type: string, description: "'YYYY-MM-DD', UTC" }
+        count: { type: integer, minimum: 0 }
+
+    StatsChannel:
+      description: One per-channel volume row, ordered count DESC, channelId ASC (schemas/stats.ts)
+      type: object
+      required: [channelId, channelName, count]
+      properties:
+        channelId: { type: string, minLength: 1 }
+        channelName: { type: string }
+        count: { type: integer, minimum: 0 }
+
+    StatsCoverage:
+      description: Personal read coverage over the caller's scoped resources (schemas/stats.ts)
+      type: object
+      required: [readCount, totalCount, readPct]
+      properties:
+        readCount: { type: integer, minimum: 0 }
+        totalCount: { type: integer, minimum: 0 }
+        readPct: { type: integer, minimum: 0, maximum: 100 }
+
+    StatsResponse:
+      description: GET /api/stats (schemas/stats.ts)
+      type: object
+      required: [kpis, activity, channels, coverage]
+      properties:
+        kpis: { type: array, items: { $ref: "#/components/schemas/StatsKpi" }, minItems: 4, maxItems: 4 }
+        activity: { type: array, items: { $ref: "#/components/schemas/StatsActivityPoint" }, minItems: 14, maxItems: 14 }
+        channels: { type: array, items: { $ref: "#/components/schemas/StatsChannel" } }
+        coverage: { $ref: "#/components/schemas/StatsCoverage" }
 
   responses:
     BadRequest:

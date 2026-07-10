@@ -40,6 +40,8 @@ FR20: El sistema debe exponer `GET /health` con estado de cada componente (datab
 FR21: El sistema debe emitir notificaciones al operador (Telegram/Slack) para: backfill completado, recurso enriquecido indexado, errores críticos, sync completado, mensajes editados/borrados.
 FR22: El sistema debe ser configurable íntegramente mediante `Hivly.config.yml` (comportamiento) y `.env` (secretos), validados por `loadConfig()` al arrancar cada servicio.
 FR23: El sistema debe desplegarse con `docker compose up -d`, incluyendo el servicio `migrator` one-shot que aplica migraciones Drizzle antes de que arranquen bot, workers y backend.
+FR24: La Web App debe presentar una vista de Estadísticas con KPIs de conocimiento, actividad de indexado en el tiempo, volumen por canal y cobertura de lectura personal.
+FR25: Toda estadística debe limitarse a los canales accesibles del usuario (AD-12); ninguna métrica expone datos de canales que el usuario no puede leer.
 
 ### Requisitos No Funcionales
 
@@ -159,6 +161,8 @@ UX-DR23: **Animaciones del sistema** — Definir como @keyframes: kh-spin (spinn
 | FR21 | Épico 6 | Notificaciones Telegram/Slack al operador |
 | FR22 | Épico 1 | Configuración YAML + .env + loadConfig() |
 | FR23 | Épico 1 | Docker Compose 7 servicios + migrator one-shot |
+| FR24 | Épico 9 | Web App: vista Estadísticas |
+| FR25 | Épico 9 | GET /api/stats: agregaciones RBAC-scoped en-SQL |
 
 ## Lista de Épicos
 
@@ -1045,7 +1049,7 @@ a *destacar lo no leído* en vez de *apagar lo leído*.
 (`isStats`): KPIs de conocimiento, actividad de indexado (14 días), volumen por canal y cobertura
 de lectura personal. Sin ingesta nueva (agrega sobre datos existentes); sin tabla nueva.
 
-**FRs cubiertos:** FR22, FR23 (nuevos)
+**FRs cubiertos:** FR24, FR25 (nuevos)
 
 > Aprobado via `bmad-correct-course` (2026-07-10,
 > `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-10-stats.md`), clasificación
@@ -1055,8 +1059,10 @@ de lectura personal. Sin ingesta nueva (agrega sobre datos existentes); sin tabl
 > `bmad-create-story`; este resumen lista su alcance.
 
 - **Historia 9.1 · shared + backend:** contrato `StatsResponse` (Zod, AD-6) + endpoint
-  RBAC-scoped `GET /api/stats` (kpis + activity + channels + coverage) + índice de timeseries
-  sobre `embeddings(indexed_at)` (migración, sin tabla nueva) + test de integración RBAC que
+  RBAC-scoped `GET /api/stats` (kpis + activity + channels + coverage) + índice compuesto
+  `idx_embeddings_channel_created` sobre `embeddings(channel_id, created_at DESC)` — `created_at`
+  ES el `indexedAt` que expone `/api/documents`; `embeddings` no tiene columna `indexed_at`
+  (migración reemplaza el índice de un solo canal, sin tabla nueva) + test de integración RBAC que
   prueba la exclusión de canales fuera de alcance.
 - **Historia 9.2 · web:** `StatsView` + 3ª entrada de nav "Estadísticas" (mismo patrón AppLayout
   que Búsqueda/Documentos, UX-DR5); KPI cards, bar-chart de actividad, barras por canal y donut de
