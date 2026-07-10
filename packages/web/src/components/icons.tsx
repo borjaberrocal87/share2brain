@@ -167,6 +167,26 @@ export function CheckIcon({ size = 20 }: IconProps): ReactElement {
   );
 }
 
+// Nav icon (18px, stroke 1.8) for the Estadísticas sidebar entry (Story 9.2, AC1).
+export function StatsIcon({ size = 20 }: IconProps): ReactElement {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 3v18h18" />
+      <path d="M7 14l3-4 3 3 4-6" />
+    </svg>
+  );
+}
+
 // Chat/message glyph — the FAB launcher icon (25px) and the history-row icon
 // (15px). Story 5.3; path verbatim from KeepHive Web.dc.html.
 export function ChatIcon({ size = 20 }: IconProps): ReactElement {

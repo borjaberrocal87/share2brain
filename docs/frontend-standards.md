@@ -123,7 +123,7 @@ const CitationBadge: React.FC<CitationBadgeProps> = ({ channel, author, date }) 
 
 ## Views & Components
 
-Four primary views (TECHNICAL-DESIGN §5.5):
+Five primary views (TECHNICAL-DESIGN §5.5):
 
 | View | Description |
 |---|---|
@@ -131,6 +131,7 @@ Four primary views (TECHNICAL-DESIGN §5.5):
 | **Documents** | Paginated list of indexed fragments |
 | **Chat** | Streaming conversation with the RAG agent (SSE) |
 | **ReadStatus** | Read management: badges, mark-all, sidebar counts |
+| **Statistics** | Knowledge KPIs, 14-day indexing activity, per-channel volume, personal read coverage, and top 5 active users — RBAC-scoped server-side, no chart dependency |
 
 - Use functional components with hooks; keep components small and focused.
 - Handle loading and error states for every async operation; show user-friendly messages.

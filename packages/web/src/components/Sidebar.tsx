@@ -1,13 +1,13 @@
-// Sidebar (Story 2.2, AC3 + AC5). Logo + wordmark, two nav items with
+// Sidebar (Story 2.2, AC3 + AC5). Logo + wordmark, three nav items with
 // active/inactive styling, a flexible spacer, the system-status panel, and a
 // footer. Navigation is in-app state (no router — UX-DR5); clicking an item
 // calls onNavigate. UI copy Spanish verbatim; identifiers English.
 import type { CSSProperties, ReactElement } from 'react';
 
-import { DocsIcon, SearchIcon } from './icons';
+import { DocsIcon, SearchIcon, StatsIcon } from './icons';
 import { Hexagon } from './Hexagon';
 
-export type Screen = 'search' | 'docs';
+export type Screen = 'search' | 'docs' | 'stats';
 
 interface SidebarProps {
   activeScreen: Screen;
@@ -66,6 +66,7 @@ const statusRowStyle: CSSProperties = { display: 'flex', justifyContent: 'space-
 const NAV_ITEMS: { screen: Screen; label: string; icon: ReactElement }[] = [
   { screen: 'search', label: 'Búsqueda', icon: <SearchIcon size={18} /> },
   { screen: 'docs', label: 'Documentos', icon: <DocsIcon size={18} /> },
+  { screen: 'stats', label: 'Estadísticas', icon: <StatsIcon size={18} /> },
 ];
 
 export function Sidebar({ activeScreen, onNavigate, unreadCount = 0 }: SidebarProps): ReactElement {

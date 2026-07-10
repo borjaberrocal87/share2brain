@@ -348,7 +348,7 @@ req.allowedChannelIds = allowedChannelIds.map(r => r.channelId)
 
 La Web App es una **SPA estática**. No tiene servidor Node. El build de Vite produce `dist/` que nginx sirve directamente. Toda la lógica vive en el browser.
 
-**Cuatro vistas principales:**
+**Cinco vistas principales:**
 
 | Vista | Descripción |
 |---|---|
@@ -356,6 +356,7 @@ La Web App es una **SPA estática**. No tiene servidor Node. El build de Vite pr
 | **Documents** | Listado paginado de fragmentos indexados; cada fila muestra `title` + `description` (clamp 2 líneas) + enlace "ver recurso" que abre `link` y marca la fila como leída al burbujear (Historia 7.5) |
 | **Chat** | Conversación streaming con el agente RAG; el chip de cita ("Fuentes") muestra el `title` del recurso citado y enlaza a `citation.link` (Historia 7.5) |
 | **ReadStatus** | Gestión de lectura: badges, mark-all, conteo en sidebar |
+| **Statistics** | KPIs de conocimiento, actividad de indexado (14 días), volumen por canal, cobertura de lectura personal y Top 5 usuarios más activos; 5 secciones renderizadas 100% desde `StatsResponse` (RBAC-scoped server-side, AD-12), sin dependencia de librerías de gráficos (Historia 9.2) |
 
 **Contrato con el Backend:** todos los tipos de request y response se infieren de los Zod schemas de `@hivly/shared/schemas`. Si el Backend cambia el shape de un endpoint y actualiza el schema, el compilador TypeScript rompe el frontend antes de que llegue a producción.
 

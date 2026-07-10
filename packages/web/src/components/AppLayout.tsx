@@ -1,6 +1,7 @@
 // Authenticated app shell (Story 2.2, AC2 + AC5). Outer flex row: Sidebar +
 // a content column (Header on top, scrollable content below). The content
-// area renders Search (4.3) or Documentos (4.4) per the active screen.
+// area renders Search (4.3), Documentos (4.4), or Estadísticas (9.2) per the
+// active screen.
 import type { CSSProperties, ReactElement } from 'react';
 
 import type { UnreadCountResponse } from '@hivly/shared/schemas';
@@ -9,6 +10,7 @@ import { DocsView } from './DocsView';
 import { Header } from './Header';
 import { SearchView } from './SearchView';
 import { Sidebar, type Screen } from './Sidebar';
+import { StatsView } from './StatsView';
 import type { Theme } from '../hooks/useTheme';
 
 interface AppLayoutProps {
@@ -73,8 +75,10 @@ export function AppLayout({
 
         {activeScreen === 'search' ? (
           <SearchView guildId={guildId} />
-        ) : (
+        ) : activeScreen === 'docs' ? (
           <DocsView unreadCounts={unreadCounts} onUnreadChange={onUnreadChange} />
+        ) : (
+          <StatsView />
         )}
       </div>
     </div>

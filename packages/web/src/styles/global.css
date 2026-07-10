@@ -9,7 +9,9 @@
  * every UI color is read through a CSS custom property below. Do NOT hardcode UI
  * colors elsewhere — the only raw hex allowed outside these token blocks are the
  * fixed, theme-independent brand colors: amber #F5A623 / highlight #FFCB6B,
- * Discord #5865F2, positive #3BA55D, danger #ED4245.
+ * Discord #5865F2, positive #3BA55D, danger #ED4245. Story 9.2 sanctions two more:
+ * the Top-5-users blurple gradient tail #8891F5 (D3) and the 6-color derived-avatar
+ * palette #F2A03D/#5BC0DE/#C792EA/#57C98A/#EE6C8A/#F5A623 (D4, StatsView.tsx only).
  *
  * The theme toggle + localStorage persistence live in Story 2.2, not here.
  */
