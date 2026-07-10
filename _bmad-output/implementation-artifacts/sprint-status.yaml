@@ -159,7 +159,14 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-06-30
-last_updated: 2026-07-10  # ops-3 backlog → ready-for-dev (bmad-create-story): full rename hivly →
+last_updated: 2026-07-10  # ops-3 in-progress → review (bmad-dev-story): full rename hivly → share2brain
+# shipped on branch chore/rename-share2brain (7 commits, inner-first shared→services→web→repo/infra→
+# docs→bmad; repo/infra = 2 commits, a hollow-first-commit recovery). Gate green: lint 0 / test 892+1skip
+# / build 5 pkgs / Playwright e2e 23/23 (vs a fresh migrated share2brain DB). npm install regenerated the
+# lock + @share2brain/* symlinks. AD-13 stream prefix ratified hivly: → share2brain:. Residual "hivly"
+# only in provenance (this story, the rename SCP, these notes) + Borja's untracked local config. Next:
+# bmad-code-review, then flip → done + push/PR (Borja's trigger) + his repo/dir/config ops steps.
+# || (prior) last_updated: 2026-07-10  # ops-3 backlog → ready-for-dev (bmad-create-story): full rename hivly →
 # share2brain as a post-roadmap ops chore (ops-N convention, invoked explicitly). Story:
 # ops-3-rename-hivly-share2brain.md. 1920 hivly refs / 279 files. Verified surface: no @hivly path
 # aliases (npm workspace symlinks only → rename is atomic, npm install rebuilds); real Hivly.config.yml
@@ -531,7 +538,7 @@ development_status:
   # (chore/rename-share2brain), inner-first (shared→services→web→infra→docs→bmad). Ratifies AD-13
   # stream prefix hivly: → share2brain:. Safe (never deployed to prod; docker compose down -v clears
   # old volumes/keys). Repo/remote/local-config rename = Borja's ops steps (outside the code PR).
-  ops-3-rename-hivly-share2brain: in-progress
+  ops-3-rename-hivly-share2brain: review
 
 action_items:
   - epic: 1
