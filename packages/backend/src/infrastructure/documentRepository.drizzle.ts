@@ -33,9 +33,11 @@ export function createDrizzleDocumentRepository(db: Database): DocumentRepositor
           e.channel_id                            AS "channelId",
           cp.name                                 AS "channelName",
           dm.author_id                            AS "authorId",
-          -- 9.5-D1/D6: latest-captured display name, degrading tier 2 (OAuth username)
-          -- then tier 3 (snowflake) — same COALESCE chain as the stats topUsers aggregate.
-          -- NULLIF hardens against the create path's missing runtime '' guard (9.4).
+          -- 9.5-D1/D6: anchor-row display name, degrading tier 2 (OAuth username) then
+          -- tier 3 (snowflake) — same COALESCE tier chain as the stats topUsers aggregate,
+          -- but resolved at the anchor row here (topUsers picks the latest name across all
+          -- of the author's scoped messages via array_agg). NULLIF hardens against the
+          -- create path's missing runtime '' guard (9.4).
           COALESCE(NULLIF(dm.author_name, ''), u.username, dm.author_id) AS "authorName",
           dm.created_at                           AS "createdAt",
           e.created_at                            AS "indexedAt",     -- D3: the "indexado" column
