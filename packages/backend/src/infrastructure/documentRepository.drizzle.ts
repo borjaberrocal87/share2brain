@@ -33,7 +33,10 @@ export function createDrizzleDocumentRepository(db: Database): DocumentRepositor
           e.channel_id                            AS "channelId",
           cp.name                                 AS "channelName",
           dm.author_id                            AS "authorId",
-          dm.author_id                            AS "authorName",   -- D2: no display name persisted yet
+          -- 9.5-D1/D6: latest-captured display name, degrading tier 2 (OAuth username)
+          -- then tier 3 (snowflake) — same COALESCE chain as the stats topUsers aggregate.
+          -- NULLIF hardens against the create path's missing runtime '' guard (9.4).
+          COALESCE(NULLIF(dm.author_name, ''), u.username, dm.author_id) AS "authorName",
           dm.created_at                           AS "createdAt",
           e.created_at                            AS "indexedAt",     -- D3: the "indexado" column
           dm.id                                   AS "messageId",     -- D2: the anchor message (message_ids[1], see join below)
@@ -44,6 +47,7 @@ export function createDrizzleDocumentRepository(db: Database): DocumentRepositor
         -- INTENTIONAL INNER JOIN — see embeddingSearchRepository.drizzle.ts for the
         -- anchor-absent rationale (drop rather than surface placeholder fields).
         JOIN discord_messages dm ON dm.id = e.message_ids[1]
+        LEFT JOIN users u ON u.discord_id = dm.author_id
         LEFT JOIN user_read_status urs ON urs.embedding_id = e.id AND urs.user_id = ${userId}
         -- AD-12: RBAC inside the query.
         WHERE ${inArray(sql`e.channel_id`, allowedChannelIds)}

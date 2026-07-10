@@ -40,7 +40,10 @@ export function createDrizzleEmbeddingSearchRepository(
           e.channel_id                            AS "channelId",
           cp.name                                 AS "channelName",
           dm.author_id                            AS "authorId",
-          dm.author_id                            AS "authorName",   -- D2: no display name persisted yet
+          -- 9.5-D1/D6: latest-captured display name, degrading tier 2 (OAuth username)
+          -- then tier 3 (snowflake) — same COALESCE chain as the stats topUsers aggregate.
+          -- NULLIF hardens against the create path's missing runtime '' guard (9.4).
+          COALESCE(NULLIF(dm.author_name, ''), u.username, dm.author_id) AS "authorName",
           dm.created_at                           AS "createdAt",
           dm.id                                   AS "messageId",     -- D2: anchor = message_ids[0]
           GREATEST(0, LEAST(1, 1 - (e.embedding <=> ${vecLiteral}::vector)))::float8 AS "similarity"
@@ -53,6 +56,7 @@ export function createDrizzleEmbeddingSearchRepository(
         -- >=1 message; hard-delete is Epic 6, soft-delete is handled by the NOT EXISTS
         -- below). Revisit as a LEFT JOIN + degrade when hard-delete lands (Review 2026-07-06).
         JOIN discord_messages dm ON dm.id = e.message_ids[1]
+        LEFT JOIN users u ON u.discord_id = dm.author_id
         -- AD-12: RBAC inside the query. inArray renders e.channel_id in ($1,$2,...);
         -- a raw array interpolation would be expanded by drizzle into comma-separated
         -- params and break an ANY(...) cast, so use the re-exported helper (AD-2).

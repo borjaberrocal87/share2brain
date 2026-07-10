@@ -29,6 +29,13 @@ export interface ChannelCount {
   count: number;
 }
 
+/** One row of the top-5-most-active-users aggregate (D1/D2 — `authorName` already resolved). */
+export interface TopUserRow {
+  authorId: string;
+  authorName: string;
+  count: number;
+}
+
 export interface StatsRepository {
   /**
    * Scoped `resources`/`channels`/`authors` KPI values plus the weekly delta for
@@ -67,4 +74,16 @@ export interface StatsRepository {
    * even when `allowedChannelIds` is empty (D6).
    */
   countUserAgentQueries(userId: string, fromDate: string): Promise<number>;
+
+  /**
+   * Top 5 `author_id`s by count of scoped, non-deleted embeddings whose anchor is
+   * authored by that `author_id` (same basis as the `authors` KPI — D2), ordered
+   * `count DESC, authorId ASC`, at most 5 rows (D4). `authorName` resolves via
+   * `COALESCE(<latest scoped non-blank author_name>, username, authorId)` (D1) —
+   * the pick considers only the caller's scoped, non-deleted anchor rows, never a
+   * name captured in a denied channel. An empty `allowedChannelIds` resolves to
+   * `[]` without touching the DB (deny-by-default — this method IS channel-scoped,
+   * unlike `countUserAgentQueries`).
+   */
+  getTopUsers(allowedChannelIds: string[]): Promise<TopUserRow[]>;
 }

@@ -36,8 +36,8 @@ export interface StatsService {
    * Aggregate knowledge KPIs, 14-day activity, per-channel volume, and personal
    * read coverage for `userId`, restricted to `allowedChannelIds` (AD-12). An
    * empty scope short-circuits every channel-scoped read (D6) — KPIs 1-3 read
-   * 0, activity is 14 zero days, channels is `[]`, coverage is `0/0/0` — while
-   * the per-user `queries` KPI still runs. `now` defaults to the wall clock;
+   * 0, activity is 14 zero days, channels is `[]`, topUsers is `[]`, coverage
+   * is `0/0/0` — while the per-user `queries` KPI still runs. `now` defaults to the wall clock;
    * tests pass a fixed value for a deterministic window.
    */
   getStats(userId: string, allowedChannelIds: string[], now?: Date): Promise<StatsResponse>;
@@ -61,7 +61,7 @@ export function createStatsService(deps: { statsRepo: StatsRepository }): StatsS
       // every channel-scoped read (D6). Named for what it is, not the inverse.
       const emptyScope = allowedChannelIds.length === 0;
 
-      const [kpiCounts, activityRows, channels, readCount, queries] = await Promise.all([
+      const [kpiCounts, activityRows, channels, readCount, queries, topUsers] = await Promise.all([
         emptyScope
           ? Promise.resolve({ resources: 0, resourcesThisWeek: 0, channels: 0, authors: 0 })
           : statsRepo.getScopedKpiCounts(allowedChannelIds, weekStart),
@@ -69,6 +69,7 @@ export function createStatsService(deps: { statsRepo: StatsRepository }): StatsS
         emptyScope ? Promise.resolve([]) : statsRepo.getChannelCounts(allowedChannelIds),
         emptyScope ? Promise.resolve(0) : statsRepo.getCoverageReadCount(userId, allowedChannelIds),
         statsRepo.countUserAgentQueries(userId, queriesFrom), // D6: always runs, no channel scope
+        emptyScope ? Promise.resolve([]) : statsRepo.getTopUsers(allowedChannelIds), // D5: channel-scoped
       ]);
 
       const countByDay = new Map(activityRows.map((row) => [row.day, row.count]));
@@ -116,6 +117,7 @@ export function createStatsService(deps: { statsRepo: StatsRepository }): StatsS
         activity,
         channels,
         coverage: { readCount: safeReadCount, totalCount, readPct },
+        topUsers,
       });
     },
   };
