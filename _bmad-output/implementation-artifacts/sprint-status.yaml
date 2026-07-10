@@ -1,5 +1,34 @@
 # generated: 2026-06-30
-# last_updated: 2026-07-10 (story 9-5 review → done, bmad-code-review): 3 adversarial layers @ Opus
+# last_updated: 2026-07-10 (story 9-2 in-progress → review, bmad-dev-story): StatsView + 3rd nav
+# entry implemented on feat/9-2-web-statsview exactly per plan (D1-D6 honored verbatim). Gate
+# green: lint 0 / 892 unit+web (+10) / build clean (5 pkgs) / 16 existing e2e chromium unchanged.
+# Integration not run (web-only, no shared/backend touch). Manual smoke confirmed real-data
+# rendering in both themes via the e2e harness (see story Debug Log for 2 environment hiccups: a
+# stale leftover e2e:server process serving a pre-9.5 response, and an external docker-compose
+# full-stack restart mid-verification — neither caused by this session, flagged not acted on).
+# New stats visual/CSS assertions deferred BY NAME to 9.3 (7.5->7.6 precedent). Docs synced
+# (epics.md UX-DR5/6 + new UX-DR24, TECHNICAL-DESIGN.md §5.5, frontend-standards.md, global.css).
+# NOT committed to a PR yet. Next: commit + PR + bmad-code-review 9.2, then 9.3.
+# || (prior) last_updated: 2026-07-10 (story 9-2 ready-for-dev → in-progress, bmad-dev-story): starting
+# implementation on branch feat/9-2-web-statsview off 10e071f.
+# || (prior) last_updated: 2026-07-10 (story 9-2 backlog → ready-for-dev, bmad-create-story): web StatsView +
+# 3rd nav entry "Estadísticas" rendering all 5 StatsResponse blocks (kpis/activity/channels/coverage/
+# topUsers) — packages/web ONLY, no shared/backend change (contract done, PR #57 merged @ 10e071f).
+# Full isStats design extracted into the story (incl. the 4 KPI icon SVG paths + StatsIcon — mock
+# never re-parsed downstream). 6 ratified defaults flagged for review: D1 KPI content API-verbatim
+# (mock labels/subs = pre-ratification placeholders, "de 6 del guild" rejected in 9.1), D2 de-mensajes
+# copy ("Recursos por canal", "N recursos · últimos 14 días"; 7.5-F4 precedent), D3 Top-5 bars KEEP
+# blurple #5865F2→#8891F5 (semantically Discord users — NOT the 8.1 leftover case), D4 derived avatars
+# (authorId-hash over the mock's 6-color palette + initials rule; snowflake authorName degrades),
+# D5 toLocaleString('es'), D6 zero-safety (Math.max(1,divisor) — empty scope would NaN; [] sections
+# get inline empty lines). Touches 4 files + 3 new; components.css expected UNTOUCHED (screen has no
+# hover states). Testids pre-named for 9.3. Docs sync: UX-DR5/6 (2→3 nav), NEW UX-DR24 (23 taken),
+# TD §5.5 + frontend-standards views tables 4→5, global.css raw-hex policy comment. Gate: lint +
+# web unit + build + 16 existing e2e stay green; integration NOT run (web-only); new stats visual
+# ACs deferred BY NAME to 9-3. Fresh-context validation: 2 critical (UX-DR23 collision; missing KPI
+# icon paths) + 3 enhancements applied. Branch feat/9-2-web-statsview off 10e071f. Next:
+# bmad-dev-story 9-2 (9-3 parallelizable after).
+# || (prior) last_updated: 2026-07-10 (story 9-5 review → done, bmad-code-review): 3 adversarial layers @ Opus
 # (Blind Hunter / Edge Case Hunter / Acceptance Auditor). Auditor 0 AC/D/AD violations — AC1–AC6 +
 # D1–D7 all verified faithful vs source/schema/seed math (3+2+1+1+1+1=9 reconciles with resources KPI);
 # Edge Hunter called the diff clean. Triage: 0 decision-needed, 2 patch (both applied), 3 defer (Low),
@@ -421,7 +450,7 @@ development_status:
   # every aggregation filters by allowedChannelIds inside the SQL. Single GET /api/stats.
   epic-9: in-progress
   9-1-shared-backend-contrato-stats-endpoint-agregacion-rbac-scoped: done
-  9-2-web-statsview-tercera-entrada-nav: backlog
+  9-2-web-statsview-tercera-entrada-nav: review
   9-3-e2e-extender-harness-visual-estadisticas: backlog
   # Added 2026-07-10 via bmad-correct-course (sprint-change-proposal-2026-07-10-topusers.md):
   # "Top 5 usuarios" promoted from the 9.1 review (D9) to its own layered pair. Sequence
