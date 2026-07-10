@@ -51,7 +51,7 @@ function baseMessage(overrides: Partial<IngestibleMessage> = {}): IngestibleMess
     guildId: '333',
     content: 'hello world',
     createdAt: new Date('2026-07-06T10:00:00.000Z'),
-    author: { id: '444', bot: false },
+    author: { id: '444', bot: false, displayName: 'Alice' },
     ...overrides,
   };
 }
@@ -108,6 +108,7 @@ describe('persistMessage', () => {
       channelId: '222',
       guildId: '333',
       authorId: '444',
+      authorName: 'Alice',
       content: 'hello world',
       createdAt,
       updatedAt: createdAt,

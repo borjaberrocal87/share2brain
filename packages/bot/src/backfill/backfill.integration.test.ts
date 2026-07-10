@@ -86,7 +86,7 @@ describe('backfill (integration)', () => {
       content: 'backfilled message',
       createdAt: new Date('2026-07-02T00:00:00.000Z'),
       editedAt: null,
-      author: { id: `${RUN}-author`, bot: false },
+      author: { id: `${RUN}-author`, bot: false, displayName: 'Backfilled Author' },
     };
     createdIds.push(fetchedMessage.id);
     const channel = {
@@ -111,11 +111,12 @@ describe('backfill (integration)', () => {
       sleep: () => Promise.resolve(),
     });
 
-    // The backfilled row landed…
+    // The backfilled row landed, carrying the captured author display name…
     const rows = await clients.db.execute(
-      sql`select count(*)::int as n from discord_messages where id = ${fetchedMessage.id}`,
+      sql`select author_name from discord_messages where id = ${fetchedMessage.id}`,
     );
-    expect((rows.rows[0] as { n: number }).n).toBe(1);
+    expect(rows.rows).toHaveLength(1);
+    expect((rows.rows[0] as { author_name: string }).author_name).toBe('Backfilled Author');
 
     // …its MessageCreatedEvent went to the messages stream…
     const messageEntries = await clients.redis.xRange(STREAM_KEYS.DISCORD_MESSAGES, '-', '+');

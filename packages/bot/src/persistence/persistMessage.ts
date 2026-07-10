@@ -42,7 +42,7 @@ export interface IngestibleMessage {
   createdAt: Date;
   /** Discord's edit timestamp; null/absent for never-edited messages. */
   editedAt?: Date | null;
-  author: { id: string; bot: boolean };
+  author: { id: string; bot: boolean; displayName: string };
 }
 
 /** Dependencies shared by the handler and the persistence step (dependency-injected). */
@@ -74,6 +74,7 @@ export async function persistMessage(
         channelId: message.channelId,
         guildId,
         authorId: message.author.id,
+        authorName: message.author.displayName,
         content: message.content,
         createdAt: message.createdAt,
         // Column is NOT NULL with no default; backfilled history can carry an edit.

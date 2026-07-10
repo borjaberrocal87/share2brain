@@ -418,6 +418,7 @@ erDiagram
         string channel_id
         string guild_id
         string author_id
+        string author_name "nullable, sin backfill (9.4)"
         text content
         timestamp created_at
         timestamp updated_at
@@ -614,6 +615,7 @@ interface MessageCreatedEvent extends StreamEvent {
 interface MessageUpdatedEvent extends StreamEvent {
   type: 'discord.message.updated'
   newContent: string
+  authorName?: string    // wire-optional (legacy in-flight events); producers always send it (9.4)
 }
 
 interface MessageDeletedEvent extends StreamEvent {

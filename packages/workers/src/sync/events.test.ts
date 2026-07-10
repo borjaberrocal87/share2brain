@@ -77,6 +77,21 @@ describe('parseUpdatedEvent', () => {
     expect(event?.guildId).toBe('');
     expect(event?.timestamp).toBe(valid.timestamp);
   });
+
+  it('should carry a non-empty authorName through', () => {
+    const event = parseUpdatedEvent({ ...valid, authorName: 'Alice' });
+    expect(event?.authorName).toBe('Alice');
+  });
+
+  it('should normalize a missing authorName to undefined', () => {
+    const event = parseUpdatedEvent(valid);
+    expect(event?.authorName).toBeUndefined();
+  });
+
+  it('should normalize a blank (whitespace-only) authorName to undefined — never blank out a stored name', () => {
+    const event = parseUpdatedEvent({ ...valid, authorName: '   ' });
+    expect(event?.authorName).toBeUndefined();
+  });
 });
 
 describe('parseDeletedEvent', () => {

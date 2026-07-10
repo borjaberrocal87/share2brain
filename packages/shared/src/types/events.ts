@@ -21,6 +21,10 @@ export interface MessageCreatedEvent extends StreamEvent {
 export interface MessageUpdatedEvent extends StreamEvent {
   type: 'discord.message.updated';
   newContent: string;
+  // Wire-optional for legacy in-flight events parked in the stream before this
+  // field existed. Producers build this via Record<keyof T, string>, which
+  // forces every new producer to send it despite the optional marker here.
+  authorName?: string;
 }
 
 export interface MessageDeletedEvent extends StreamEvent {

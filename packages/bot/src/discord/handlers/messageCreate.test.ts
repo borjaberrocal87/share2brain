@@ -34,7 +34,7 @@ function message(overrides: Partial<IngestibleMessage> = {}): IngestibleMessage 
     guildId: 'guild-1',
     content: 'hi',
     createdAt: new Date('2026-07-06T10:00:00.000Z'),
-    author: { id: 'u1', bot: false },
+    author: { id: 'u1', bot: false, displayName: 'Alice' },
     ...overrides,
   };
 }
@@ -92,7 +92,7 @@ describe('handleMessageCreate', () => {
   });
 
   it('should skip a bot-authored message when ignore_bots is true', async () => {
-    await handleMessageCreate(message({ author: { id: 'bot1', bot: true } }), deps);
+    await handleMessageCreate(message({ author: { id: 'bot1', bot: true, displayName: 'BotUser' } }), deps);
 
     expect(transaction).not.toHaveBeenCalled();
     expect(xAdd).not.toHaveBeenCalled();
@@ -101,7 +101,7 @@ describe('handleMessageCreate', () => {
   it('should persist a bot-authored message when ignore_bots is false', async () => {
     deps.config = makeConfig(false);
 
-    await handleMessageCreate(message({ author: { id: 'bot1', bot: true } }), deps);
+    await handleMessageCreate(message({ author: { id: 'bot1', bot: true, displayName: 'BotUser' } }), deps);
 
     expect(transaction).toHaveBeenCalledTimes(1);
   });

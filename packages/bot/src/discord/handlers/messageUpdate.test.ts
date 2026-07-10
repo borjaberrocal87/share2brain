@@ -33,7 +33,7 @@ function message(overrides: Partial<UpdatableMessage> = {}): UpdatableMessage {
     guildId: 'guild-1',
     content: 'edited content',
     editedAt: new Date('2026-07-08T10:00:00.000Z'),
-    author: { id: 'u1', bot: false },
+    author: { id: 'u1', bot: false, displayName: 'Alice' },
     partial: false,
     fetch: vi.fn(),
     ...overrides,
@@ -69,6 +69,7 @@ describe('handleMessageUpdate', () => {
       guildId: 'guild-1',
       timestamp: '2026-07-08T10:00:00.000Z',
       newContent: 'edited content',
+      authorName: 'Alice',
     });
     for (const value of Object.values(event)) {
       expect(typeof value).toBe('string');
@@ -96,7 +97,7 @@ describe('handleMessageUpdate', () => {
   });
 
   it('skips a bot-authored message when ignore_bots is true', async () => {
-    await handleMessageUpdate(message({ author: { id: 'bot1', bot: true } }), deps);
+    await handleMessageUpdate(message({ author: { id: 'bot1', bot: true, displayName: 'BotUser' } }), deps);
 
     expect(xAdd).not.toHaveBeenCalled();
   });
@@ -104,7 +105,7 @@ describe('handleMessageUpdate', () => {
   it('publishes a bot-authored message when ignore_bots is false', async () => {
     deps.config = makeConfig(false);
 
-    await handleMessageUpdate(message({ author: { id: 'bot1', bot: true } }), deps);
+    await handleMessageUpdate(message({ author: { id: 'bot1', bot: true, displayName: 'BotUser' } }), deps);
 
     expect(xAdd).toHaveBeenCalledTimes(1);
   });
@@ -120,10 +121,21 @@ describe('handleMessageUpdate', () => {
     expect(event.newContent).toBe('fetched content');
   });
 
+  it('publishes the authorName of the FETCHED message, not the raw partial', async () => {
+    const fetched = message({ author: { id: 'u1', bot: false, displayName: 'Fetched Name' }, partial: false });
+    const fetch = vi.fn().mockResolvedValue(fetched);
+
+    await handleMessageUpdate(message({ partial: true, fetch }), deps);
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const [, , event] = xAdd.mock.calls[0] as [string, string, Record<string, string>];
+    expect(event.authorName).toBe('Fetched Name');
+  });
+
   it('applies the bot-author guard to the FETCHED message, not the raw partial', async () => {
     // Raw partial has no usable author; fetch resolves to a bot author. The guard
     // must run on the fetched author → skip. (Locks in the fetch-before-guard order.)
-    const fetched = message({ author: { id: 'bot1', bot: true }, partial: false });
+    const fetched = message({ author: { id: 'bot1', bot: true, displayName: 'BotUser' }, partial: false });
     const fetch = vi.fn().mockResolvedValue(fetched);
 
     await handleMessageUpdate(message({ partial: true, fetch }), deps);
@@ -133,7 +145,7 @@ describe('handleMessageUpdate', () => {
   });
 
   it('does not throw when a partial arrives with a null author (guard runs after fetch)', async () => {
-    const fetched = message({ author: { id: 'u1', bot: false }, partial: false });
+    const fetched = message({ author: { id: 'u1', bot: false, displayName: 'Alice' }, partial: false });
     const fetch = vi.fn().mockResolvedValue(fetched);
     // author is null on the raw partial — reading .bot before fetch would throw.
     const partial = message({ partial: true, fetch, author: null as unknown as UpdatableMessage['author'] });

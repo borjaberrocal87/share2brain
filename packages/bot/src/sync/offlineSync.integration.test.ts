@@ -64,7 +64,7 @@ function fetchedMessage(id: string, content: string): FetchedMessage {
     guildId: GUILD,
     content,
     editedAt: new Date('2026-07-08T00:00:00.000Z'),
-    author: { id: `${RUN}-author`, bot: false },
+    author: { id: `${RUN}-author`, bot: false, displayName: 'Offline Author' },
     partial: false,
     fetch: () => Promise.resolve(fetchedMessage(id, content)),
   };
@@ -149,6 +149,7 @@ describe('offlineSync (integration)', () => {
       guildId: GUILD,
       timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/) as unknown,
       newContent: 'updated content',
+      authorName: 'Offline Author',
     });
 
     // The unchanged message published nothing.

@@ -16,7 +16,7 @@ Only the service that owns a table writes to it (AD, State Ownership):
 
 | Table | Owner (writes) | Readers |
 |---|---|---|
-| `discord_messages` | bot | workers, backend |
+| `discord_messages` | bot (create); workers — Sync (edit refresh of `content`/`updated_at`/`author_name`) | workers, backend |
 | `embeddings` | workers — Indexer (insert), Sync (update/delete) | backend |
 | `channel_permissions` | backend (upsert from config at startup) | backend |
 | `user_roles_cache` | backend (login + OAuth2 refresh) | backend |
@@ -27,13 +27,18 @@ Only the service that owns a table writes to it (AD, State Ownership):
 ## Model Descriptions
 
 ### 1. discord_messages
-Raw Discord messages captured by the Bot. The Bot is the only writer.
+Raw Discord messages captured by the Bot. The Bot is the only writer on create; the Sync worker
+also refreshes `content`, `updated_at`, and (Story 9.4) `author_name` on the edit path.
 
 **Fields:**
 - `id`: Discord snowflake (Primary Key, string)
 - `channel_id`: Discord channel snowflake
 - `guild_id`: Discord guild snowflake
 - `author_id`: Discord author snowflake
+- `author_name`: author's visible display name (`globalName ?? username`) captured at ingestion
+  (Story 9.4); nullable, no default — rows written before this column existed stay `NULL` forever
+  (no backfill). Refreshed on edit (a newer display name is newer truth); never written by the
+  create path when it already holds a value (`onConflictDoNothing`).
 - `content`: message text
 - `created_at`: message creation timestamp
 - `updated_at`: last edit timestamp
@@ -141,6 +146,7 @@ erDiagram
         string channel_id
         string guild_id
         string author_id
+        string author_name "nullable, no backfill (9.4)"
         text content
         timestamp created_at
         timestamp updated_at

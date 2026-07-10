@@ -43,6 +43,7 @@ export const discordMessages = pgTable(
     channelId: text('channel_id').notNull(),
     guildId: text('guild_id').notNull(),
     authorId: text('author_id').notNull(),
+    authorName: text('author_name'), // nullable — visible display name captured at ingestion (9.4); old rows stay NULL
     content: text('content').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),

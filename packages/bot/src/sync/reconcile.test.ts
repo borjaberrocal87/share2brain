@@ -11,7 +11,7 @@ function fetchedMessage(id: string, overrides: Partial<FetchedMessage> = {}): Fe
     guildId: 'guild-1',
     content: `content ${id}`,
     editedAt: new Date('2026-07-01T00:00:00.000Z'),
-    author: { id: 'user-1', bot: false },
+    author: { id: 'user-1', bot: false, displayName: 'User One' },
     partial: false,
     fetch: () => Promise.resolve(fetchedMessage(id, overrides)),
     ...overrides,

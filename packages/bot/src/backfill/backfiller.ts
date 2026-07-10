@@ -163,7 +163,7 @@ export async function runBackfill({
           content: m.content,
           createdAt: m.createdAt,
           editedAt: m.editedAt,
-          author: { id: m.author.id, bot: m.author.bot },
+          author: { id: m.author.id, bot: m.author.bot, displayName: m.author.displayName },
         }));
       };
 

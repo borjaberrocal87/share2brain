@@ -86,15 +86,19 @@ interface OldRow {
 }
 
 /** Extract the literal text of a drizzle `sql` tagged-template value (params
- *  inlined) so tests can assert on statement shape without real SQL parsing. */
+ *  inlined) so tests can assert on statement shape without real SQL parsing.
+ *  A conditionally-interpolated `sql` fragment (e.g. the author_name clause)
+ *  nests as its own queryChunks-bearing object — recurse into it too. */
 function sqlText(q: unknown): string {
   const chunks = (q as { queryChunks: unknown[] }).queryChunks;
   return chunks
-    .map((c) =>
-      c !== null && typeof c === 'object' && 'value' in (c as { value: unknown })
-        ? (c as { value: string[] }).value.join('')
-        : String(c),
-    )
+    .map((c) => {
+      if (c !== null && typeof c === 'object' && 'queryChunks' in c) return sqlText(c);
+      if (c !== null && typeof c === 'object' && 'value' in (c as { value: unknown })) {
+        return (c as { value: string[] }).value.join('');
+      }
+      return String(c);
+    })
     .join('');
 }
 
@@ -449,6 +453,44 @@ describe('processUpdate', () => {
     expect(refresh).toBeDefined();
     expect(refresh).toContain('brand new text');
     expect(refresh).toContain('2026-07-08T12:00:00.000Z');
+  });
+
+  it('sets author_name when the event carries it', async () => {
+    const logger = makeLogger();
+    const { db, executeLog } = makeFakeDb({ existing: true, oldRows: [] });
+
+    await processUpdate({
+      event: updatedEvent({ newContent: 'brand new text', authorName: 'Alice' }),
+      db,
+      embedder,
+      config,
+      logger,
+    });
+
+    const refresh = executeLog.find(
+      (s) => s.includes('UPDATE discord_messages') && s.includes('content'),
+    );
+    expect(refresh).toContain('author_name');
+    expect(refresh).toContain('Alice');
+  });
+
+  it('leaves author_name out of the UPDATE when absent or empty', async () => {
+    const logger = makeLogger();
+    const { db, executeLog } = makeFakeDb({ existing: true, oldRows: [] });
+
+    await processUpdate({
+      event: updatedEvent({ newContent: 'brand new text' }),
+      db,
+      embedder,
+      config,
+      logger,
+    });
+
+    const refresh = executeLog.find(
+      (s) => s.includes('UPDATE discord_messages') && s.includes('content'),
+    );
+    expect(refresh).toBeDefined();
+    expect(refresh).not.toContain('author_name');
   });
 
   it('should stamp indexed_at', async () => {

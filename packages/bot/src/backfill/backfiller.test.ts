@@ -26,7 +26,7 @@ interface FakeMessage {
   content: string;
   createdAt: Date;
   editedAt: Date | null;
-  author: { id: string; bot: boolean };
+  author: { id: string; bot: boolean; displayName: string };
 }
 
 function msg(id: string, overrides: Partial<FakeMessage> = {}): FakeMessage {
@@ -37,7 +37,7 @@ function msg(id: string, overrides: Partial<FakeMessage> = {}): FakeMessage {
     content: `content ${id}`,
     createdAt: new Date('2026-07-01T00:00:00.000Z'),
     editedAt: null,
-    author: { id: 'user-1', bot: false },
+    author: { id: 'user-1', bot: false, displayName: 'User One' },
     ...overrides,
   };
 }
@@ -172,7 +172,7 @@ describe('runBackfill', () => {
         content: 'content 5',
         createdAt: new Date('2026-07-01T00:00:00.000Z'),
         editedAt,
-        author: { id: 'user-1', bot: false },
+        author: { id: 'user-1', bot: false, displayName: 'User One' },
       },
       expect.objectContaining({ db: deps.db, redis: deps.redis, config: deps.config }),
     );
@@ -180,7 +180,7 @@ describe('runBackfill', () => {
 
   it('should skip bot authors (when ignore_bots) and empty content at debug, without persisting', async () => {
     const channel = textChannel([
-      [msg('1', { author: { id: 'bot-1', bot: true } }), msg('2', { content: '' }), msg('3')],
+      [msg('1', { author: { id: 'bot-1', bot: true, displayName: 'Bot One' } }), msg('2', { content: '' }), msg('3')],
     ]);
     const deps = makeDeps({ channels: { 'chan-1': channel } });
 
@@ -200,7 +200,7 @@ describe('runBackfill', () => {
   });
 
   it('should persist bot-authored history when ignore_bots is false', async () => {
-    const channel = textChannel([[msg('1', { author: { id: 'bot-1', bot: true } })]]);
+    const channel = textChannel([[msg('1', { author: { id: 'bot-1', bot: true, displayName: 'Bot One' } })]]);
     const deps = makeDeps({
       config: makeConfig({ ignoreBots: false }),
       channels: { 'chan-1': channel },

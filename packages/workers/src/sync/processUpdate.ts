@@ -58,7 +58,7 @@ type EmbeddedRow = ResourceRow & { embedding: number[] };
  */
 export async function processUpdate(deps: ProcessUpdateDeps): Promise<ProcessResult> {
   const { event, streamId, stream, db, embedder, config, logger, enrichModel, guard, signal } = deps;
-  const { messageId, channelId, newContent, timestamp } = event;
+  const { messageId, channelId, newContent, timestamp, authorName } = event;
 
   try {
     // D2 (tombstone guard, closes the 6.2 resurrect hazard): an update for a
@@ -153,10 +153,14 @@ export async function processUpdate(deps: ProcessUpdateDeps): Promise<ProcessRes
       await tx.execute(sql`DELETE FROM embeddings WHERE ${messageId} = ANY(message_ids)`);
 
       // Note #6: the bot is publish-only — bring the raw row current so it
-      // doesn't stay permanently stale.
+      // doesn't stay permanently stale. authorName is only appended when the
+      // event carried a non-empty value (D3): a missing/empty name must never
+      // null-out or blank-out a previously stored display name.
       await tx.execute(sql`
         UPDATE discord_messages
-        SET content = ${newContent}, updated_at = ${timestamp}
+        SET content = ${newContent}, updated_at = ${timestamp}${
+          authorName !== undefined ? sql`, author_name = ${authorName}` : sql``
+        }
         WHERE id = ${messageId}
       `);
 

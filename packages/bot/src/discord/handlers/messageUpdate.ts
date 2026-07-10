@@ -34,7 +34,7 @@ export interface UpdatableMessage {
   guildId: string | null;
   content: string;
   editedAt: Date | null;
-  author: { id: string; bot: boolean };
+  author: { id: string; bot: boolean; displayName: string };
   partial: boolean;
   fetch(): Promise<UpdatableMessage>;
 }
@@ -121,6 +121,7 @@ export async function handleMessageUpdate(
       guildId,
       timestamp: (message.editedAt ?? new Date()).toISOString(),
       newContent: message.content,
+      authorName: message.author.displayName,
     };
     await deps.redis.xAdd(STREAM_KEYS.DISCORD_MESSAGES_UPDATED, '*', event);
   } catch (error) {

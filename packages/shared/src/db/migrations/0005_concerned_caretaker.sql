@@ -1,0 +1,1 @@
+ALTER TABLE "discord_messages" ADD COLUMN "author_name" text;

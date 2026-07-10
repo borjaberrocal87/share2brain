@@ -30,7 +30,7 @@ function message(id: string, overrides: Partial<IngestibleMessage> = {}): Ingest
     guildId: 'itest-guild',
     content: 'integration message',
     createdAt: new Date('2026-07-06T10:00:00.000Z'),
-    author: { id: 'itest-author', bot: false },
+    author: { id: 'itest-author', bot: false, displayName: 'Itest Author' },
     ...overrides,
   };
 }
@@ -63,7 +63,7 @@ describe('persistMessage (integration)', () => {
 
     // Row landed with the right columns (raw SQL → snake_case).
     const rows = await clients.db.execute(
-      sql`select id, channel_id, guild_id, author_id, content, created_at, updated_at, indexed_at, deleted_at
+      sql`select id, channel_id, guild_id, author_id, author_name, content, created_at, updated_at, indexed_at, deleted_at
           from discord_messages where id = ${id}`,
     );
     expect(rows.rows).toHaveLength(1);
@@ -71,6 +71,7 @@ describe('persistMessage (integration)', () => {
     expect(row.channel_id).toBe('itest-channel');
     expect(row.guild_id).toBe('itest-guild');
     expect(row.author_id).toBe('itest-author');
+    expect(row.author_name).toBe('Itest Author');
     expect(row.content).toBe('integration message');
     // updatedAt mirrors createdAt; the Indexer sets indexed_at later (still NULL here).
     expect(new Date(row.updated_at as string).toISOString()).toBe(
