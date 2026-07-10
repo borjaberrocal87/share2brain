@@ -497,8 +497,8 @@ CREATE UNIQUE INDEX idx_embeddings_chunk_key ON embeddings(chunk_key);
 -- Búsqueda vectorial
 CREATE INDEX idx_embeddings_vector ON embeddings USING hnsw (embedding vector_cosine_ops);
 
--- Filtro RBAC en búsqueda vectorial
-CREATE INDEX idx_embeddings_channel ON embeddings(channel_id);
+-- Filtro RBAC en búsqueda vectorial + agregación de actividad de /api/stats (9.1, D2)
+CREATE INDEX idx_embeddings_channel_created ON embeddings(channel_id, created_at DESC);
 
 -- Búsqueda por canal/fecha en messages de Discord
 CREATE INDEX idx_discord_messages_channel ON discord_messages(channel_id, created_at DESC);
@@ -823,6 +823,7 @@ Todos los endpoints bajo `/api/*` requieren sesión válida excepto `/api/auth/*
 | `GET` | `/api/auth/roles` | Roles del usuario + canales accesibles |
 | `GET` | `/api/search?q=...` | Búsqueda semántica con filtro RBAC |
 | `GET` | `/api/documents` | Listado paginado de fragmentos |
+| `GET` | `/api/stats` | KPIs de conocimiento, actividad 14 días, volumen por canal, cobertura de lectura (RBAC-scoped) |
 | `POST` | `/api/chat` | Chat con el agente (respuesta SSE) |
 | `GET` | `/api/conversations` | Lista conversaciones del usuario |
 | `GET` | `/api/conversations/:id` | Conversación con mensajes |

@@ -111,7 +111,7 @@ graph TD
 
 ### AD-12 — RBAC aplicado a nivel de query vectorial
 
-- **Binds:** packages/backend (endpoints `/api/search`, `POST /api/chat`, `/api/documents`, middleware de auth)
+- **Binds:** packages/backend (endpoints `/api/search`, `POST /api/chat`, `/api/documents`, `/api/stats`, middleware de auth)
 - **Prevents:** fuga de información de canales restringidos en resultados de búsqueda semántica o en el contexto RAG del agente; que el middleware y el query layer divergan en el cómputo de canales permitidos
 - **Rule:** Toda query al índice pgvector incluye un filtro `WHERE channel_id = ANY(:allowed_channel_ids)`. La expansión `discordRoles → allowedChannelIds` ocurre en el middleware de auth de cada request, uniendo `session.discordRoles` contra la tabla `channel_permissions` (no se cachea en sesión, porque `channel_permissions` puede cambiar al reiniciar el Backend). La tabla `channel_permissions` se materializa desde `Hivly.config.yml` mediante upsert en el arranque del Backend, antes de aceptar requests. Ningún endpoint de búsqueda, chat o documentos ejecuta una query vectorial sin haber resuelto `allowedChannelIds` primero.
 
