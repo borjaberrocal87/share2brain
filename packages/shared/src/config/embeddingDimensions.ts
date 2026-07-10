@@ -12,18 +12,18 @@ import { readFileSync } from 'node:fs';
 
 import { parse as parseYaml } from 'yaml';
 
-const DEFAULT_CONFIG_FILE = 'Hivly.config.yml';
+const DEFAULT_CONFIG_FILE = 'Share2Brain.config.yml';
 const DEFAULT_DIMENSIONS = 1536;
 
 /**
- * Read `embeddings.dimensions` from the Hivly config for generate-time schema
- * construction. Resolution mirrors {@link loadConfig}: `HIVLY_CONFIG_PATH` env →
- * `Hivly.config.yml` in the cwd. Returns the configured value only when it is a
+ * Read `embeddings.dimensions` from the Share2Brain config for generate-time schema
+ * construction. Resolution mirrors {@link loadConfig}: `SHARE2BRAIN_CONFIG_PATH` env →
+ * `Share2Brain.config.yml` in the cwd. Returns the configured value only when it is a
  * positive integer; otherwise warns once and returns {@link DEFAULT_DIMENSIONS}.
  * Never throws — a missing file or key is a fallback, not an error.
  */
 export function readEmbeddingDimensions(): number {
-  const path = process.env.HIVLY_CONFIG_PATH ?? DEFAULT_CONFIG_FILE;
+  const path = process.env.SHARE2BRAIN_CONFIG_PATH ?? DEFAULT_CONFIG_FILE;
 
   try {
     const raw = readFileSync(path, 'utf8');

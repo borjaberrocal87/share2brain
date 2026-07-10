@@ -11,15 +11,15 @@ describe('readEmbeddingDimensions', () => {
   let previousPath: string | undefined;
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'hivly-dims-'));
-    previousPath = process.env.HIVLY_CONFIG_PATH;
+    dir = mkdtempSync(join(tmpdir(), 'share2brain-dims-'));
+    previousPath = process.env.SHARE2BRAIN_CONFIG_PATH;
     // Silence the intentional fallback warning noise in the tests that assert it.
     vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterEach(() => {
-    if (previousPath === undefined) delete process.env.HIVLY_CONFIG_PATH;
-    else process.env.HIVLY_CONFIG_PATH = previousPath;
+    if (previousPath === undefined) delete process.env.SHARE2BRAIN_CONFIG_PATH;
+    else process.env.SHARE2BRAIN_CONFIG_PATH = previousPath;
     rmSync(dir, { recursive: true, force: true });
     vi.restoreAllMocks();
   });
@@ -27,13 +27,13 @@ describe('readEmbeddingDimensions', () => {
   it('should return the configured dimensions when the YAML provides a positive integer', () => {
     const path = join(dir, 'config.yml');
     writeFileSync(path, 'embeddings:\n  dimensions: 3072\n', 'utf8');
-    process.env.HIVLY_CONFIG_PATH = path;
+    process.env.SHARE2BRAIN_CONFIG_PATH = path;
 
     expect(readEmbeddingDimensions()).toBe(3072);
   });
 
   it('should fall back to 1536 when the config file does not exist', () => {
-    process.env.HIVLY_CONFIG_PATH = join(dir, 'missing.yml');
+    process.env.SHARE2BRAIN_CONFIG_PATH = join(dir, 'missing.yml');
 
     expect(readEmbeddingDimensions()).toBe(1536);
   });
@@ -41,7 +41,7 @@ describe('readEmbeddingDimensions', () => {
   it('should fall back to 1536 when embeddings.dimensions is absent', () => {
     const path = join(dir, 'no-key.yml');
     writeFileSync(path, 'embeddings:\n  provider: "openai"\n', 'utf8');
-    process.env.HIVLY_CONFIG_PATH = path;
+    process.env.SHARE2BRAIN_CONFIG_PATH = path;
 
     expect(readEmbeddingDimensions()).toBe(1536);
   });
@@ -49,7 +49,7 @@ describe('readEmbeddingDimensions', () => {
   it('should fall back to 1536 when dimensions is not a positive integer', () => {
     const path = join(dir, 'bad-dim.yml');
     writeFileSync(path, 'embeddings:\n  dimensions: -8\n', 'utf8');
-    process.env.HIVLY_CONFIG_PATH = path;
+    process.env.SHARE2BRAIN_CONFIG_PATH = path;
 
     expect(readEmbeddingDimensions()).toBe(1536);
   });
@@ -61,7 +61,7 @@ describe('readEmbeddingDimensions', () => {
       'discord:\n  guild_id: "${DISCORD_GUILD_ID}"\nembeddings:\n  dimensions: 1024\n  api_key: "${EMBEDDINGS_API_KEY}"\n',
       'utf8',
     );
-    process.env.HIVLY_CONFIG_PATH = path;
+    process.env.SHARE2BRAIN_CONFIG_PATH = path;
 
     // No interpolation, no Zod — the unset ${VAR}s must not abort the read.
     expect(readEmbeddingDimensions()).toBe(1024);

@@ -1,5 +1,5 @@
 // Provider factory (AD-6). Builds the LLM chat model and the embeddings model
-// from the validated Hivly config, so no service constructs a provider client
+// from the validated Share2Brain config, so no service constructs a provider client
 // directly. api_key and base_url are passed EXPLICITLY into the client
 // constructors — we never rely on LangChain's implicit OPENAI_API_KEY /
 // ANTHROPIC_API_KEY env-name lookup (our secrets are named LLM_API_KEY /
@@ -8,13 +8,13 @@
 // This module is intentionally NOT re-exported from the root barrel or from
 // /schemas: it pulls LangChain in transitively, and the browser bundle (web)
 // plus config-only consumers (bot) must stay free of it. Import it via the
-// dedicated "@hivly/shared/providers" subpath only.
+// dedicated "@share2brain/shared/providers" subpath only.
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { ChatOpenAI, OpenAIEmbeddings } from '@langchain/openai';
 
-import type { HivlyConfig } from '../config/index.js';
+import type { Share2BrainConfig } from '../config/index.js';
 
 function requireString(val: unknown, name: string): asserts val is string {
   if (typeof val !== 'string' || !val) {
@@ -24,7 +24,7 @@ function requireString(val: unknown, name: string): asserts val is string {
 
 /**
  * The structural shape `createChatModel` actually needs — satisfied by both
- * `HivlyConfig['agent']` and `HivlyConfig['enrichment']['llm']` (Epic 7), so the
+ * `Share2BrainConfig['agent']` and `Share2BrainConfig['enrichment']['llm']` (Epic 7), so the
  * Story 7.2+ enrichment pipeline can reuse this factory without agent-only fields
  * (`max_iterations`, `memory_window`) leaking into the type.
  */
@@ -82,7 +82,7 @@ export function createChatModel(agent: ChatModelConfig): BaseChatModel {
  *
  * Returns the LangChain {@link Embeddings} base abstraction.
  */
-export function createEmbeddingsModel(embeddings: HivlyConfig['embeddings']): Embeddings {
+export function createEmbeddingsModel(embeddings: Share2BrainConfig['embeddings']): Embeddings {
   const { provider, api_key, model, dimensions, base_url } = embeddings;
 
   switch (provider) {

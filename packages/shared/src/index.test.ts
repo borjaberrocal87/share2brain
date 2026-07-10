@@ -4,7 +4,7 @@ import { PACKAGE_NAME, SHARED_KERNEL_VERSION } from './index.js';
 
 describe('shared kernel', () => {
   it('should expose the package name when imported', () => {
-    expect(PACKAGE_NAME).toBe('@hivly/shared');
+    expect(PACKAGE_NAME).toBe('@share2brain/shared');
   });
 
   it('should expose a semver-shaped kernel version', () => {

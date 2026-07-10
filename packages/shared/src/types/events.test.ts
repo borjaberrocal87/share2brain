@@ -60,13 +60,13 @@ describe('Discord stream events', () => {
 
 describe('stream invariants (AD-13)', () => {
   it('should expose the fixed stream keys', () => {
-    expect(STREAM_KEYS.DISCORD_MESSAGES).toBe('hivly:discord:messages');
-    expect(STREAM_KEYS.DISCORD_MESSAGES_UPDATED).toBe('hivly:discord:messages:updated');
-    expect(STREAM_KEYS.DISCORD_MESSAGES_DELETED).toBe('hivly:discord:messages:deleted');
+    expect(STREAM_KEYS.DISCORD_MESSAGES).toBe('share2brain:discord:messages');
+    expect(STREAM_KEYS.DISCORD_MESSAGES_UPDATED).toBe('share2brain:discord:messages:updated');
+    expect(STREAM_KEYS.DISCORD_MESSAGES_DELETED).toBe('share2brain:discord:messages:deleted');
   });
 
   it('should expose the fixed consumer groups', () => {
-    expect(CONSUMER_GROUPS.INDEXER).toBe('hivly:indexer');
-    expect(CONSUMER_GROUPS.SYNC).toBe('hivly:sync');
+    expect(CONSUMER_GROUPS.INDEXER).toBe('share2brain:indexer');
+    expect(CONSUMER_GROUPS.SYNC).toBe('share2brain:sync');
   });
 });
