@@ -2,7 +2,7 @@
 // validation, the pre-stream ownership check, header framing — and maps errors
 // to the unified ErrorSchema shape pre-stream, or a terminal `error` SSE frame
 // mid-stream (D8). Raw LLM/DB errors are never leaked to the client.
-import { CHAT_ERROR, ChatRequestSchema, type SSEFrame } from '@hivly/shared/schemas';
+import { CHAT_ERROR, ChatRequestSchema, type SSEFrame } from '@share2brain/shared/schemas';
 import type { Request, Response } from 'express';
 
 import { ChatOwnershipError, type ChatService } from '../../application/services/chatService.js';

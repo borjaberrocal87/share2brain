@@ -1,6 +1,6 @@
 # Data Model Documentation
 
-This document describes the data model for **Hivly Self-Hosted**, including entity descriptions, field definitions, relationships, and an entity-relationship diagram.
+This document describes the data model for **Share2Brain Self-Hosted**, including entity descriptions, field definitions, relationships, and an entity-relationship diagram.
 
 **Source of truth:** all tables are defined with Drizzle in `packages/shared/src/db/schema.ts`. No service defines tables or performs DDL outside `packages/shared` (AD-5). Migrations are generated as explicit SQL with `drizzle-kit`.
 
@@ -98,7 +98,7 @@ Cached Discord roles per user, to answer RBAC without hitting the Discord API on
 - `expires_at`: TTL expiry (configurable via `access_control.role_cache_ttl`)
 
 ### 5. channel_permissions
-RBAC policy materialized from `Hivly.config.yml` at Backend startup (upsert). Maps channels to the roles allowed to read them.
+RBAC policy materialized from `Share2Brain.config.yml` at Backend startup (upsert). Maps channels to the roles allowed to read them.
 
 **Fields:**
 - `channel_id`: Discord channel snowflake (Primary Key)
@@ -238,7 +238,7 @@ CREATE INDEX idx_user_read_status_embedding ON user_read_status(embedding_id);
 1. **RBAC at the query layer**: every vector query includes `WHERE channel_id = ANY(:allowedChannelIds)` — the filter is part of the SQL, never a post-filter (AD-12).
 2. **Single DDL source**: all tables and migrations originate in `packages/shared` (AD-5); no service diverges.
 3. **Idempotent ingestion**: at-least-once Redis Streams delivery means Workers UPSERT embeddings rather than assume single delivery (AD-13).
-4. **Config-materialized permissions**: `channel_permissions` is derived from `Hivly.config.yml` on Backend startup — there is no admin panel; everything is code/config.
+4. **Config-materialized permissions**: `channel_permissions` is derived from `Share2Brain.config.yml` on Backend startup — there is no admin panel; everything is code/config.
 5. **Sessions out of PostgreSQL**: sessions live in Redis with TTL for fast reads and immediate revocation (AD-10).
 
 ## Notes

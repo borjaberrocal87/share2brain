@@ -23,13 +23,13 @@ This is the **first story of Epic 6** (Synchronization, Notifications & Reliabil
 
 ## ⚠️ Reconciliation notes — read before implementing
 
-The stream contracts and keys this story needs **already exist** in `@hivly/shared`. Do **not** invent new ones. Verified against source at baseline `0ff1133`:
+The stream contracts and keys this story needs **already exist** in `@share2brain/shared`. Do **not** invent new ones. Verified against source at baseline `0ff1133`:
 
 1. **Event types already exist — reuse them, don't redefine.** `packages/shared/src/types/events.ts:21-28` defines `MessageUpdatedEvent` (`{ type: 'discord.message.updated', messageId, channelId, guildId, timestamp, newContent }`) and `MessageDeletedEvent` (`{ type: 'discord.message.deleted', messageId, channelId, guildId, timestamp }`). Both extend `StreamEvent` (`messageId, channelId, guildId, timestamp`). Defining a DB table or event/schema outside `packages/shared` is a hard anti-pattern (`project-context.md` §anti-patterns).
 
 2. **Epic field names ≠ contract field names. Map, do not add fields.** The epic (`epics.md` §Historia 6.1) writes the updated payload as `{ messageId, channelId, newContent, editedAt }` and the deleted payload as `{ messageId, channelId, deletedAt }`. The **real contract uses `timestamp`** (ISO 8601 UTC) as the mandatory time field, plus the mandatory `guildId`. **[DECISION]:** map `editedAt → timestamp` and `deletedAt → timestamp`; add `guildId`. Do **not** add extra `editedAt`/`deletedAt` keys — that would diverge from the AD-13 contract every Discord event carries (`project-context.md` §backend-framework-rules).
 
-3. **Stream keys are fixed invariants — import them.** Publish to `STREAM_KEYS.DISCORD_MESSAGES_UPDATED` (`'hivly:discord:messages:updated'`) and `STREAM_KEYS.DISCORD_MESSAGES_DELETED` (`'hivly:discord:messages:deleted'`) from `@hivly/shared/types/events` (`events.ts:59-68`). Never hardcode the strings (AD-13).
+3. **Stream keys are fixed invariants — import them.** Publish to `STREAM_KEYS.DISCORD_MESSAGES_UPDATED` (`'share2brain:discord:messages:updated'`) and `STREAM_KEYS.DISCORD_MESSAGES_DELETED` (`'share2brain:discord:messages:deleted'`) from `@share2brain/shared/types/events` (`events.ts:59-68`). Never hardcode the strings (AD-13).
 
 4. **The bot does NOT write the DB on update/delete.** Unlike `messageCreate` (which INSERTs + XADDs atomically in one transaction — `persistMessage.ts`), this story is **publish-only**. The DB mutation (delete old embedding, re-index / soft-or-hard delete) is the **Sync worker's** job in Story 6.2 (`TECHNICAL-DESIGN.md` §5.3). So there is **no transaction** here — just a single `xAdd`. `delete_policy` (soft/hard) lives in `config.sync.delete_policy` and is a **6.2 concern, not 6.1** — the bot never reads it.
 
@@ -163,12 +163,12 @@ No log line (`debug`/`info`/`error`) in either handler includes the full `newCon
 - **Must-test invariants** (`project-context.md` §67, adapted): the produced event fields are all strings; the correct stream key is used; a skip publishes nothing; a failed publish leaves the process alive (no throw). Also assert content is never logged (copy the `messageCreate.test.ts:130-140` serialization check).
 
 ### Project Structure Notes
-- Handlers stay under `packages/bot/src/discord/handlers/` (established in Story 3.1). No root `src/`. The bot depends only on `@hivly/shared`, never another service (AD-2). English only in all code/comments/tests (`project-context.md`).
+- Handlers stay under `packages/bot/src/discord/handlers/` (established in Story 3.1). No root `src/`. The bot depends only on `@share2brain/shared`, never another service (AD-2). English only in all code/comments/tests (`project-context.md`).
 
 ### Previous-story intelligence
 - **Story 3.1** established the handler pattern, the local `logger.ts`, the shared `createRedisClient`, and (note #8) explicitly deferred `messageUpdate`/`messageDelete` to this story.
 - **Story 3.2** amplified an accepted at-least-once duplicate-event trade-off (`persistMessage.ts:18-25`); the same philosophy applies here — publish liberally, let the idempotent consumer dedupe (AD-13). This is why the update content-change guard biases toward publishing.
-- **Redis gotcha (memory):** two Redis instances exist on this Mac — `localhost:6379` (Homebrew) vs the Compose Redis (no published ports). Local vs dockerized bot code hit different streams. Keep this in mind when manually verifying `XADD`/`XLEN` against `hivly:discord:messages:updated`/`:deleted`.
+- **Redis gotcha (memory):** two Redis instances exist on this Mac — `localhost:6379` (Homebrew) vs the Compose Redis (no published ports). Local vs dockerized bot code hit different streams. Keep this in mind when manually verifying `XADD`/`XLEN` against `share2brain:discord:messages:updated`/`:deleted`.
 
 ### References
 - [Source: _bmad-output/planning-artifacts/epics.md#Historia 6.1]
@@ -178,7 +178,7 @@ No log line (`debug`/`info`/`error`) in either handler includes the full `newCon
 - [Source: packages/bot/src/discord/client.ts — createDiscordClient (add partials)]
 - [Source: packages/bot/src/main.ts#97-112 — listener registration pattern]
 - [Source: packages/bot/src/backfill/backfiller.ts#245-257 — Record<keyof T, string> xAdd pattern]
-- [Source: _bmad-output/planning-artifacts/architecture/architecture-hivly-2026-06-30/TECHNICAL-DESIGN.md#5.3 — Sync worker consumes these streams (Story 6.2)]
+- [Source: _bmad-output/planning-artifacts/architecture/architecture-share2brain-2026-06-30/TECHNICAL-DESIGN.md#5.3 — Sync worker consumes these streams (Story 6.2)]
 - [Source: _bmad-output/project-context.md — AD-13 stream invariants, never-log-content, workers idempotent]
 
 ## Project Context Reference
@@ -187,7 +187,7 @@ See `_bmad-output/project-context.md` (backend rules, AD-13 stream invariants, a
 
 ## Decisions (confirmed with Borja, 2026-07-08)
 
-1. **[DECIDED — Reconciliation #2]** Map epic's `editedAt`/`deletedAt` onto the contract's mandatory `timestamp` (+ `guildId`); **do not** add extra keys. The `MessageUpdatedEvent`/`MessageDeletedEvent` contracts in `@hivly/shared` are authoritative; no `packages/shared` changes.
+1. **[DECIDED — Reconciliation #2]** Map epic's `editedAt`/`deletedAt` onto the contract's mandatory `timestamp` (+ `guildId`); **do not** add extra keys. The `MessageUpdatedEvent`/`MessageDeletedEvent` contracts in `@share2brain/shared` are authoritative; no `packages/shared` changes.
 2. **[DECIDED — Task 2]** The update handler **filters `messageUpdate` noise by publishing only when `editedAt` is non-null** (real user edit), biasing toward publishing when unsure and relying on the idempotent Sync worker to absorb any false positives. NOT publishing unconditionally.
 3. **[DECIDED]** `messageDeleteBulk` (moderation bulk-purge) is **out of scope** — Story 6.1 handles `messageDelete` only. Tracked as a follow-up in `_bmad-output/implementation-artifacts/deferred-work.md`.
 

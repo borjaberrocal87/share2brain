@@ -1,8 +1,8 @@
 // Infrastructure adapter: Drizzle-backed implementation of the UserRepository
 // domain port. This is the only auth file that knows about the DB. Uses the
-// `sql` helper re-exported by @hivly/shared/db so the backend never imports
+// `sql` helper re-exported by @share2brain/shared/db so the backend never imports
 // drizzle-orm directly (AD-2 spirit).
-import { sql, users, type Database } from '@hivly/shared/db';
+import { sql, users, type Database } from '@share2brain/shared/db';
 
 import type { UserProfile, UserRepository } from '../domain/repositories/userRepository.js';
 

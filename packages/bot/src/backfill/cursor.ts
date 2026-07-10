@@ -9,7 +9,7 @@
 // existing index idx_discord_messages_channel (channel_id, created_at DESC); a
 // same-millisecond tie is harmless — the overlap re-fetch is skipped by the
 // idempotent insert.
-import { sql, type Database } from '@hivly/shared/db';
+import { sql, type Database } from '@share2brain/shared/db';
 
 /**
  * Resolve the backfill cursor for one channel: the id of the newest persisted

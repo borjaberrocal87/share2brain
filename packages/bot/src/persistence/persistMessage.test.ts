@@ -2,17 +2,17 @@
 // all-string values), the guildId fallback, and the idempotent-insert contract
 // (onConflictDoNothing → skip the XADD, report { inserted: false }), with mocked
 // db + redis. The real transaction/rollback path is covered by the integration test.
-import type { HivlyConfig } from '@hivly/shared';
-import type { Database } from '@hivly/shared/db';
-import type { RedisClient } from '@hivly/shared/redis';
-import { STREAM_KEYS } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { Database } from '@share2brain/shared/db';
+import type { RedisClient } from '@share2brain/shared/redis';
+import { STREAM_KEYS } from '@share2brain/shared/types/events';
 import { describe, expect, it, vi } from 'vitest';
 
 import { persistMessage, type IngestibleMessage } from './persistMessage.js';
 
 const config = {
   discord: { guild_id: 'guild-fallback' },
-} as unknown as HivlyConfig;
+} as unknown as Share2BrainConfig;
 
 /**
  * Build a db whose transaction runs the callback against a recording fake tx.

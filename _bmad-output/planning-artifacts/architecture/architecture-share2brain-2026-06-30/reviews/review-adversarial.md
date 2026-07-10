@@ -5,7 +5,7 @@ date: 2026-06-30
 reviewer: adversarial-agent
 ---
 
-# Adversarial Architecture Review — Hivly Self-Hosted
+# Adversarial Architecture Review — Share2Brain Self-Hosted
 
 **Verdict:** The spine's dependency rules are well-formed but leave five integration seams where two fully-compliant builders can independently satisfy every AD yet produce components that cannot be wired together without an undocumented contract extension.
 
@@ -87,13 +87,13 @@ AD-9 must state: *"All three service definitions — bot, backend, workers — m
 Builds `loadConfig()` in `packages/shared`. Defines a Zod schema covering the fields the kernel author knows about: `guild_id`, `observability.log_level`, `channels`, `roles`, `agent.*`, `grouping_window`, `chunk_overlap`. Exports a single typed config object. Compliant with AD-8.
 
 **Unit B — Bot builder (AD-8)**
-Calls `loadConfig()` and uses only `guild_id` and `channels`. Finds the returned type sufficient. Decides to also read `Hivly.config.yml` directly via `js-yaml` for a new field (`backfill.max_messages_per_channel`) that the shared schema doesn't yet include — because the field was added to the YAML spec after the shared builder froze the schema, and AD-8 only says "ningún servicio parsea el YAML localmente" but does not prevent reading config from a pre-parsed object that is then extended.
+Calls `loadConfig()` and uses only `guild_id` and `channels`. Finds the returned type sufficient. Decides to also read `Share2Brain.config.yml` directly via `js-yaml` for a new field (`backfill.max_messages_per_channel`) that the shared schema doesn't yet include — because the field was added to the YAML spec after the shared builder froze the schema, and AD-8 only says "ningún servicio parsea el YAML localmente" but does not prevent reading config from a pre-parsed object that is then extended.
 
 **Incompatibility at integration**
 The bot now has a local YAML read, violating the spirit but technically surviving the letter of AD-8 (it uses `loadConfig()` for startup validation, then falls back). More dangerously, the `backfill.max_messages_per_channel` field is invisible to the shared schema's validation — an invalid value silently defaults rather than terminates the process.
 
 **Missing AD or tightening needed**
-AD-8 must add: *"The Zod schema in `loadConfig()` is the exhaustive contract for `Hivly.config.yml`. Any new config field required by a service must be added to the shared Zod schema first. No service may read `Hivly.config.yml` directly or supplement `loadConfig()` output with local parsing of any kind."*
+AD-8 must add: *"The Zod schema in `loadConfig()` is the exhaustive contract for `Share2Brain.config.yml`. Any new config field required by a service must be added to the shared Zod schema first. No service may read `Share2Brain.config.yml` directly or supplement `loadConfig()` output with local parsing of any kind."*
 
 ---
 

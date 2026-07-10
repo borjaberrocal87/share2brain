@@ -11,7 +11,7 @@ import {
   ChannelsResponseSchema,
   type AuthRolesResponse,
   type ChannelsResponse,
-} from '@hivly/shared/schemas';
+} from '@share2brain/shared/schemas';
 
 import type { ChannelPermissionRepository } from '../../domain/repositories/channelPermissionRepository.js';
 

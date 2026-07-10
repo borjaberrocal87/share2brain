@@ -1,5 +1,5 @@
 {
-  "name": "hivly",
+  "name": "share2brain",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run --project unit --project web --passWithNoTests",
     "test:integration": "vitest run --project backend-integration --project bot-integration --project workers-integration",
-    "test:e2e": "npm run test:e2e -w @hivly/web",
+    "test:e2e": "npm run test:e2e -w @share2brain/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build --workspaces --if-present"
   },

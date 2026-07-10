@@ -5,8 +5,8 @@
 // then exit. Extracted here (rather than inlined in main.ts) so it is unit
 // testable with fake server/redis/db/logger/exit — mirrors those two files'
 // shutdown() closures, just pulled out for DI.
-import type { Logger } from '@hivly/shared/logger';
-import type { Notifier } from '@hivly/shared/notifier';
+import type { Logger } from '@share2brain/shared/logger';
+import type { Notifier } from '@share2brain/shared/notifier';
 
 /** The subset of http.Server this module needs. */
 export interface ShutdownServer {

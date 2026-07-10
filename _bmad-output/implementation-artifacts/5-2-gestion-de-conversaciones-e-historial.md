@@ -73,12 +73,12 @@ BDD-formatted, plus the invariants it cites and the design in `TECHNICAL-DESIGN.
    `packages/shared/src/schemas/conversations.ts` — the endpoints validate query/params
    with `.safeParse()` at the edge and the web app (5.3/5.4) will `z.infer<>` them. No
    local response shape in `backend`. Reuse the existing `Citation` type from
-   `@hivly/shared/db` for message citations; do NOT redefine it.
+   `@share2brain/shared/db` for message citations; do NOT redefine it.
 
 7. **Architecture boundaries (AD-1, AD-2).** New code lives under
    `packages/backend/src/` in the existing hexagonal layers (port → Drizzle adapter →
    application service → controller → route). The service/controller depend only on
-   `@hivly/shared` + local ports — never on `drizzle-orm` directly (SQL stays in the
+   `@share2brain/shared` + local ports — never on `drizzle-orm` directly (SQL stays in the
    `*.drizzle.ts` adapter) and never on a sibling service. Conversations are
    **owned by `userId`**, not channel-scoped: the AD-12 `allowedChannelIds` RBAC scope
    does NOT gate the list/detail endpoints (see D2) — ownership is the access control.
@@ -123,7 +123,7 @@ BDD-formatted, plus the invariants it cites and the design in `TECHNICAL-DESIGN.
       `(SELECT m.content FROM messages m WHERE m.conversation_id = c.id AND m.role = 'user' ORDER BY m.created_at ASC LIMIT 1) AS "firstUserMessage"`. Map to the row (title derivation — trim + `slice(0, CONVERSATION_TITLE_MAX_LENGTH)` — is done in the SERVICE, not raw SQL, so the constant lives in one place; the adapter returns the raw first message + a fallback of `''`). Return `createdAt`/`updatedAt` as ISO strings (`row.updated_at` → `.toISOString()` or select as text — match how existing adapters serialize timestamps; check `documentRepository.drizzle.ts`).
     - `countConversations`: `SELECT count(*)::int AS count FROM conversations WHERE user_id = ${userId}`.
     - `getMessages`: `SELECT id, role, content, citations, created_at AS "createdAt" FROM messages WHERE conversation_id = ${conversationId} ORDER BY created_at ASC`. Parse `citations` jsonb → `Citation[]`.
-  - [x] Use the `sql` template re-exported by `@hivly/shared/db` (never import `drizzle-orm`, AD-2), exactly as the existing methods do. Confirm timestamp serialization matches the ISO-string contract (AC6) — mirror `documentRepository.drizzle.ts` / `embeddingSearchRepository.drizzle.ts` for the `created_at → string` pattern.
+  - [x] Use the `sql` template re-exported by `@share2brain/shared/db` (never import `drizzle-orm`, AD-2), exactly as the existing methods do. Confirm timestamp serialization matches the ISO-string contract (AC6) — mirror `documentRepository.drizzle.ts` / `embeddingSearchRepository.drizzle.ts` for the `created_at → string` pattern.
 
 - [x] **Task 4 — Application service: conversationService** (AC: 1, 2, 5, 7)
   - [x] `packages/backend/src/application/services/conversationService.ts` (mirror `documentService.ts` — ports-only deps, no Express, no Drizzle, validate the response against the shared schema before returning):
@@ -145,7 +145,7 @@ BDD-formatted, plus the invariants it cites and the design in `TECHNICAL-DESIGN.
 
 - [x] **Task 7 — `compressIfNeeded()` in the agent** (AC: 3, 5)
   - [x] `packages/backend/src/agent/compress.ts`:
-    - `COMPRESSION_TOKEN_BUDGET = 4000` (D5 — there is NO `agent.memoryBudget` in `HivlyConfigSchema`; 5.1 D3 confirmed. Matches the epic AC and `CHAT_MESSAGE_MAX_LENGTH`).
+    - `COMPRESSION_TOKEN_BUDGET = 4000` (D5 — there is NO `agent.memoryBudget` in `Share2BrainConfigSchema`; 5.1 D3 confirmed. Matches the epic AC and `CHAT_MESSAGE_MAX_LENGTH`).
     - `estimateTokens(text: string): number` — a deterministic, provider-neutral heuristic (`Math.ceil(text.length / 4)`) so no tokenizer dependency is added and the behavior is unit-testable (D5). Document it as an estimate.
     - `async function compressIfNeeded(messages: ChatTurn[], chatModel: ChatModel, maxTokens = COMPRESSION_TOKEN_BUDGET): Promise<ChatTurn[]>` — if the summed `estimateTokens` over all messages ≤ `maxTokens`, return `messages` unchanged. Otherwise split into `older` (to summarize) + `recent` (kept verbatim, the tail that fits under a reserved slice of the budget), summarize `older` into one string via `summarize(older, chatModel)`, and return `[{ role:'system', content:  '<conversation summary> ' + summary }, ...recent]`.
     - `summarize(turns, chatModel)`: build a concise instruction prompt (English) asking for a short summary preserving key facts/decisions, then **drain `chatModel.stream(...)` into a string** (D6 — the `ChatModel` port only exposes `stream()`; do NOT widen it to `invoke()`; the deterministic `fakeChatModel` works as-is because draining its stream yields its fixed tokens).
@@ -159,7 +159,7 @@ BDD-formatted, plus the invariants it cites and the design in `TECHNICAL-DESIGN.
 - [x] **Task 9 — Integration test + unit tests + live exercise** (AC: 1, 2, 4, 8)
   - [x] `packages/backend/src/conversations.integration.test.ts` (real Postgres, real session via the same fake-OAuth path the other integration suites use — see `chat.integration.test.ts`): seed 2 users each with conversations + messages, then assert: `GET /api/conversations` returns only the caller's conversations, paginated, `updated_at DESC`, with a title = first user message; `GET /api/conversations/:id` returns messages chronological; another user's `id` → 404; an unknown UUID → 404; a malformed id → 404. Optionally run one `/api/chat` turn then a SECOND turn on the same conversation and assert the second turn's persisted transcript grows (history round-trips) — or cover AC4 purely in the chatService unit test.
   - [x] Extend `chatService.test.ts`: a follow-up turn loads prior `getMessages` rows and passes them as `runChat`'s `history` (assert with a fake repo returning 2 prior turns + a spy on the fake agent capturing `input.history`), and that history is loaded BEFORE the user message is appended (ordering — D4 gotcha).
-  - [x] Live exercise for the gate: `docker compose up -d postgres redis`, run the e2e backend (`npm run e2e:server -w @hivly/backend`), log in via fake OAuth (`code=e2e-member`), then: `POST /api/chat` (new conversation), `POST /api/chat` again with the returned `conversationId`, `GET /api/conversations`, `GET /api/conversations/:id`. Paste the JSON responses into the Debug Log.
+  - [x] Live exercise for the gate: `docker compose up -d postgres redis`, run the e2e backend (`npm run e2e:server -w @share2brain/backend`), log in via fake OAuth (`code=e2e-member`), then: `POST /api/chat` (new conversation), `POST /api/chat` again with the returned `conversationId`, `GET /api/conversations`, `GET /api/conversations/:id`. Paste the JSON responses into the Debug Log.
 
 - [x] **Task 10 — Docs sync** (AC: 8)
   - [x] `docs/api-spec.yml`: flesh out the `/api/conversations` (200 → `ConversationsResponse`) and `/api/conversations/{conversationId}` (200 → `ConversationDetail`, 404) response schemas to match the new Zod contracts (they are currently prose-only: `description: Conversation list` / `Conversation with messages`). Add the component schemas if the file inlines others.
@@ -242,8 +242,8 @@ history), `app.ts` (mount the router); `conversations.integration.test.ts`;
 ### Architecture compliance (guardrails — non-negotiable)
 
 - **AD-1/AD-2:** code under `packages/backend/src/`; service/controller depend on
-  `@hivly/shared` + local ports only. SQL stays in `conversationRepository.drizzle.ts`
-  (use the `sql` re-exported by `@hivly/shared/db`, never import `drizzle-orm`). Never
+  `@share2brain/shared` + local ports only. SQL stays in `conversationRepository.drizzle.ts`
+  (use the `sql` re-exported by `@share2brain/shared/db`, never import `drizzle-orm`). Never
   import a sibling service.
 - **AD-6:** every request/response shape is a Zod schema in `shared`; validate at the
   edge with `safeParse`; reuse the existing `Citation` schema — do not redefine it.
@@ -283,7 +283,7 @@ history), `app.ts` (mount the router); `conversations.integration.test.ts`;
 - **D5 — `compressIfNeeded()` lives in the agent's `reason` node, budget = 4000 tokens,
   local constant.** `TECHNICAL-DESIGN.md §"Gestión del historial"` places compression in
   `reason`; follow it. It references `config.agent.memoryBudget ?? 4000` — **`memoryBudget`
-  does NOT exist in `HivlyConfigSchema`** (5.1 D3 already corrected this; the real `agent`
+  does NOT exist in `Share2BrainConfigSchema`** (5.1 D3 already corrected this; the real `agent`
   keys are provider/model/temperature/max_iterations/memory_window/base_url/api_key). So use
   a local `COMPRESSION_TOKEN_BUDGET = 4000` (matches the epic AC and `CHAT_MESSAGE_MAX_LENGTH`),
   exactly as 5.1 used a local `RETRIEVE_TOP_K = 5` for the absent `knowledge.topK`.
@@ -442,7 +442,7 @@ claude-opus-4-8 (Claude Opus 4.8) via bmad-dev-story.
 **Live exercise** (e2e backend on :3100, fake OAuth `code=e2e-member`, seeded DB):
 - `POST /api/chat` (new conversation) → `token`×4 → `citation`×5 → `done` with `conversationId`.
 - `POST /api/chat` (2nd turn, same `conversationId`) → streamed OK; history loaded (transcript grew to 4 rows).
-- `GET /api/conversations` → `{ results:[{ id, title:"What is Hivly about?", createdAt, updatedAt }], page:1, limit:20, total:1 }` — title derived from the first user message.
+- `GET /api/conversations` → `{ results:[{ id, title:"What is Share2Brain about?", createdAt, updatedAt }], page:1, limit:20, total:1 }` — title derived from the first user message.
 - `GET /api/conversations/:id` → 4 messages `user→assistant→user→assistant` (chronological), assistant citations present.
 - `GET /api/conversations/not-a-uuid` → **404** (D9).
 
@@ -461,7 +461,7 @@ Note: the e2e seed (`resetAndSeed`) predates the chat tables and `DELETE FROM us
 - **History loading (AC4, closes 5.1 D13):** `chatService.streamChat` now loads prior turns via `getMessages` **before** the user-message insert and passes them as `runChat({ history })`. Ordering pinned with a comment + a dedicated ordering test (`getMessages` precedes `append:user`) so a future persist-then-load refactor can't silently double-count the current message.
 - **Compression (AC3):** `agent/compress.ts` — local `COMPRESSION_TOKEN_BUDGET=4000` (no `agent.memoryBudget` in config, 5.1 D3), deterministic `estimateTokens` (char/4, no tokenizer dep), `compressIfNeeded` summarizes the oldest turns (draining `chatModel.stream()`, port un-widened, D6) and keeps the recent tail verbatim; **ephemeral** (never persisted, D8). Wired into `reasonNode` after the `memory_window` coarse cap (D7) — under budget it is byte-identical to 5.1 (no regression).
 - **Open Question #2 resolved:** extended the `Conversation` domain type + `getOwnedConversation`/`createConversation` SELECTs with `createdAt`/`updatedAt` (the minimal "extend the SELECT" option), so detail needs no second round-trip. Updated the 5.1 `chatService.test.ts` / `chatController.test.ts` fakes accordingly — no behavior change to the 5.1 chat path.
-- **`memoryBudget` naming correction** (5.1 D3) re-cited here: the compression budget is a local `COMPRESSION_TOKEN_BUDGET`, NOT `config.agent.memoryBudget` (which does not exist in `HivlyConfigSchema`).
+- **`memoryBudget` naming correction** (5.1 D3) re-cited here: the compression budget is a local `COMPRESSION_TOKEN_BUDGET`, NOT `config.agent.memoryBudget` (which does not exist in `Share2BrainConfigSchema`).
 - **No new npm dependency, no migration** (tables already migrated at `0001`).
 - **Implementation-time refinement (D12):** `listConversations` uses `COALESCE(<first-user-message subquery>, '')` so the adapter always returns a `string` (fallback `''`); the SERVICE derives the display title (`'Nueva conversación'` fallback). One place owns the constant + the Spanish fallback.
 

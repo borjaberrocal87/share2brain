@@ -2,13 +2,13 @@
 // mocked so no real embeddings endpoint is hit; the real `assertEmbeddingDimensions`
 // is kept. Covers the happy path AND the guard branches (width mismatch, non-finite
 // component, all-zero vector) that are the Story 3.0 "corrupt vector" safety net.
-import type { HivlyConfig } from '@hivly/shared';
+import type { Share2BrainConfig } from '@share2brain/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const embedQuery = vi.fn<(text: string) => Promise<number[]>>();
 
-vi.mock('@hivly/shared/providers', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@hivly/shared/providers')>();
+vi.mock('@share2brain/shared/providers', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@share2brain/shared/providers')>();
   return {
     ...actual, // keep the real assertEmbeddingDimensions
     createEmbeddingsModel: vi.fn(() => ({ embedQuery }) as unknown),
@@ -18,7 +18,7 @@ vi.mock('@hivly/shared/providers', async (importOriginal) => {
 import { createLangchainQueryEmbedder } from './queryEmbedder.langchain.js';
 
 // Only `.dimensions` is read by the adapter; the mocked factory ignores the rest.
-const config = { dimensions: 3 } as unknown as HivlyConfig['embeddings'];
+const config = { dimensions: 3 } as unknown as Share2BrainConfig['embeddings'];
 
 describe('createLangchainQueryEmbedder', () => {
   beforeEach(() => {

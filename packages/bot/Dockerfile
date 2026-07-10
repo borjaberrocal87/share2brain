@@ -1,5 +1,5 @@
-# @hivly/bot image. Build context MUST be the repo root (see the story's Dev
-# Notes): @hivly/shared is consumed as raw source, so the image needs
+# @share2brain/bot image. Build context MUST be the repo root (see the story's Dev
+# Notes): @share2brain/shared is consumed as raw source, so the image needs
 # packages/shared/src plus the root lockfile for `npm ci`. tsx is the runtime.
 FROM node:24-alpine
 
@@ -18,5 +18,5 @@ COPY tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 COPY packages/bot ./packages/bot
 
-# Run from /app so loadConfig() finds the mounted /app/Hivly.config.yml (cwd).
+# Run from /app so loadConfig() finds the mounted /app/Share2Brain.config.yml (cwd).
 CMD ["npx", "tsx", "packages/bot/src/main.ts"]

@@ -1,4 +1,4 @@
-# Validation Report — Hivly Self-Hosted
+# Validation Report — Share2Brain Self-Hosted
 
 - **PRD:** `docs/PRD.md`
 - **Rubric:** `.claude/skills/bmad-prd/assets/prd-validation-checklist.md`
@@ -68,12 +68,12 @@ Si el bot se desconecta, mensajes se pierden. Sync on start solo funciona si el 
 Fix: Almacenar último snowflake visto por canal; backfill desde ese punto. Definir alerta de monitoreo ante ausencia de eventos en N minutos.
 
 **[Adversarial]** — Staleness de cache RBAC crea ventana de seguridad (§4.6, §9 SS-9, SD-14)
-Revocación de rol en Discord tarda hasta 5 minutos en aplicarse en Hivly. En escenario disciplinario es un problema real.
+Revocación de rol en Discord tarda hasta 5 minutos en aplicarse en Share2Brain. En escenario disciplinario es un problema real.
 Fix: Añadir endpoint de invalidación de cache (solo admin). Documentar: "TTL <60s causará presión de rate limit en Discord API."
 
 **[Adversarial]** — Sin estrategia de backup o recuperación especificada (§12, §17)
 El checklist menciona backup como checkbox pero no especifica frecuencia, retención, procedimiento de restore, ni qué ocurre con user_read_status tras un restore.
-Fix: Añadir sección con contrato mínimo de backup: pg_dump diario, cadencia de snapshot, procedimiento de restore. Incluir en Hivly.config.yml.
+Fix: Añadir sección con contrato mínimo de backup: pg_dump diario, cadencia de snapshot, procedimiento de restore. Incluir en Share2Brain.config.yml.
 
 **[Adversarial]** — Historial de conversación "summary memory" sin especificar (§4.2)
 No se define: estrategia de resumen, cuántos turnos antes de resumir, presupuesto de context window, cómo se almacena el resumen.
@@ -149,7 +149,7 @@ Fix: Debounce por login: si existe entrada de cache válida, omitir la llamada D
 
 **[Adversarial]** — Interpolación ${ENV_VAR} en YAML sin especificar el parser (§4.6) — Fix: Documentar que loader.ts resuelve ${VAR} contra process.env.
 
-**[Adversarial]** — Sin estrategia de versionado para Hivly.config.yml (§4.6, SD-2) — Fix: Añadir campo version: "1.0" y definir estrategia de migración.
+**[Adversarial]** — Sin estrategia de versionado para Share2Brain.config.yml (§4.6, SD-2) — Fix: Añadir campo version: "1.0" y definir estrategia de migración.
 
 **[Adversarial]** — backfill_limit: 1000 tiene unidad ambigua (§4.6) — Fix: Documentar unidad (mensajes, no páginas) y delay entre requests.
 

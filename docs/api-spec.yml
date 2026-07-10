@@ -1,4 +1,4 @@
-# Hivly — API specification (OpenAPI 3.1)
+# Share2Brain — API specification (OpenAPI 3.1)
 #
 # PLACEHOLDER / SCAFFOLD. This is the human-readable authoritative list of REST
 # + SSE endpoints. The runtime source of truth for request/response shapes is
@@ -8,7 +8,7 @@
 
 openapi: "3.1.0"
 info:
-  title: Hivly API
+  title: Share2Brain API
   version: "0.1.0"
   description: >
     Self-hosted AI agent over a Discord community's knowledge. REST for
@@ -329,7 +329,7 @@ components:
   schemas:
     Error:
       type: object
-      description: Unified error shape from @hivly/shared/schemas/errors.ts
+      description: Unified error shape from @share2brain/shared/schemas/errors.ts
       required: [error, code]
       properties:
         error: { type: string, example: Unauthorized }

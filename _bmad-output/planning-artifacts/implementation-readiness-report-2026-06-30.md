@@ -1,18 +1,18 @@
 ---
 stepsCompleted: ["step-01", "step-02", "step-03", "step-04", "step-05", "step-06"]
 documents:
-  prd: "_bmad-output/planning-artifacts/prds/prd-hivly-2026-06-30/validation-report.md"
-  architecture_spine: "_bmad-output/planning-artifacts/architecture/architecture-hivly-2026-06-30/ARCHITECTURE-SPINE.md"
-  architecture_technical: "_bmad-output/planning-artifacts/architecture/architecture-hivly-2026-06-30/TECHNICAL-DESIGN.md"
+  prd: "_bmad-output/planning-artifacts/prds/prd-share2brain-2026-06-30/validation-report.md"
+  architecture_spine: "_bmad-output/planning-artifacts/architecture/architecture-share2brain-2026-06-30/ARCHITECTURE-SPINE.md"
+  architecture_technical: "_bmad-output/planning-artifacts/architecture/architecture-share2brain-2026-06-30/TECHNICAL-DESIGN.md"
   epics: "_bmad-output/planning-artifacts/epics.md"
-  ux: "docs/design/KeepHive Web.dc.html"
+  ux: "docs/design/Share2Brain Web.dc.html"
   prd_source: "docs/PRD.md"
 ---
 
 # Implementation Readiness Assessment Report
 
 **Date:** 2026-06-30
-**Project:** Hivly Self-Hosted
+**Project:** Share2Brain Self-Hosted
 
 ---
 
@@ -26,7 +26,7 @@ documents:
 | FR2 | Bot hace backfill histórico al iniciar, desde `last_seen_message_id` por canal (snowflake) o `backfill_limit` si es el primer arranque; canales secuenciales |
 | FR3 | Bot detecta `messageUpdate` en canales habilitados y publica `discord.message.updated` a Redis |
 | FR4 | Bot detecta `messageDelete` en canales habilitados y publica `discord.message.deleted` a Redis |
-| FR5 | Worker Indexer: consume `hivly:discord:messages`, agrupa por `grouping_window`, chunking (`chunk_size`/`chunk_overlap`), genera embeddings con `text-embedding-3-small` (1536d), UPSERT en pgvector |
+| FR5 | Worker Indexer: consume `share2brain:discord:messages`, agrupa por `grouping_window`, chunking (`chunk_size`/`chunk_overlap`), genera embeddings con `text-embedding-3-small` (1536d), UPSERT en pgvector |
 | FR6 | Worker Sync: consume `discord.message.updated`; elimina embedding anterior; re-indexa con nuevo contenido |
 | FR7 | Worker Sync: consume `discord.message.deleted`; soft delete (`deleted_at`) o hard delete según `delete_policy` |
 | FR8 | Sync al iniciar: compara Discord vs indexados; publica eventos de sync para ediciones/borrados ocurridos offline |
@@ -43,7 +43,7 @@ documents:
 | FR19 | Web App: sidebar con conteo de no leídos por canal y botón marcar canal como leído |
 | FR20 | `GET /health` — estado de cada componente (database, redis, discord, indexer); HTTP 503 si algún componente está degradado |
 | FR21 | Notificaciones Telegram/Slack al operador: backfill completado, nuevo contenido, errores críticos, sync completado, mensajes editados/borrados, servicio iniciado |
-| FR22 | Configuración completa via `Hivly.config.yml` + `.env`; validados por `loadConfig()` al arrancar; fallo rápido si inválido |
+| FR22 | Configuración completa via `Share2Brain.config.yml` + `.env`; validados por `loadConfig()` al arrancar; fallo rápido si inválido |
 | FR23 | Despliegue con `docker compose up -d`; servicio `migrator` one-shot con migraciones Drizzle antes del resto |
 
 **Total FRs PRD: 23**
@@ -201,7 +201,7 @@ documents:
 
 ### Estado del Documento UX
 
-**Encontrado:** `docs/design/KeepHive Web.dc.html` — Diseño completo de pantallas (Login, Layout, Búsqueda, Documentos, Chat floating widget). 23 UX-DRs extraídos e integrados en `epics.md`.
+**Encontrado:** `docs/design/Share2Brain Web.dc.html` — Diseño completo de pantallas (Login, Layout, Búsqueda, Documentos, Chat floating widget). 23 UX-DRs extraídos e integrados en `epics.md`.
 
 ### Alineación UX ↔ PRD
 
@@ -295,7 +295,7 @@ documents:
 
 **Problema:** No especifica el texto exacto de la nota. ¿Qué dice? ¿Dónde está definido? El dev agent no sabrá qué renderizar.
 
-**Recomendación:** Añadir el texto: `"Respuestas con fuente verificable · tools de hivly.config.yml"` (ya visible en UX-DR22).
+**Recomendación:** Añadir el texto: `"Respuestas con fuente verificable · tools de share2brain.config.yml"` (ya visible en UX-DR22).
 
 ---
 
@@ -389,7 +389,7 @@ Historia 2.1 debe especificar `font-display: swap` y fallbacks de sistema.
 
 #### 🟡 Historia 5.4 — "nota de privacidad" vaga
 
-Especificar el texto exacto: `"Respuestas con fuente verificable · tools de hivly.config.yml"`.
+Especificar el texto exacto: `"Respuestas con fuente verificable · tools de share2brain.config.yml"`.
 
 ---
 
@@ -414,4 +414,4 @@ Especificar el texto exacto: `"Respuestas con fuente verificable · tools de hiv
 
 **Cobertura FR:** 23/23 (100%) · **Cobertura UX-DR:** 23/23 (100%)
 
-*Assessment generado: 2026-06-30 · Proyecto: Hivly Self-Hosted*
+*Assessment generado: 2026-06-30 · Proyecto: Share2Brain Self-Hosted*

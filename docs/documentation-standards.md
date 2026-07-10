@@ -1,5 +1,5 @@
 ---
-description: Standards and best practices for technical documentation in the Hivly project, including documentation structure, update processes, and language rules.
+description: Standards and best practices for technical documentation in the Share2Brain project, including documentation structure, update processes, and language rules.
 globs:
 alwaysApply: true
 ---

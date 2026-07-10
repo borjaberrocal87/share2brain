@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { HivlyConfig } from '@hivly/shared';
-import type { RedisClient } from '@hivly/shared/redis';
-import { STREAM_KEYS } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { RedisClient } from '@share2brain/shared/redis';
+import { STREAM_KEYS } from '@share2brain/shared/types/events';
 
 import type { Logger } from '../logger.js';
 import {
@@ -34,8 +34,8 @@ function makeRedis(overrides: Partial<Record<string, unknown>> = {}): RedisClien
   } as unknown as RedisClient;
 }
 
-function configWithStreams(streams?: HivlyConfig['streams']): HivlyConfig {
-  return { streams } as unknown as HivlyConfig;
+function configWithStreams(streams?: Share2BrainConfig['streams']): Share2BrainConfig {
+  return { streams } as unknown as Share2BrainConfig;
 }
 
 describe('compareStreamIds', () => {

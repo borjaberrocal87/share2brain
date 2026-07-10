@@ -2,7 +2,7 @@
 //
 // Confirms, against the REAL embeddings service, before we build the Indexer:
 //   1. OPENAI_API_KEY is valid,
-//   2. the configured model (Hivly.config.yml → knowledge.embedding_model) returns a
+//   2. the configured model (Share2Brain.config.yml → knowledge.embedding_model) returns a
 //      vector of exactly 1536 dimensions — the pgvector column is vector(1536), so a
 //      different model would silently break the schema,
 //   3. round-trip latency (informs NFR budgets later).
@@ -12,7 +12,7 @@
 //
 // Run:  npx tsx --env-file=.env spike/embeddings.ts
 
-import { loadConfig } from '@hivly/shared';
+import { loadConfig } from '@share2brain/shared';
 
 const KEY = process.env.OPENAI_API_KEY;
 if (!KEY || KEY.startsWith('sk-xxxx')) {
@@ -23,7 +23,7 @@ if (!KEY || KEY.startsWith('sk-xxxx')) {
 const config = loadConfig();
 const model = config.knowledge.embedding_model; // expected: text-embedding-3-small
 const EXPECTED_DIMS = 1536;
-const input = "Hivly indexes a Discord community's knowledge and answers questions with verifiable sources.";
+const input = "Share2Brain indexes a Discord community's knowledge and answers questions with verifiable sources.";
 
 console.log(`[spike] model=${model} · expecting ${EXPECTED_DIMS} dims`);
 

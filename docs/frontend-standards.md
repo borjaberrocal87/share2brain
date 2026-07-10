@@ -1,5 +1,5 @@
 ---
-description: Frontend development standards, best practices, and conventions for the Hivly Web App — a static Vite + React SPA with Zod-inferred API types, an SSE chat client, and Playwright E2E.
+description: Frontend development standards, best practices, and conventions for the Share2Brain Web App — a static Vite + React SPA with Zod-inferred API types, an SSE chat client, and Playwright E2E.
 globs: ["packages/web/src/**/*.{ts,tsx}", "packages/web/vite.config.ts", "packages/web/tsconfig.json", "packages/web/package.json", "packages/web/tests/**/*.{ts,tsx}"]
 alwaysApply: true
 ---
@@ -26,7 +26,7 @@ alwaysApply: true
 
 ## Overview
 
-The Hivly Web App (`@hivly/web`) is a **static SPA** for semantic search, document listing, chat with the RAG agent, and read-status management. It has **no Node server**: Vite builds `dist/`, which nginx serves directly; nginx reverse-proxies `/api/*` to the Backend (AD-3, AD-7). All logic runs in the browser.
+The Share2Brain Web App (`@share2brain/web`) is a **static SPA** for semantic search, document listing, chat with the RAG agent, and read-status management. It has **no Node server**: Vite builds `dist/`, which nginx serves directly; nginx reverse-proxies `/api/*` to the Backend (AD-3, AD-7). All logic runs in the browser.
 
 Architecture invariants are in `docs/context/ARCHITECTURE-SPINE.md`; the Web App design is in `docs/context/TECHNICAL-DESIGN.md` §5.5 and mockups in `docs/context/design/`.
 
@@ -37,7 +37,7 @@ Architecture invariants are in `docs/context/ARCHITECTURE-SPINE.md`; the Web App
 - **React 19.2** — functional components + hooks.
 - **TypeScript 6.0** (strict).
 - **Vite 8.1** — build tool and dev server (`:5173`), static output to `dist/`.
-- **zod 4.4** — API types are inferred from the shared schemas (`@hivly/shared`), not hand-written.
+- **zod 4.4** — API types are inferred from the shared schemas (`@share2brain/shared`), not hand-written.
 
 ### Deferred choices (builder's discretion — keep the contract)
 
@@ -61,7 +61,7 @@ packages/web/
 │   ├── main.tsx            # entry point
 │   ├── views/              # Search, Documents, Chat, ReadStatus
 │   ├── components/         # reusable UI components
-│   └── api/                # typed fetch wrappers (z.infer<> from @hivly/shared)
+│   └── api/                # typed fetch wrappers (z.infer<> from @share2brain/shared)
 ├── tests/                  # Playwright E2E (and component tests)
 ├── index.html
 ├── vite.config.ts          # dev proxy for /api/* → backend :3000
@@ -76,7 +76,7 @@ The contract between frontend and backend is `packages/shared/src/schemas/`. The
 ```typescript
 // packages/web/src/api/search.ts
 import type { z } from 'zod'
-import { SearchResponseSchema } from '@hivly/shared/schemas'
+import { SearchResponseSchema } from '@share2brain/shared/schemas'
 
 type SearchResponse = z.infer<typeof SearchResponseSchema>
 
@@ -86,8 +86,8 @@ export async function search(query: string, channelIds?: string[]): Promise<Sear
 }
 ```
 
-- **Never** hand-declare request/response types locally — import/infer from `@hivly/shared`.
-- The Web App imports from `@hivly/shared` **only** (types + schemas); never from other services (AD-2).
+- **Never** hand-declare request/response types locally — import/infer from `@share2brain/shared`.
+- The Web App imports from `@share2brain/shared` **only** (types + schemas); never from other services (AD-2).
 
 ## Coding Standards
 
@@ -151,11 +151,11 @@ const { data, isLoading, error } = useQuery({
 
 ## The Chat SSE Client
 
-`POST /api/chat` streams Server-Sent Events. Use `fetch` streaming (NOT `EventSource`) so the request can carry a JSON body; the session cookie authenticates it (AD-4). Frame types are the `SSEFrame` union from `@hivly/shared/schemas/sse.ts`.
+`POST /api/chat` streams Server-Sent Events. Use `fetch` streaming (NOT `EventSource`) so the request can carry a JSON body; the session cookie authenticates it (AD-4). Frame types are the `SSEFrame` union from `@share2brain/shared/schemas/sse.ts`.
 
 ```typescript
 // packages/web/src/api/sseClient.ts
-import type { SSEFrame } from '@hivly/shared/schemas'
+import type { SSEFrame } from '@share2brain/shared/schemas'
 
 export async function* streamChat(message: string, conversationId?: string) {
   const res = await fetch('/api/chat', {
@@ -254,11 +254,11 @@ Follow the BMAD Method way of working (see `base-standards.md`):
 ### Scripts
 
 ```bash
-npm run dev -w @hivly/web       # Vite dev server on :5173
-npm run build -w @hivly/web     # production build → dist/
-npm run test -w @hivly/web      # Vitest component/unit tests
-npm run test:e2e -w @hivly/web  # Playwright E2E (harness from Story 4.5; needs test Postgres+Redis + fake-OAuth session)
+npm run dev -w @share2brain/web       # Vite dev server on :5173
+npm run build -w @share2brain/web     # production build → dist/
+npm run test -w @share2brain/web      # Vitest component/unit tests
+npm run test:e2e -w @share2brain/web  # Playwright E2E (harness from Story 4.5; needs test Postgres+Redis + fake-OAuth session)
 npm run lint                    # ESLint
 ```
 
-This document is the foundation for a maintainable, accessible, and performant Hivly Web App. When a choice isn't fixed here, keep the AD-6 contract (types inferred from Zod) and stay a static SPA.
+This document is the foundation for a maintainable, accessible, and performant Share2Brain Web App. When a choice isn't fixed here, keep the AD-6 contract (types inferred from Zod) and stay a static SPA.

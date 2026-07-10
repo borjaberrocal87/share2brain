@@ -11,7 +11,7 @@ const FETCH_CONFIG = {
   timeout_ms: 300,
   max_bytes: 500_000,
   max_redirects: 3,
-  user_agent: 'HivlyTest/1.0',
+  user_agent: 'Share2BrainTest/1.0',
   allowed_schemes: ['http', 'https'] as ('http' | 'https')[],
   block_private_ips: false,
 };

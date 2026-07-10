@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { SearchFragment } from '@hivly/shared/schemas';
+import type { SearchFragment } from '@share2brain/shared/schemas';
 
 import { buildRAGContext, SYSTEM_PROMPT } from './prompt.js';
 

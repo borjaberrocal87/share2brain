@@ -7,7 +7,7 @@
 //
 // Design (Story 5.2, D5/D6):
 //  - Local COMPRESSION_TOKEN_BUDGET = 4000; there is NO `agent.memoryBudget` in
-//    HivlyConfigSchema (5.1 D3 corrected TECHNICAL-DESIGN's naming error).
+//    Share2BrainConfigSchema (5.1 D3 corrected TECHNICAL-DESIGN's naming error).
 //  - estimateTokens is a deterministic char/4 heuristic — no tokenizer dependency,
 //    fully unit-testable. It is an ESTIMATE, not exact provider tokenization.
 //  - summarize drains ChatModel.stream() into a string (the port only exposes

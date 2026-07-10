@@ -1,10 +1,10 @@
 ---
-name: 'Hivly Self-Hosted'
+name: 'Share2Brain Self-Hosted'
 type: architecture-spine
 purpose: build-substrate
 altitude: feature
 paradigm: 'Hexagonal (Shared Kernel) + Event-Driven Ingest (Redis Streams)'
-scope: 'Sistema completo Hivly Self-Hosted — Bot, Backend, Workers, Web App, infra'
+scope: 'Sistema completo Share2Brain Self-Hosted — Bot, Backend, Workers, Web App, infra'
 status: final
 created: '2026-06-30'
 updated: '2026-06-30'
@@ -13,7 +13,7 @@ sources: ['docs/PRD.md']
 companions: []
 ---
 
-# Architecture Spine — Hivly Self-Hosted
+# Architecture Spine — Share2Brain Self-Hosted
 
 ## Design Paradigm
 
@@ -50,7 +50,7 @@ graph TD
 
 - **Binds:** toda la codebase
 - **Prevents:** duplicación de schemas de DB, tipos de API o lógica de dominio entre servicios; divergencia de tipos entre Bot y Workers al acceder a la misma tabla
-- **Rule:** La estructura del monorepo es `packages/{bot,backend,workers,web,shared}`. `packages/shared` contiene el schema Drizzle, los Zod schemas de API, el `loadConfig()` y los tipos de dominio. Los servicios importan de `@hivly/shared`; nunca de `@hivly/bot`, `@hivly/backend`, `@hivly/workers` entre sí.
+- **Rule:** La estructura del monorepo es `packages/{bot,backend,workers,web,shared}`. `packages/shared` contiene el schema Drizzle, los Zod schemas de API, el `loadConfig()` y los tipos de dominio. Los servicios importan de `@share2brain/shared`; nunca de `@share2brain/bot`, `@share2brain/backend`, `@share2brain/workers` entre sí.
 
 ### AD-3 — Web App como SPA estática (Vite + React)
 
@@ -85,8 +85,8 @@ graph TD
 ### AD-8 — Configuración centralizada via loadConfig() en shared
 
 - **Binds:** packages/bot, packages/backend, packages/workers
-- **Prevents:** interpretaciones divergentes del mismo campo de `Hivly.config.yml` entre servicios; validación inconsistente del YAML
-- **Rule:** La función `loadConfig()` de `packages/shared/src/config/` parsea y valida `Hivly.config.yml` con un Zod schema. Todos los servicios llaman a `loadConfig()` en su `main.ts`; si el YAML es inválido, el proceso termina con error claro antes de inicializar nada más. Ningún servicio parsea el YAML localmente.
+- **Prevents:** interpretaciones divergentes del mismo campo de `Share2Brain.config.yml` entre servicios; validación inconsistente del YAML
+- **Rule:** La función `loadConfig()` de `packages/shared/src/config/` parsea y valida `Share2Brain.config.yml` con un Zod schema. Todos los servicios llaman a `loadConfig()` en su `main.ts`; si el YAML es inválido, el proceso termina con error claro antes de inicializar nada más. Ningún servicio parsea el YAML localmente.
 
 ### AD-9 — Migraciones automáticas via servicio migrator en Compose
 
@@ -110,7 +110,7 @@ graph TD
 
 - **Binds:** packages/backend (endpoints `/api/search`, `POST /api/chat`, `/api/documents`, middleware de auth)
 - **Prevents:** fuga de información de canales restringidos en resultados de búsqueda semántica o en el contexto RAG del agente; que el middleware y el query layer divergan en el cómputo de canales permitidos
-- **Rule:** Toda query al índice pgvector incluye un filtro `WHERE channel_id = ANY(:allowed_channel_ids)`. La expansión `discordRoles → allowedChannelIds` ocurre en el middleware de auth de cada request, uniendo `session.discordRoles` contra la tabla `channel_permissions` (no se cachea en sesión, porque `channel_permissions` puede cambiar al reiniciar el Backend). La tabla `channel_permissions` se materializa desde `Hivly.config.yml` mediante upsert en el arranque del Backend, antes de aceptar requests. Ningún endpoint de búsqueda, chat o documentos ejecuta una query vectorial sin haber resuelto `allowedChannelIds` primero.
+- **Rule:** Toda query al índice pgvector incluye un filtro `WHERE channel_id = ANY(:allowed_channel_ids)`. La expansión `discordRoles → allowedChannelIds` ocurre en el middleware de auth de cada request, uniendo `session.discordRoles` contra la tabla `channel_permissions` (no se cachea en sesión, porque `channel_permissions` puede cambiar al reiniciar el Backend). La tabla `channel_permissions` se materializa desde `Share2Brain.config.yml` mediante upsert en el arranque del Backend, antes de aceptar requests. Ningún endpoint de búsqueda, chat o documentos ejecuta una query vectorial sin haber resuelto `allowedChannelIds` primero.
 
 ### AD-13 — Contrato de Redis Streams: keys, consumer groups y wire schema
 
@@ -120,10 +120,10 @@ graph TD
 
 | Stream key | Producer | Consumer group | Consumer |
 |---|---|---|---|
-| `hivly:discord:messages` | bot | `hivly:indexer` | workers/indexer |
-| `hivly:discord:messages:updated` | bot | `hivly:sync` | workers/sync |
-| `hivly:discord:messages:deleted` | bot | `hivly:sync` | workers/sync |
-| `hivly:knowledge:events` | workers | `hivly:notifier` | notifier (deferred) |
+| `share2brain:discord:messages` | bot | `share2brain:indexer` | workers/indexer |
+| `share2brain:discord:messages:updated` | bot | `share2brain:sync` | workers/sync |
+| `share2brain:discord:messages:deleted` | bot | `share2brain:sync` | workers/sync |
+| `share2brain:knowledge:events` | workers | `share2brain:notifier` | notifier (deferred) |
 
 Campos mínimos obligatorios en cada mensaje de stream: `messageId` (snowflake string), `channelId` (string), `guildId` (string), `timestamp` (ISO 8601). Los tipos de evento están definidos en `packages/shared/src/types/events.ts`. Los Workers hacen ACK (`XACK`) solo tras procesar con éxito; no hacen ACK si el procesamiento falla (permite reintento automático por otro consumer del mismo group).
 
@@ -131,7 +131,7 @@ Campos mínimos obligatorios en cada mensaje de stream: `messageId` (snowflake s
 
 | Concern | Convention |
 |---|---|
-| Naming — paquetes | `@hivly/{bot,backend,workers,web,shared}` en cada `package.json` |
+| Naming — paquetes | `@share2brain/{bot,backend,workers,web,shared}` en cada `package.json` |
 | Naming — ficheros TypeScript | `camelCase.ts` para módulos, `PascalCase.ts` para clases y componentes React |
 | Naming — eventos Redis Streams | `discord.message.{created,updated,deleted}`, `discord.backfill.completed`, `discord.sync.completed`, `knowledge.events` |
 | Naming — endpoints REST | `/api/<recurso>` en kebab-case plural; parámetros de ruta en camelCase (ej. `/api/conversations/:conversationId`) |
@@ -139,9 +139,9 @@ Campos mínimos obligatorios en cada mensaje de stream: `messageId` (snowflake s
 | Fechas | ISO 8601 UTC en todos los shapes serializados; `timestamp with time zone` en PostgreSQL |
 | Error shape API | `{ error: string, code: string }` — definido en `packages/shared/src/schemas/errors.ts` |
 | Propiedad de escritura | Solo el servicio que "posee" una tabla escribe en ella (ver State Ownership en Structural Seed) |
-| Logging | Nivel configurado via `observability.log_level` en `Hivly.config.yml`; todos los servicios usan el logger exportado desde `packages/shared` |
+| Logging | Nivel configurado via `observability.log_level` en `Share2Brain.config.yml`; todos los servicios usan el logger exportado desde `packages/shared` |
 | Auth | Toda request a `/api/*` excepto `/api/auth/*` y `/health` requiere sesión válida en Redis |
-| Secretos vs configuración | Secretos solo en `.env`; configuración de comportamiento solo en `Hivly.config.yml` — nunca mezclar los dos ficheros |
+| Secretos vs configuración | Secretos solo en `.env`; configuración de comportamiento solo en `Share2Brain.config.yml` — nunca mezclar los dos ficheros |
 
 ## Stack
 
@@ -223,9 +223,9 @@ graph TD
 ### Árbol de fuentes (seed)
 
 ```text
-hivly/
+share2brain/
   packages/
-    shared/                   # Kernel de dominio (@hivly/shared)
+    shared/                   # Kernel de dominio (@share2brain/shared)
       src/
         db/
           schema.ts           # Drizzle schema — fuente de verdad de tablas
@@ -234,29 +234,29 @@ hivly/
         schemas/              # Zod schemas de API + error shape
           errors.ts
         config/
-          index.ts            # loadConfig() + Zod schema de Hivly.config.yml
+          index.ts            # loadConfig() + Zod schema de Share2Brain.config.yml
         types/                # Tipos de dominio compartidos
-    bot/                      # Discord Bot — ingestión (@hivly/bot)
+    bot/                      # Discord Bot — ingestión (@share2brain/bot)
       src/
         main.ts
         listeners/            # messageCreate, messageUpdate, messageDelete
         backfiller/
         publisher/            # EventPublisher → Redis Streams
       Dockerfile
-    backend/                  # Express API + LangGraph Agent (@hivly/backend)
+    backend/                  # Express API + LangGraph Agent (@share2brain/backend)
       src/
         main.ts
         routes/               # Endpoints REST + SSE /api/chat
         agent/                # StateGraph: retrieve → reason → respond
         middleware/           # Auth, rate-limit, RBAC channel filter
       Dockerfile
-    workers/                  # Indexer + Sync consumers (@hivly/workers)
+    workers/                  # Indexer + Sync consumers (@share2brain/workers)
       src/
         main.ts
         indexer/              # Consume discord.message.created → embed → pgvector
         sync/                 # Consume updated/deleted → re-index/purge
       Dockerfile
-    web/                      # Vite + React SPA (@hivly/web)
+    web/                      # Vite + React SPA (@share2brain/web)
       src/
         main.tsx
         views/                # Search, Documents, Chat, ReadStatus
@@ -264,7 +264,7 @@ hivly/
         api/                  # Fetch wrappers tipados con z.infer<>
       Dockerfile              # Multi-stage: build → nginx para dev; prod sirve via nginx global
   docker-compose.yml          # 7 servicios: migrator + nginx + bot + backend + workers + postgres + redis
-  Hivly.config.yml
+  Share2Brain.config.yml
   .env
 ```
 

@@ -63,7 +63,7 @@ properties [Source: packages/web/tests/README.md:4-8] — only the harness (`vit
 
 - **D1 — SearchView 7.6 describe (non-mutating)**: one new test in a `describe('Story 7.6 —
   SearchView resource title + link')` appended AFTER the existing 4.3 describe. `loginAs(page,
-  'e2e-member')` → `.kh-search-input` fill `'hivly'` → first `.kh-result-card` (top similarity =
+  'e2e-member')` → `.kh-search-input` fill `'share2brain'` → first `.kh-result-card` (top similarity =
   the `unitVector(1)` `#general` fragment). Assert on that card's `<h3>`
   (`card.locator('h3')`): text `'Cómo configurar los canales a indexar'`, `font-family`
   /Space Grotesk/, `font-weight '600'`, `font-size '15.5px'`, `color` TEXT_PRIMARY. Assert the
@@ -124,7 +124,7 @@ properties [Source: packages/web/tests/README.md:4-8] — only the harness (`vit
 
 1. **SearchView resource title + link asserted (D1)** — `search.spec.ts` gains a
    `describe('Story 7.6 …')` with a non-mutating test that, on the top `.kh-result-card` for
-   query `'hivly'` (`e2e-member`), asserts: the `<h3>` renders `'Cómo configurar los canales a
+   query `'share2brain'` (`e2e-member`), asserts: the `<h3>` renders `'Cómo configurar los canales a
    indexar'` with `font-family` Space Grotesk, `font-weight 600`, `font-size 15.5px`, `color`
    `rgb(230, 233, 239)`; the description `<p>` `color` `rgb(199, 205, 216)` / `font-size 14px`;
    the `.kh-resource-link` `href` equals `https://example.com/e2e/configurar-canales-indexados`,
@@ -151,7 +151,7 @@ properties [Source: packages/web/tests/README.md:4-8] — only the harness (`vit
    citation chip shows the seeded title `'Cómo configurar los canales a indexar'`, its title span
    has `color` `rgb(230, 233, 239)`, `text-overflow ellipsis`, `max-width 180px`, and the chip's
    `href` equals `https://example.com/e2e/configurar-canales-indexados`.
-5. **Full harness green + counts (§3.4)** — `npm run test:e2e -w @hivly/web` runs all chromium
+5. **Full harness green + counts (§3.4)** — `npm run test:e2e -w @share2brain/web` runs all chromium
    specs green: search 2→3, docs 2→4, chat 7 (unchanged count — AC4 extends an existing test),
    interactions 2 (untouched) → **16 total, up from 13**. Ordering invariants preserved:
    `docs.spec.ts` mark-all stays terminal, `chat.spec.ts` streaming stays terminal, `workers:1`.
@@ -165,7 +165,7 @@ properties [Source: packages/web/tests/README.md:4-8] — only the harness (`vit
    recorded in completion notes).
 7. **Verification gate (AGENT-run, §3.1)** — `npm run lint` (0) && `npm run build` (5 pkgs,
    unchanged) && `npm run test` (unit+web, unchanged — no production/unit files touched) &&
-   `npm run test:e2e -w @hivly/web` (16 chromium green). `npm run test:integration` is NOT
+   `npm run test:e2e -w @share2brain/web` (16 chromium green). `npm run test:integration` is NOT
    required (no shared contract, backend, or seed change — record this reasoning in the
    completion notes; contrast with 7.5 which DID re-run integration because it changed a shared
    schema). Evidence pasted in the Dev Agent Record.
@@ -176,7 +176,7 @@ properties [Source: packages/web/tests/README.md:4-8] — only the harness (`vit
   - [x] `git branch --show-current` → was `main`, created `feat/7-6-e2e-visual-new-fields`.
   - [x] Confirmed the harness runs: `docker compose up -d postgres redis` (already running),
         Homebrew Redis already started, `npx drizzle-kit migrate` (applied), chromium present.
-  - [x] Baseline: `npm run test:e2e -w @hivly/web` → **13 passed** before any change.
+  - [x] Baseline: `npm run test:e2e -w @share2brain/web` → **13 passed** before any change.
 - [x] Task 1 — SearchView 7.6 assertions (AC: 1)
   - [x] Added TEXT_PRIMARY/TEXT_SECONDARY/TEXT_MUTED constants to `search.spec.ts` (D5, exact rgb
         verified against global.css :root dark values).
@@ -238,7 +238,7 @@ _bmad-code-review 2026-07-09 — 3 adversarial layers @ Opus 4.8 (Blind Hunter /
 
 - `packages/web/tests/` (4 spec files + `helpers/session.ts` + `README.md`):
   - `search.spec.ts` (2 tests): `describe('Story 4.3 …')`. Tokens declared: ACCENT_INK, SURFACE,
-    TEXT_TERTIARY, BORDER_STRONG. Test 1 fills `'hivly'`, takes `.kh-result-card`.first(), asserts
+    TEXT_TERTIARY, BORDER_STRONG. Test 1 fills `'share2brain'`, takes `.kh-result-card`.first(), asserts
     channel badge / similarity bar / avatar / chips. **Nothing asserts the card body text today**
     → the new h3/description/links are additive and spec-safe. Both tests are non-mutating.
   - `docs.spec.ts` (2 tests): `describe('Story 4.4 …')`. Tokens: ACCENT_INK, DOT_READ, HOVER_ROW,
@@ -414,7 +414,7 @@ claude-opus-4-8 (Amelia, bmad-dev-story)
 
 ### Debug Log References
 
-- Baseline `npm run test:e2e -w @hivly/web` → 13 passed (pre-change).
+- Baseline `npm run test:e2e -w @share2brain/web` → 13 passed (pre-change).
 - First full run after adding tests → 14 passed / 2 failed (both new docs.spec tests):
   1. **AC2 description**: `toHaveCSS('display', '-webkit-box')` received `flow-root`. Controlled
      browser experiment (bare `display:-webkit-box` → computes `-webkit-box`; full clamp idiom →
@@ -460,7 +460,7 @@ claude-opus-4-8 (Amelia, bmad-dev-story)
   because it tightened a shared schema.) Full e2e (the §3.4 Playwright obligation this story fulfils)
   is the relevant regression surface and is green.
 - **Verification gate (AGENT-run)**: `npm run lint` → 0 · `npm run build` → clean (5 pkgs) ·
-  `npm run test` (unit+web) → 813 passed / 1 skipped (unchanged) · `npm run test:e2e -w @hivly/web`
+  `npm run test` (unit+web) → 813 passed / 1 skipped (unchanged) · `npm run test:e2e -w @share2brain/web`
   → 16 chromium passed (search 3 / docs 4 / chat 7 / interactions 2).
 
 ### File List

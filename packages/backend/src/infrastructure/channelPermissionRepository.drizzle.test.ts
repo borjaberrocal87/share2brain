@@ -3,7 +3,7 @@
 // query shape itself is asserted by the integration test against real Postgres
 // (adapter glue may test after; see backend-standards §Testing). Uses the
 // health.test.ts double pattern (`vi.fn()` cast `as unknown as Database`).
-import type { Database } from '@hivly/shared/db';
+import type { Database } from '@share2brain/shared/db';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createDrizzleChannelPermissionRepository } from './channelPermissionRepository.drizzle.js';

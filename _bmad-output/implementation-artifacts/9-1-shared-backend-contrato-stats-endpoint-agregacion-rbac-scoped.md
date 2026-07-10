@@ -109,7 +109,7 @@ so that the upcoming Statistics view (9.2) can show me the pulse of the communit
         `number`; `countUserAgentQueries(userId)` → `number`. (Exact grouping of methods is dev's
         call; the RBAC + deleted-filter predicates are NOT.)
   - [x] `packages/backend/src/infrastructure/statsRepository.drizzle.ts` — raw
-        `db.execute(sql\`…\`)` with the re-exported `sql`/`inArray` from `@hivly/shared/db`
+        `db.execute(sql\`…\`)` with the re-exported `sql`/`inArray` from `@share2brain/shared/db`
         (backend never imports drizzle-orm directly, AD-2). Every embeddings query embeds
         `${inArray(sql\`e.channel_id\`, allowedChannelIds)}` **and** the D4 `NOT EXISTS` deleted
         filter (copy the predicate verbatim from `documentRepository.drizzle.ts`). KPIs 1–2 +
@@ -166,7 +166,7 @@ so that the upcoming Statistics view (9.2) can show me the pulse of the communit
         order: user_read_status → embeddings → discord_messages → channel_permissions →
         messages → conversations → users.
 - [x] **Task 6 — endpoint verification (§3.3, agent executes)** (AC6)
-  - [x] With the local stack (backend `npm run dev -w @hivly/backend` against compose
+  - [x] With the local stack (backend `npm run dev -w @share2brain/backend` against compose
         postgres/redis — beware the **two-Redis gotcha**: Homebrew Redis owns localhost:6379,
         compose Redis publishes no ports): curl `/api/stats` without session → 401; with a session
         → 200 and paste the body; confirm shape with a quick `StatsResponseSchema.parse` script or
@@ -215,7 +215,7 @@ so that the upcoming Statistics view (9.2) can show me the pulse of the communit
 - **AD-5/AD-9**: DDL only in shared's `schema.ts`; `drizzle-kit generate` produces the SQL; the
   compose `migrator` applies it in deployments (you apply locally with `npx drizzle-kit migrate`
   for the gate only).
-- **AD-2**: backend imports `sql`/`inArray` from `@hivly/shared/db` re-exports, never from
+- **AD-2**: backend imports `sql`/`inArray` from `@share2brain/shared/db` re-exports, never from
   `drizzle-orm`. If you need another helper (e.g. `gte`), re-export it from
   `packages/shared/src/db/index.ts` first.
 - **AD-10**: session user id = `req.session.userId` (UUID of `users.id`), guaranteed by
@@ -321,7 +321,7 @@ WHERE c.user_id = ${userId} AND m.role = 'user';
   `packages/backend/src/app.ts`, plus the Task-7 docs.
 - Out of scope — stop if you find yourself editing: anything under `packages/web` or
   `packages/bot`/`packages/workers`, the Playwright harness/seed (9.3), nav/StatsView (9.2), the
-  chat/SSE pipeline, `Hivly.config.yml` (no new config), rate-limit config, any Redis stream code.
+  chat/SSE pipeline, `Share2Brain.config.yml` (no new config), rate-limit config, any Redis stream code.
   No new npm dependency is needed or allowed.
 
 ### References
@@ -347,9 +347,9 @@ None — no failing gate runs or blocking issues. Unit (shared contract + servic
 red-first and confirmed failing before implementation, then green. `npm run lint`, `npm run
 test`, `npm run build`, and `npm run test:integration` (backend/bot/workers projects) all
 passed; the new `stats.integration.test.ts` passed on its first run against real Postgres.
-One environment-only hiccup during Task 6 manual verification: `npm run dev -w @hivly/backend`
-resolves `Hivly.config.yml` relative to the workspace cwd, not the repo root — worked around
-with `HIVLY_CONFIG_PATH=<repo-root>/Hivly.config.yml` (not a code change).
+One environment-only hiccup during Task 6 manual verification: `npm run dev -w @share2brain/backend`
+resolves `Share2Brain.config.yml` relative to the workspace cwd, not the repo root — worked around
+with `SHARE2BRAIN_CONFIG_PATH=<repo-root>/Share2Brain.config.yml` (not a code change).
 
 ### Completion Notes List
 
@@ -394,7 +394,7 @@ with `HIVLY_CONFIG_PATH=<repo-root>/Hivly.config.yml` (not a code change).
   message), and 401 `AUTH_REQUIRED` without a session. All 7 assertions passed first run.
 - Manual verification (Task 6): real HTTP 401 without a session confirmed against the compose
   `docker compose up -d postgres redis` stack; a real 200 + full shape was captured via the
-  deterministic e2e backend (`npm run e2e:server -w @hivly/backend`, fake-OAuth login flow —
+  deterministic e2e backend (`npm run e2e:server -w @share2brain/backend`, fake-OAuth login flow —
   the only practical way to mint a real session headlessly) and explicitly validated with
   `StatsResponseSchema.safeParse` (`success: true`).
 - Docs synced (Task 7): `api-spec.yml` gained the `stats` tag, the `/api/stats` path, and 5 new

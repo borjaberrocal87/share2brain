@@ -19,7 +19,7 @@ so that the system verifies I belong to the guild and creates a secure session w
 1. **`GET /api/auth/login` redirects to Discord.** When the endpoint is hit, it responds with a 302 redirect to `https://discord.com/oauth2/authorize` carrying `response_type=code`, scopes `identify` and `guilds.members.read`, the `client_id`, and the `redirect_uri` configured in `.env`.
 2. **`GET /api/auth/callback?code=...` completes the OAuth2 handshake.** The backend exchanges the code for an `access_token` via `POST https://discord.com/api/oauth2/token`, fetches the user via `GET https://discord.com/api/users/@me`, and fetches guild membership + roles via `GET https://discord.com/api/users/@me/guilds/{guild_id}/member`.
 3. **Member → session created.** When the user IS a member of the guild, the backend upserts the user into `users` (`discord_id`, `username`, `avatar`), stores the session in Redis as `{ userId, discordRoles }` with a TTL configurable via `SESSION_TTL_DAYS` (default 7), sets an httpOnly cookie named `sid`, and redirects to the frontend at `/`.
-4. **Non-member → 403.** When the user is NOT a member of the guild, the endpoint returns HTTP 403 with body `{ error: "No eres miembro del guild", code: "GUILD_MEMBER_REQUIRED" }` (shape from `@hivly/shared` `ErrorSchema`).
+4. **Non-member → 403.** When the user is NOT a member of the guild, the endpoint returns HTTP 403 with body `{ error: "No eres miembro del guild", code: "GUILD_MEMBER_REQUIRED" }` (shape from `@share2brain/shared` `ErrorSchema`).
 5. **`GET /api/auth/me` returns the current user.** With a valid session in Redis, returns HTTP 200 with `{ id, discordId, username, avatar }`. Without a valid session, returns HTTP 401 `{ error: "Unauthorized", code: "AUTH_REQUIRED" }`.
 6. **`POST /api/auth/logout` destroys the session.** With a valid session, the Redis session key is deleted immediately, the `sid` cookie is invalidated (cleared), and it returns HTTP 200.
 
@@ -27,10 +27,10 @@ so that the system verifies I belong to the guild and creates a secure session w
 
 - [x] **Task 1 — Add dependencies & config (env) plumbing** (AC: 1, 3)
   - [x] Add to `packages/backend/package.json` dependencies: `express-session@^1.18`, `connect-redis@^9.0`; devDependency `@types/express-session@^1.18`. (`ioredis@^5.4`, `express@^5.2`, `cors` — see below — and `supertest` already available; add `cors@^2.8` + `@types/cors` to dependencies/devDependencies for the SPA cookie flow.)
-  - [x] Add the two **missing** secrets to `.env` **and** `.env.example` (keep them ordered near the existing Discord/session keys): `DISCORD_REDIRECT_URI=http://localhost:3000/api/auth/callback` (dev value) and `SESSION_TTL_DAYS=7`. Do NOT add these to `Hivly.config.yml` — they are secrets/deploy values, not behavior (secrets/behavior split; see Dev Notes).
+  - [x] Add the two **missing** secrets to `.env` **and** `.env.example` (keep them ordered near the existing Discord/session keys): `DISCORD_REDIRECT_URI=http://localhost:3000/api/auth/callback` (dev value) and `SESSION_TTL_DAYS=7`. Do NOT add these to `Share2Brain.config.yml` — they are secrets/deploy values, not behavior (secrets/behavior split; see Dev Notes).
   - [x] Run `npm install` at the repo root so the root lockfile picks up the new deps (the backend Dockerfile installs from the root lockfile — no Dockerfile change needed).
 
-- [x] **Task 2 — Add the auth Zod contract in `@hivly/shared`** (AC: 4, 5) — scope: `shared` (AD-6)
+- [x] **Task 2 — Add the auth Zod contract in `@share2brain/shared`** (AC: 4, 5) — scope: `shared` (AD-6)
   - [x] Create `packages/shared/src/schemas/auth.ts` exporting `AuthMeResponseSchema = z.object({ id: z.string().uuid(), discordId: z.string(), username: z.string(), avatar: z.string().nullable() })` and `export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>`.
   - [x] Export stable error-code constants used across auth endpoints so backend and (later) web share them: `export const AUTH_ERROR = { AUTH_REQUIRED: 'AUTH_REQUIRED', GUILD_MEMBER_REQUIRED: 'GUILD_MEMBER_REQUIRED' } as const`.
   - [x] Re-export from `packages/shared/src/schemas/index.ts` (add `export * from './auth.js';`). Do NOT define these shapes inside `packages/backend` (AD-6).
@@ -43,7 +43,7 @@ so that the system verifies I belong to the guild and creates a secure session w
   - [x] Create `packages/backend/src/domain/repositories/discordOAuthClient.ts` — the outbound port `DiscordOAuthClient { exchangeCode(code: string): Promise<{ accessToken: string }>; getCurrentUser(accessToken: string): Promise<{ id: string; username: string; avatar: string | null }>; getGuildMember(accessToken: string, guildId: string): Promise<{ roles: string[] } | null> }`. Also declare the domain error `export class GuildMembershipError extends Error {}` here (pure domain concept).
 
 - [x] **Task 4 — Infrastructure adapters** (AC: 2, 3, 4)
-  - [x] `packages/backend/src/infrastructure/userRepository.drizzle.ts` — `createDrizzleUserRepository(db: Database): UserRepository`. `upsertByDiscordId`: `db.insert(users).values({ discordId, username, avatar }).onConflictDoUpdate({ target: users.discordId, set: { username, avatar } }).returning({ id: users.id })`. The `idx_users_discord_id` unique index (already migrated) backs the conflict target — verify before relying on it. `findById`: select by `users.id`. Import `users` from `@hivly/shared/db`.
+  - [x] `packages/backend/src/infrastructure/userRepository.drizzle.ts` — `createDrizzleUserRepository(db: Database): UserRepository`. `upsertByDiscordId`: `db.insert(users).values({ discordId, username, avatar }).onConflictDoUpdate({ target: users.discordId, set: { username, avatar } }).returning({ id: users.id })`. The `idx_users_discord_id` unique index (already migrated) backs the conflict target — verify before relying on it. `findById`: select by `users.id`. Import `users` from `@share2brain/shared/db`.
   - [x] `packages/backend/src/infrastructure/discordOAuthClient.fetch.ts` — `createFetchDiscordOAuthClient(cfg: { clientId; clientSecret; redirectUri }): DiscordOAuthClient` using the global `fetch` (Node 24). Do NOT pull in `discord.js` (that lib is for the bot's Gateway; the backend only needs the Discord REST OAuth endpoints).
     - `exchangeCode`: `POST https://discord.com/api/oauth2/token`, `Content-Type: application/x-www-form-urlencoded`, body `grant_type=authorization_code`, `code`, `redirect_uri`, `client_id`, `client_secret`.
     - `getCurrentUser`: `GET https://discord.com/api/users/@me` with `Authorization: Bearer <accessToken>`.
@@ -96,17 +96,17 @@ The backend is a thin Express 5 skeleton. Preserve its structure and DI style.
 - `packages/backend/src/main.ts` — process wiring: `loadConfig()` first (AD-8), then `requireEnv('DATABASE_URL'|'REDIS_URL')`, `createDatabase(url)`, `new Redis(url, { lazyConnect: true, maxRetriesPerRequest: 1 })` (with an `error` listener that warns, so a Redis outage degrades rather than crashes), then `createApp(...).listen(PORT)`, with SIGTERM/SIGINT shutdown (`server.close()` + `redis.quit()`). **Reuse this single `redis` instance for the session store** — do not open a second Redis client.
 - `packages/backend/src/health.ts` — the handler-factory pattern to mirror: `createXHandler(db, redis) => (req, res) => ...`. Follow it for auth handlers/routers (DI the startup clients + options).
 - Response validation: `health.ts` validates its output with a shared Zod schema before sending (`HealthResponseSchema.parse`). Do the same for `/me` (`AuthMeResponseSchema.parse`).
-- `packages/backend/package.json` currently: deps `@hivly/shared`, `express@^5.2`, `ioredis@^5.4`; devDeps `@types/express`, `supertest@^7.1`, `@types/supertest`. Uses `tsx` (no build step; `build`/`typecheck` are both `tsc --noEmit`).
+- `packages/backend/package.json` currently: deps `@share2brain/shared`, `express@^5.2`, `ioredis@^5.4`; devDeps `@types/express`, `supertest@^7.1`, `@types/supertest`. Uses `tsx` (no build step; `build`/`typecheck` are both `tsc --noEmit`).
 
 ### Shared kernel — what already exists (AD-2, AD-5, AD-6)
 - **`users` table** — `packages/shared/src/db/schema.ts:63-74`: `id uuid pk defaultRandom`, `discordId text notNull`, `username text notNull`, `avatar text` (nullable), `createdAt`. **`uniqueIndex('idx_users_discord_id')` on `discordId`** (already migrated in `0001_tough_skrulls.sql`) — this is your `onConflictDoUpdate` target. No schema change or migration is needed for this story.
-- **`ErrorSchema`** = `{ error: string, code: string }` — `packages/shared/src/schemas/errors.ts`, exported via `@hivly/shared/schemas`. Use it for the 403/401 bodies.
-- **`loadConfig()`** — `packages/shared/src/config/index.ts`. Exposes `config.discord.guild_id`, `config.security.allowed_origins`, `config.access_control.*`. It has **NO** `client_id`/`client_secret`/`redirect_uri`/`session` keys by design — those are `.env` secrets. Do **not** extend `HivlyConfigSchema` for this story.
-- **`createDatabase` / `Database` / `sql`** — `packages/shared/src/db/index.ts`. `schema` re-exported; import tables as `import { users } from '@hivly/shared/db'`.
+- **`ErrorSchema`** = `{ error: string, code: string }` — `packages/shared/src/schemas/errors.ts`, exported via `@share2brain/shared/schemas`. Use it for the 403/401 bodies.
+- **`loadConfig()`** — `packages/shared/src/config/index.ts`. Exposes `config.discord.guild_id`, `config.security.allowed_origins`, `config.access_control.*`. It has **NO** `client_id`/`client_secret`/`redirect_uri`/`session` keys by design — those are `.env` secrets. Do **not** extend `Share2BrainConfigSchema` for this story.
+- **`createDatabase` / `Database` / `sql`** — `packages/shared/src/db/index.ts`. `schema` re-exported; import tables as `import { users } from '@share2brain/shared/db'`.
 - No logger and no Redis-client factory exist in shared — current code uses `console.*` and constructs `new Redis(...)` directly. Match that (don't invent a logging framework here).
 
 ### Secrets vs behavior — hard rule
-`.env` holds secrets/deploy values; `Hivly.config.yml` holds behavior (referenced as `${VAR}`). Never mix them. Therefore `DISCORD_REDIRECT_URI` and `SESSION_TTL_DAYS` go in `.env`/`.env.example` (they are already partly represented: `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_GUILD_ID`, `SESSION_SECRET`, `REDIS_URL`, `FRONTEND_URL` exist; `DISCORD_REDIRECT_URI` and `SESSION_TTL_DAYS` are the two you must add). The AC text "TTL configurable via `SESSION_TTL_DAYS`" confirms it is an env var, not a YAML key.
+`.env` holds secrets/deploy values; `Share2Brain.config.yml` holds behavior (referenced as `${VAR}`). Never mix them. Therefore `DISCORD_REDIRECT_URI` and `SESSION_TTL_DAYS` go in `.env`/`.env.example` (they are already partly represented: `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_GUILD_ID`, `SESSION_SECRET`, `REDIS_URL`, `FRONTEND_URL` exist; `DISCORD_REDIRECT_URI` and `SESSION_TTL_DAYS` are the two you must add). The AC text "TTL configurable via `SESSION_TTL_DAYS`" confirms it is an env var, not a YAML key.
 
 ### Sessions in Redis (AD-10) — non-negotiable
 - **No `sessions` table.** `schema.ts:6-7` explicitly forbids adding one. Sessions live only in Redis via `express-session` + `connect-redis`.
@@ -164,13 +164,13 @@ packages/backend/src/
 
 ### References
 - [Source: _bmad-output/planning-artifacts/epics.md#Historia 2.3] — ACs (authoritative).
-- [Source: _bmad-output/planning-artifacts/architecture/architecture-hivly-2026-06-30/TECHNICAL-DESIGN.md#10 (Auth: OAuth2 flow, Sessions in Redis, RBAC)] — flow diagram, session shape, endpoint list, `ErrorSchema`.
+- [Source: _bmad-output/planning-artifacts/architecture/architecture-share2brain-2026-06-30/TECHNICAL-DESIGN.md#10 (Auth: OAuth2 flow, Sessions in Redis, RBAC)] — flow diagram, session shape, endpoint list, `ErrorSchema`.
 - [Source: docs/data-model.md#3 users, #5 channel_permissions] — table columns, write ownership (`users` owned by backend).
 - [Source: docs/backend-standards.md#Authentication & RBAC] — single ioredis client for connect-redis; store only `{userId, discordRoles}`.
 - [Source: docs/backend-standards.md#Layered Architecture, #Project Structure] — DDD layer layout (domain/application/presentation/infrastructure/routes) this story establishes for the backend.
 - [Source: _bmad-output/project-context.md#Backend framework rules (AD-10)] — sessions in Redis, no `sessions` table.
 - [Source: docs/context/ARCHITECTURE-SPINE.md] — AD-2 (no cross-service imports), AD-5/AD-6 (schema/contracts only in shared), AD-8 (loadConfig first), AD-10 (Redis sessions).
-- Current code: `packages/backend/src/{app,main,health,test-helpers}.ts`, `packages/backend/src/health.integration.test.ts`, `packages/shared/src/db/schema.ts:63-92`, `packages/shared/src/schemas/{errors,index}.ts`, `packages/shared/src/config/index.ts`, `.env.example`, `Hivly.config.yml.example`, `nginx.conf`.
+- Current code: `packages/backend/src/{app,main,health,test-helpers}.ts`, `packages/backend/src/health.integration.test.ts`, `packages/shared/src/db/schema.ts:63-92`, `packages/shared/src/schemas/{errors,index}.ts`, `packages/shared/src/config/index.ts`, `.env.example`, `Share2Brain.config.yml.example`, `nginx.conf`.
 
 ## Dev Agent Record
 
@@ -192,7 +192,7 @@ Consequence in code: `infrastructure/redis.ts` wraps `createClient` with a bound
 - **All 6 ACs implemented and verified.** Endpoints under `/api/auth`: `GET /login` (302 → Discord authorize, scopes `identify guilds.members.read`, CSRF `state`), `GET /callback` (code exchange → `/users/@me` → guild member → user upsert → Redis session → `sid` cookie → 302 to frontend; non-member → 403 `GUILD_MEMBER_REQUIRED`; bad state → 400), `GET /me` (200 profile / 401 `AUTH_REQUIRED`), `POST /logout` (destroy Redis key + clear cookie + 200).
 - **DDD-by-layer** established for the backend: `domain/repositories` (ports + `GuildMembershipError`), `application/services` (`authService`, depends only on interfaces), `presentation/controllers`, `infrastructure` (Drizzle repo, fetch OAuth client, session store, redis factory), `routes`. `app.ts` is the composition root. `/health` skeleton left flat (migrate incrementally).
 - **CSRF `state`** implemented beyond the ACs (auth path) — random nonce in the session, verified on callback.
-- **AD-6:** the `AuthMeResponseSchema` + `AUTH_ERROR` contract lives in `@hivly/shared/schemas/auth.ts`, not in the backend.
+- **AD-6:** the `AuthMeResponseSchema` + `AUTH_ERROR` contract lives in `@share2brain/shared/schemas/auth.ts`, not in the backend.
 - **AD-10 preserved:** sessions live only in Redis (`sess:` prefix), payload `{ userId, discordRoles }`, cookie `sid` (not `connect.sid`); no `sessions` table.
 - **Regression guard:** `createApp` gained a 3rd `AppOptions` arg; the existing `health.integration.test.ts` call site was updated (via `buildTestAppOptions`). `/health` behavior unchanged.
 - **Verification gate (all green):** `npm run lint` (0), `npm run test` (59 unit+web), `npm run build` (all workspaces + vite), `npm run test:integration` (7, real Postgres+Redis). Manual: live backend on :3010 → `/health` 200 healthy (node-redis connected), `/api/auth/login` 302 to Discord with `sid` cookie, `/api/auth/me` 401. Test session keys cleaned from Redis afterwards.

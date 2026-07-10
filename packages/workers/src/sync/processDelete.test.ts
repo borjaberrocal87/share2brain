@@ -1,6 +1,6 @@
-import type { HivlyConfig } from '@hivly/shared';
-import type { Database } from '@hivly/shared/db';
-import type { MessageDeletedEvent } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { Database } from '@share2brain/shared/db';
+import type { MessageDeletedEvent } from '@share2brain/shared/types/events';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Logger } from '../logger.js';
@@ -8,7 +8,7 @@ import { processDelete as processDeleteImpl, type ProcessDeleteDeps } from './pr
 
 // The consumer always supplies streamId/stream (AC-5); inject fixed values so
 // the call sites below stay focused on event/db/policy behavior.
-const STREAM = 'hivly:discord:messages:deleted';
+const STREAM = 'share2brain:discord:messages:deleted';
 function processDelete(deps: Omit<ProcessDeleteDeps, 'streamId' | 'stream'>) {
   return processDeleteImpl({ ...deps, streamId: 's1', stream: STREAM });
 }
@@ -72,12 +72,12 @@ function deletedEvent(overrides: Partial<MessageDeletedEvent> = {}): MessageDele
   };
 }
 
-function softConfig(): HivlyConfig {
-  return { sync: { enabled: true, sync_on_start: false, delete_policy: 'soft' } } as unknown as HivlyConfig;
+function softConfig(): Share2BrainConfig {
+  return { sync: { enabled: true, sync_on_start: false, delete_policy: 'soft' } } as unknown as Share2BrainConfig;
 }
 
-function hardConfig(): HivlyConfig {
-  return { sync: { enabled: true, sync_on_start: false, delete_policy: 'hard' } } as unknown as HivlyConfig;
+function hardConfig(): Share2BrainConfig {
+  return { sync: { enabled: true, sync_on_start: false, delete_policy: 'hard' } } as unknown as Share2BrainConfig;
 }
 
 describe('processDelete — soft policy', () => {

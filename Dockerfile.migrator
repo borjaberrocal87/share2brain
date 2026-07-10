@@ -1,6 +1,6 @@
 # One-shot migrator image (AD-9). Build context MUST be the repo root: it needs
 # the root drizzle.config.ts plus packages/shared (schema + generated SQL in
-# src/db/migrations). drizzle-kit is a devDependency of @hivly/shared, installed
+# src/db/migrations). drizzle-kit is a devDependency of @share2brain/shared, installed
 # by `npm ci`. `drizzle-kit migrate` is idempotent — it skips already-applied
 # migrations via the journal, so re-running the container is safe.
 FROM node:24-alpine

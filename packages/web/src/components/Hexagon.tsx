@@ -1,4 +1,4 @@
-// Hivly brand hexagon (Story 2.1): a presentational, dependency-free primitive
+// Share2Brain brand hexagon (Story 2.1): a presentational, dependency-free primitive
 // reused across Epics 2 and 5 (login mark, sidebar logo, chat header, agent
 // avatar). Structure = three nested hexagons sharing one clip-path polygon:
 //   outer  amber gradient  ->  middle  bg-color fill  ->  inner  amber dot.
@@ -13,7 +13,7 @@ export const CLIP_PATH = 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 
 export const AMBER_GRADIENT = 'linear-gradient(150deg, #FFCB6B, #F5A623)';
 const AMBER = '#F5A623';
 
-// Exact inner dimensions per outer size, from KeepHive Web.dc.html. Sizes not
+// Exact inner dimensions per outer size, from Share2Brain Web.dc.html. Sizes not
 // listed fall back to the proportional rule (middle ~0.55x, dot ~0.19x).
 const EXACT_MIDDLE: Record<number, number> = { 74: 42, 32: 18, 30: 15 };
 const EXACT_DOT: Record<number, number> = { 74: 14, 32: 6 };

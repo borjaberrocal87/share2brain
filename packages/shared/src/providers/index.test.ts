@@ -2,7 +2,7 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatOpenAI, OpenAIEmbeddings } from '@langchain/openai';
 import { describe, expect, it } from 'vitest';
 
-import type { HivlyConfig } from '../config/index.js';
+import type { Share2BrainConfig } from '../config/index.js';
 
 import {
   assertEmbeddingDimensions,
@@ -11,7 +11,7 @@ import {
   isValidEmbeddingLength,
 } from './index.js';
 
-const baseAgent: HivlyConfig['agent'] = {
+const baseAgent: Share2BrainConfig['agent'] = {
   provider: 'anthropic',
   model: 'claude-sonnet-4-6',
   temperature: 0.7,
@@ -20,7 +20,7 @@ const baseAgent: HivlyConfig['agent'] = {
   api_key: 'sk-ant-test',
 };
 
-const baseEmbeddings: HivlyConfig['embeddings'] = {
+const baseEmbeddings: Share2BrainConfig['embeddings'] = {
   provider: 'openai',
   model: 'text-embedding-3-small',
   dimensions: 1536,

@@ -15,7 +15,7 @@ As an **Operator**,
 I want the Discord bot to connect to the Gateway and listen for new messages in the configured channels,
 so that the community's knowledge is captured in real time and flows into the indexing pipeline with no manual intervention.
 
-This is the **second story of Epic 3** (Knowledge Indexing Pipeline), after Story 3.0 (LLM/embeddings provider config, now `done`). It **unblocks Story 3.2** (historical backfill) and **Story 3.3** (Indexer worker), which consume the `hivly:discord:messages` stream this story produces.
+This is the **second story of Epic 3** (Knowledge Indexing Pipeline), after Story 3.0 (LLM/embeddings provider config, now `done`). It **unblocks Story 3.2** (historical backfill) and **Story 3.3** (Indexer worker), which consume the `share2brain:discord:messages` stream this story produces.
 
 **Baseline commit:** `3577eec` — Story 3.0 merged; `epic-3: in-progress`; `packages/bot` exists but `src/main.ts` is a config-validating placeholder with no Gateway logic.
 
@@ -25,13 +25,13 @@ This is the **second story of Epic 3** (Knowledge Indexing Pipeline), after Stor
 
 The Epic 3 spec (`epics.md` §Historia 3.1) and the previous draft of this story referenced **fields and behaviors that do not exist in the current codebase**. These were verified against the real source at baseline `3577eec` and corrected below. Where a decision changes an epic-level AC, it is flagged **[DECISION]** and summarized again in *Open Questions* at the end.
 
-1. **The bot token is NOT in `Hivly.config.yml`.** The config `discord` block has only `guild_id`, `channels[]`, and `backfill` (see `packages/shared/src/config/index.ts:36-44`). The token is a secret read from `.env` as `DISCORD_BOT_TOKEN` via the `requireEnv()` pattern used by the backend (`packages/backend/src/main.ts:15-21`). **Do not** reference `config.discord.token` — it does not exist and will not type-check.
+1. **The bot token is NOT in `Share2Brain.config.yml`.** The config `discord` block has only `guild_id`, `channels[]`, and `backfill` (see `packages/shared/src/config/index.ts:36-44`). The token is a secret read from `.env` as `DISCORD_BOT_TOKEN` via the `requireEnv()` pattern used by the backend (`packages/backend/src/main.ts:15-21`). **Do not** reference `config.discord.token` — it does not exist and will not type-check.
 2. **Channel identifier is `id`, not `channel_id`.** Config `ChannelSchema` = `{ id, name, enabled }` (`config/index.ts:22-26`). Match `message.channelId` against `config.discord.channels[].id`.
 3. **`ignore_bots` lives under `discord.backfill.ignore_bots`** (`config/index.ts:39-43`) — there is no top-level `discord.ignore_bots`. Reuse `config.discord.backfill.ignore_bots` for the live-ingestion bot filter. **[DECISION]** (see Open Questions).
 4. **`discord_messages` has no `channel_name`, `author_name`, or `last_seen_message_id` columns.** The real columns are `id, channelId, guildId, authorId, content, createdAt, updatedAt, indexedAt, deletedAt` (`packages/shared/src/db/schema.ts:37-53`). The epic's INSERT field list is stale — insert only the columns that exist.
 5. **There is no `last_seen_message_id` column to persist** (epic AC-4). Backfill resume (Story 3.2) derives the per-channel cursor from `MAX(id)` (snowflakes are monotonic-in-time), so **no column and no extra write are required in this story** — inserting each message is sufficient. **[DECISION]** (see Open Questions).
 6. **There is no shared logger.** No `getLogger`/`createLogger` exists anywhere (`grep` is empty). The codebase uses `console.*` with a `[service]` prefix (`bot/src/main.ts`, `backend/src/main.ts`, `backend/src/infrastructure/redis.ts`). **[DECISION]:** add a tiny local `packages/bot/src/logger.ts` that respects `config.observability.log_level` and wraps `console` — no new dependency, honest with the codebase.
-7. **There is no shared Redis client factory.** `createRedisClient` lives in `packages/backend/src/infrastructure/redis.ts`, which the bot **must not** import (AD-2). **[DECIDED with Borja]:** promote `createRedisClient` + `RedisClient` to `@hivly/shared`; both backend and bot import it from there (see Task 2). No bot-local copy.
+7. **There is no shared Redis client factory.** `createRedisClient` lives in `packages/backend/src/infrastructure/redis.ts`, which the bot **must not** import (AD-2). **[DECIDED with Borja]:** promote `createRedisClient` + `RedisClient` to `@share2brain/shared`; both backend and bot import it from there (see Task 2). No bot-local copy.
 8. **This story implements `messageCreate` only.** The epic AC-1 says "register `messageCreate`, `messageUpdate`, `messageDelete`", but the update/delete *logic* is Story 6.1 ("Bot — real-time edit/delete detection"), which publishes to `DISCORD_MESSAGES_UPDATED` / `DISCORD_MESSAGES_DELETED`. The story title is "listener **messageCreate**". **[DECISION]:** implement `messageCreate` fully; defer `messageUpdate`/`messageDelete` registration to Story 6.1 (see Open Questions).
 
 ---
@@ -66,7 +66,7 @@ The Epic 3 spec (`epics.md` §Historia 3.1) and the previous draft of this story
    - `updatedAt` = same as `createdAt` (column is `NOT NULL`)
    - `indexedAt` = left `NULL` (the Indexer sets it in Story 3.3)
    - `deletedAt` = left `NULL`
-2. `XADD`s a `MessageCreatedEvent` to the `STREAM_KEYS.DISCORD_MESSAGES` stream (`'hivly:discord:messages'`) with **all-string** fields: `type='discord.message.created'`, `messageId`, `channelId`, `guildId`, `timestamp` (ISO 8601 UTC from `message.createdAt.toISOString()`), `content`, `authorId`. The stream ID is server-generated (`*`).
+2. `XADD`s a `MessageCreatedEvent` to the `STREAM_KEYS.DISCORD_MESSAGES` stream (`'share2brain:discord:messages'`) with **all-string** fields: `type='discord.message.created'`, `messageId`, `channelId`, `guildId`, `timestamp` (ISO 8601 UTC from `message.createdAt.toISOString()`), `content`, `authorId`. The stream ID is server-generated (`*`).
 3. Both operations succeed or neither persists — see the transaction design in Dev Notes (XADD runs **inside** the Drizzle transaction; a throw rolls back the INSERT). At-least-once delivery is acceptable per AD-13 because the Indexer is idempotent.
 
 - Import the stream key from `STREAM_KEYS` (`packages/shared/src/types/events.ts:39-48`) — never hardcode the literal.
@@ -111,7 +111,7 @@ The Epic 3 spec (`epics.md` §Historia 3.1) and the previous draft of this story
 - `npm run lint` — 0 errors/warnings;
 - `npm run test` — all suites green, including new bot unit tests (channel filter, bot-author filter, event field mapping, backoff timing/jitter/reset) and at least one integration test hitting **real Postgres + Redis** (INSERT + XADD, and rollback-on-XADD-failure);
 - `npm run build` — all 5 workspaces build clean;
-- **Manual smoke** (real token + test guild): bot logs "Connected to Discord Gateway"; a message in an enabled channel appears in `discord_messages` **and** in `XRANGE hivly:discord:messages` within ~1 s; a message in a disabled channel does not; a bot-author message is skipped when `ignore_bots: true`; `docker network disconnect` + reconnect shows the backoff `warn` lines then a successful reconnect.
+- **Manual smoke** (real token + test guild): bot logs "Connected to Discord Gateway"; a message in an enabled channel appears in `discord_messages` **and** in `XRANGE share2brain:discord:messages` within ~1 s; a message in a disabled channel does not; a bot-author message is skipped when `ignore_bots: true`; `docker network disconnect` + reconnect shows the backoff `warn` lines then a successful reconnect.
 
 ---
 
@@ -120,10 +120,10 @@ The Epic 3 spec (`epics.md` §Historia 3.1) and the previous draft of this story
 - [x] **Task 1 — Bot dependencies & config wiring** (AC: 1)
   - [x] Add `redis` (node-redis 6.x) to `packages/bot/package.json` (`discord.js@^14.26.4` is already present). Run `npm install`.
   - [x] Confirm no new env/compose work is needed: `.env`/`.env.example` already define `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`, `DATABASE_URL`, `REDIS_URL`, and the compose `bot` service already sets `DATABASE_URL`/`REDIS_URL` and `env_file: .env` (verified — see References). Only touch these if something is missing.
-- [x] **Task 2 — Promote the Redis client to `@hivly/shared`** (AC: 2) — **[DECIDED with Borja]**
+- [x] **Task 2 — Promote the Redis client to `@share2brain/shared`** (AC: 2) — **[DECIDED with Borja]**
   - [x] Move `createRedisClient` + `RedisClient` type from `packages/backend/src/infrastructure/redis.ts` into `packages/shared/src/infrastructure/redis.ts`; add a `./redis` entry to `packages/shared/package.json` `exports`; add `redis` (^6) to shared `dependencies`.
-  - [x] Update the backend import to `@hivly/shared/redis` and delete `packages/backend/src/infrastructure/redis.ts` (keep the same behavior: `reconnectStrategy` capped at 2s + `error` handler). Re-run backend tests — this is a pure move, no behavior change.
-  - [x] Bot imports the factory from `@hivly/shared/redis` (never from backend — AD-2).
+  - [x] Update the backend import to `@share2brain/shared/redis` and delete `packages/backend/src/infrastructure/redis.ts` (keep the same behavior: `reconnectStrategy` capped at 2s + `error` handler). Re-run backend tests — this is a pure move, no behavior change.
+  - [x] Bot imports the factory from `@share2brain/shared/redis` (never from backend — AD-2).
 - [x] **Task 3 — Local logger** (AC: 1, 3, 4, 5)
   - [x] Add `packages/bot/src/logger.ts`: a minimal wrapper over `console` that honors `config.observability.log_level` (`debug|info|warn|error`) and emits `[bot] <level> <msg> <ctx-json>`. No new dependency. Never log the token, api keys, or full message `content` (log length or a redacted marker instead).
 - [x] **Task 4 — Discord client factory** (AC: 1)
@@ -135,7 +135,7 @@ The Epic 3 spec (`epics.md` §Historia 3.1) and the previous draft of this story
 - [x] **Task 7 — Reconnect with backoff** (AC: 4)
   - [x] `packages/bot/src/discord/reconnect.ts`: `scheduleReconnect()` with 1 s→×2→300 s cap, ±10 % jitter, reset on success, indefinite retry, `error`-level escalation after ≥5 failures. Bind `shardDisconnect`/`shardError`/`error`. Keep timing math pure (`computeDelay(attempt) => ms`) for unit tests.
 - [x] **Task 8 — main.ts wiring** (AC: 1, 5)
-  - [x] Rewrite `packages/bot/src/main.ts`: `loadConfig()` → `requireEnv('DISCORD_BOT_TOKEN' | 'DATABASE_URL' | 'REDIS_URL')` → `createDatabase(DATABASE_URL)` (from `@hivly/shared/db`) → redis client + background `connect()` → create client, register `messageCreate`, bind reconnect + `ClientReady` → `login`. Install `uncaughtException`/`unhandledRejection`; keep/extend the existing SIGTERM/SIGINT shutdown to also `client.destroy()`, `redis.destroy()`, `db.$client.end()`.
+  - [x] Rewrite `packages/bot/src/main.ts`: `loadConfig()` → `requireEnv('DISCORD_BOT_TOKEN' | 'DATABASE_URL' | 'REDIS_URL')` → `createDatabase(DATABASE_URL)` (from `@share2brain/shared/db`) → redis client + background `connect()` → create client, register `messageCreate`, bind reconnect + `ClientReady` → `login`. Install `uncaughtException`/`unhandledRejection`; keep/extend the existing SIGTERM/SIGINT shutdown to also `client.destroy()`, `redis.destroy()`, `db.$client.end()`.
 - [x] **Task 9 — Tests** (AC: 6)
   - [x] Unit: `messageCreate` (enabled/disabled/unlisted channel, bot-author filter), event field mapping (all strings, correct keys), `reconnect` (delay sequence, cap, jitter bounds, reset). Mock discord.js `Message`, db, redis.
   - [x] Integration (real PG + Redis, reuse `packages/backend/src/test-helpers.ts` patterns): INSERT lands the row with the right columns; XADD lands one entry with the exact fields; a forced XADD failure rolls back the INSERT (0 rows).
@@ -164,7 +164,7 @@ packages/bot/package.json           # UPDATE — add "redis": "^6"
 packages/shared/src/infrastructure/redis.ts     # NEW — moved from backend
 packages/shared/package.json                     # UPDATE — add redis dep + ./redis export
 packages/backend/src/infrastructure/redis.ts     # DELETE — moved to shared
-packages/backend/src/main.ts                      # UPDATE — import createRedisClient from @hivly/shared/redis
+packages/backend/src/main.ts                      # UPDATE — import createRedisClient from @share2brain/shared/redis
 ```
 
 *No changes to `docker-compose.yml`, `.env`, `.env.example` are expected* — all bot env vars are already wired (verified). No DDL / schema change (AD-5): `discord_messages` already exists.
@@ -182,9 +182,9 @@ packages/backend/src/main.ts                      # UPDATE — import createRedi
 - **Event & stream key** — `packages/shared/src/types/events.ts:15-19,39-48`:
   ```ts
   MessageCreatedEvent = { type:'discord.message.created'; messageId; channelId; guildId; timestamp; content; authorId }
-  STREAM_KEYS.DISCORD_MESSAGES === 'hivly:discord:messages'   // consumed by CONSUMER_GROUPS.INDEXER in 3.3
+  STREAM_KEYS.DISCORD_MESSAGES === 'share2brain:discord:messages'   // consumed by CONSUMER_GROUPS.INDEXER in 3.3
   ```
-- **DB client** — `import { createDatabase, type Database } from '@hivly/shared/db'` (`db/index.ts:33-36`). `db.$client.end()` closes the pool. Also re-exports `sql`, `arrayOverlaps`, and the schema.
+- **DB client** — `import { createDatabase, type Database } from '@share2brain/shared/db'` (`db/index.ts:33-36`). `db.$client.end()` closes the pool. Also re-exports `sql`, `arrayOverlaps`, and the schema.
 - **Env** — `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID` (already the guild in `.env`), `DATABASE_URL`, `REDIS_URL` (`.env`/`.env.example`). Read with a `requireEnv()` helper (copy the backend's, `main.ts:15-21`).
 
 ### Atomic INSERT + XADD (AC-2)
@@ -240,7 +240,7 @@ Never log the token, `DATABASE_URL`, `REDIS_URL`, api keys, or full message `con
 ### Guardrails (ARCHITECTURE-SPINE AD-*)
 
 - **AD-1** bot is a standalone process (own package/Dockerfile/compose entry — already true).
-- **AD-2** bot imports **only** `@hivly/shared` — never `@hivly/backend|workers|web`. This is exactly why the Redis factory must move to shared (Task 2), not be imported from backend.
+- **AD-2** bot imports **only** `@share2brain/shared` — never `@share2brain/backend|workers|web`. This is exactly why the Redis factory must move to shared (Task 2), not be imported from backend.
 - **AD-5** no DDL outside `packages/shared`; `discord_messages` already exists — do not alter the schema.
 - **AD-8** `loadConfig()` first in `main.ts`; abort before any DB/Redis/Discord I/O on failure.
 - **AD-13** stream key/consumer-group are fixed invariants (import `STREAM_KEYS`); at-least-once + idempotent consumer; write the message then publish the event within one tx.
@@ -253,7 +253,7 @@ Never log the token, `DATABASE_URL`, `REDIS_URL`, api keys, or full message `con
 
 ### References
 
-- [Source: packages/shared/src/config/index.ts#HivlyConfigSchema] — discord/observability config shape (no `token`; `channels[].id`; `backfill.ignore_bots`).
+- [Source: packages/shared/src/config/index.ts#Share2BrainConfigSchema] — discord/observability config shape (no `token`; `channels[].id`; `backfill.ignore_bots`).
 - [Source: packages/shared/src/db/schema.ts#discordMessages] — real columns (no channel_name/author_name/last_seen_message_id; `updatedAt` NOT NULL).
 - [Source: packages/shared/src/types/events.ts#MessageCreatedEvent, #STREAM_KEYS] — event fields + fixed stream key.
 - [Source: packages/shared/src/db/index.ts#createDatabase] — DB client + `$client.end()`.
@@ -271,7 +271,7 @@ Never log the token, `DATABASE_URL`, `REDIS_URL`, api keys, or full message `con
 ## Previous Story Intelligence
 
 **Story 3.0 (done, 2026-07-06)** shipped the config contract this story reads: extended `agent`/`embeddings` provider blocks, the provider factory (`packages/shared/src/providers/`), and dimension guards. Learnings that matter here:
-- `interpolateEnv()` runs a **raw-text `${VAR}` regex before YAML parse** — a commented line with `${VAR}` still throws if the var is unset. Any new `${...}` in config must be an active line with the var defined in `.env`. This story adds **no** new config keys, so the risk is nil, but keep it in mind if you touch `Hivly.config.yml`.
+- `interpolateEnv()` runs a **raw-text `${VAR}` regex before YAML parse** — a commented line with `${VAR}` still throws if the var is unset. Any new `${...}` in config must be an active line with the var defined in `.env`. This story adds **no** new config keys, so the risk is nil, but keep it in mind if you touch `Share2Brain.config.yml`.
 - `loadConfig()` failure must abort the process before any I/O — the bot's `main.ts` already calls it first; preserve that ordering.
 - The embeddings dimension is **4096** in the live config (Story 3.0 fixed a corrupt-zero-vector bug where the factory returned a 1024-length vector against Borja's LiteLLM endpoint). Not used by this story (the bot does no embeddings), but do not "fix" the 1536 mention in stale docs.
 
@@ -296,7 +296,7 @@ Never log the token, `DATABASE_URL`, `REDIS_URL`, api keys, or full message `con
 
 1. **`ignore_bots` source** — ✅ **RESOLVED (Borja, 2026-07-06): reuse `config.discord.backfill.ignore_bots`** for live ingestion too. No new config key, no schema change.
 2. **`last_seen_message_id`** — ✅ **RESOLVED (Borja, 2026-07-06): no column.** Story 3.2 resumes from `MAX(id)` per channel (snowflakes are monotonic). Story 3.1 only inserts each message.
-3. **Redis factory location** — ✅ **RESOLVED (Borja, 2026-07-06): promote `createRedisClient` to `@hivly/shared`** and refactor backend to import it. See Task 2.
+3. **Redis factory location** — ✅ **RESOLVED (Borja, 2026-07-06): promote `createRedisClient` to `@share2brain/shared`** and refactor backend to import it. See Task 2.
 4. **update/delete listeners** — deferred to Story 6.1 (which owns edit/delete logic), so 3.1 registers `messageCreate` only, matching the story title. This narrows epic AC-1's "register all three". *Default: messageCreate only.*
 5. **Logger** — no shared logger exists; default is a tiny bot-local `console` wrapper honoring `log_level`. A project-wide shared logger would be a separate refactor. *Default: local wrapper.*
 
@@ -324,8 +324,8 @@ claude-opus-4-8[1m] (bmad-dev-story).
 - **AC-4** — `computeDelay()` = 1s→×2→300s cap with ±10% jitter (pure, unit-tested for sequence/cap/bounds); `connectWithRetry()` retries login indefinitely, resets on success (fresh invocation → ~1s), escalates to `error` after ≥5 failures; `bindGatewayEvents()` logs `shardDisconnect`/`shardError`/`error` at warn and prevents an unhandled 'error' crash.
 - **AC-5** — `uncaughtException`/`unhandledRejection` handlers log with stack + `exit(1)`; SIGTERM/SIGINT trigger `client.destroy()` → `redis.destroy()` → `db.$client.end()` → exit(0) (idempotent guard).
 - **AC-6** — full gate green (evidence above). The remaining manual-smoke steps that require a human posting in Discord and toggling the container network (live message → row+stream within ~1s; disabled/bot-author skip live; `docker network disconnect` → backoff → reconnect) are handed to the Operator; the code paths behind them are covered by unit + integration tests.
-- **Task 2 (Redis factory promotion, [DECIDED with Borja])** — `createRedisClient` + `RedisClient` moved to `@hivly/shared/redis` (new `./redis` export + `redis@^6` dep in shared); backend now imports from there and its `infrastructure/redis.ts` was deleted. Pure move — backend + shared typecheck clean, backend integration tests still green.
-- No schema change (AD-5); no cross-service imports (AD-2 — the bot imports only `@hivly/shared`); stream key via `STREAM_KEYS` (AD-13); no secrets or full message content in logs (asserted by a unit test).
+- **Task 2 (Redis factory promotion, [DECIDED with Borja])** — `createRedisClient` + `RedisClient` moved to `@share2brain/shared/redis` (new `./redis` export + `redis@^6` dep in shared); backend now imports from there and its `infrastructure/redis.ts` was deleted. Pure move — backend + shared typecheck clean, backend integration tests still green.
+- No schema change (AD-5); no cross-service imports (AD-2 — the bot imports only `@share2brain/shared`); stream key via `STREAM_KEYS` (AD-13); no secrets or full message content in logs (asserted by a unit test).
 - Deferred (per story Open Questions): `messageUpdate`/`messageDelete` registration → Story 6.1.
 
 ### File List
@@ -348,25 +348,25 @@ claude-opus-4-8[1m] (bmad-dev-story).
 - `packages/bot/src/main.ts` — full boot wiring (config → env → db/redis → client → handlers → hardening → shutdown → connectWithRetry).
 - `packages/bot/package.json` — add `redis@^6`.
 - `packages/shared/package.json` — add `./redis` export + `redis@^6` dep.
-- `packages/backend/src/main.ts` — import `createRedisClient` from `@hivly/shared/redis`.
-- `packages/backend/src/app.ts` — import `RedisClient` from `@hivly/shared/redis`.
-- `packages/backend/src/health.ts` — import `RedisClient` from `@hivly/shared/redis`.
-- `packages/backend/src/health.test.ts` — import `RedisClient` from `@hivly/shared/redis`.
-- `packages/backend/src/test-helpers.ts` — import from `@hivly/shared/redis`.
-- `packages/backend/src/infrastructure/sessionStore.ts` — import `RedisClient` from `@hivly/shared/redis`.
+- `packages/backend/src/main.ts` — import `createRedisClient` from `@share2brain/shared/redis`.
+- `packages/backend/src/app.ts` — import `RedisClient` from `@share2brain/shared/redis`.
+- `packages/backend/src/health.ts` — import `RedisClient` from `@share2brain/shared/redis`.
+- `packages/backend/src/health.test.ts` — import `RedisClient` from `@share2brain/shared/redis`.
+- `packages/backend/src/test-helpers.ts` — import from `@share2brain/shared/redis`.
+- `packages/backend/src/infrastructure/sessionStore.ts` — import `RedisClient` from `@share2brain/shared/redis`.
 - `vitest.config.ts` — register the `bot-integration` project.
 - `package.json` — `test:integration` runs `backend-integration` + `bot-integration`.
 - `package-lock.json` — dependency graph updated by `npm install`.
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` — story 3-1 → in-progress → review.
 
 **Deleted**
-- `packages/backend/src/infrastructure/redis.ts` — moved to `@hivly/shared/redis` (Task 2).
+- `packages/backend/src/infrastructure/redis.ts` — moved to `@share2brain/shared/redis` (Task 2).
 
 ## Change Log
 
 | Date | Change |
 |---|---|
-| 2026-07-06 | Implemented Story 3.1: Discord Gateway connection + `messageCreate` listener with atomic INSERT+XADD, exponential-backoff reconnect, and process hardening. Promoted the Redis client factory to `@hivly/shared/redis`. All 6 ACs green; full lint/test/build/integration gate passed; Gateway connection verified live. Status → review. |
+| 2026-07-06 | Implemented Story 3.1: Discord Gateway connection + `messageCreate` listener with atomic INSERT+XADD, exponential-backoff reconnect, and process hardening. Promoted the Redis client factory to `@share2brain/shared/redis`. All 6 ACs green; full lint/test/build/integration gate passed; Gateway connection verified live. Status → review. |
 | 2026-07-06 | Code review (bmad-code-review): 7 patch findings, 1 deferred, 8 dismissed. See Review Findings below. |
 | 2026-07-06 | Code review — 2nd pass (3 adversarial layers): 3 decision-needed (2 dismissed, 1→patch), 4 patches applied (redis.quit await+bound, abortable backoff sleep, defensive handler try/catch, fail-fast on failed initial Redis connect), 3 deferred, 4 dismissed. Gate re-run green: lint 0 · 125 unit tests · build all 5 workspaces. Status stays `done`. |
 | 2026-07-06 | Code review — 3rd pass (re-verify the 2nd-pass patches): Edge Case Hunter found P4 fail-fast was dead code (node-redis `reconnectStrategy` always returns a number → `connect()` never rejects). 4 fixes applied: R1 bound initial connect with a 10s timeout → exit(1); R2 bound `client.destroy()`; R3 `.catch()` on raced `quit()`/`end()`; R4 `.catch()` on `waitOrAbort`. 3 more deferred (log truncation on exit, tx-held-across-XADD, thread channel matching). No AC regressions. Gate green: lint 0 · 125 unit tests · build all 5 workspaces. Status stays `done`. |

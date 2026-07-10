@@ -1,5 +1,5 @@
 // THROWAWAY SPIKE — exercises the Story 3.0 provider factory against the REAL
-// embeddings endpoint configured in Hivly.config.yml + .env.
+// embeddings endpoint configured in Share2Brain.config.yml + .env.
 //
 // Unlike spike/embeddings.ts (stale: raw fetch + removed knowledge.embedding_model),
 // this drives the ACTUAL production code path:
@@ -8,12 +8,12 @@
 //
 // Run:  npx tsx --env-file=.env spike/embeddings-factory.ts
 
-import { loadConfig } from '@hivly/shared';
-import { assertEmbeddingDimensions, createEmbeddingsModel } from '@hivly/shared/providers';
+import { loadConfig } from '@share2brain/shared';
+import { assertEmbeddingDimensions, createEmbeddingsModel } from '@share2brain/shared/providers';
 
 const config = loadConfig();
 const { provider, model, dimensions, base_url } = config.embeddings;
-const input = "Hivly indexes a Discord community's knowledge and answers questions with verifiable sources.";
+const input = "Share2Brain indexes a Discord community's knowledge and answers questions with verifiable sources.";
 
 console.log(`[spike] provider=${provider} · model=${model} · expecting ${dimensions} dims`);
 console.log(`[spike] base_url=${base_url ?? '(default OpenAI)'}`);

@@ -15,7 +15,7 @@ Status: done
 
 ## Story
 
-As a **community member using Hivly's web app**,
+As a **community member using Share2Brain's web app**,
 I want **search results, the documents list and chat citations to render each curated resource's
 AI-generated title, its description and a working link to the resource itself (FR16/FR17/FR18)**,
 so that **the Epic 7 pivot is finally visible where I live — I can scan resources by title, open
@@ -64,7 +64,7 @@ copy + one small contract guarantee, not plumbing.
   `color: 'var(--text-secondary)'`, keep `overflowWrap: 'anywhere'`) → footer row keeps
   avatar+name left and gains a links group right: **"ver recurso" (href = `fragment.link`) +
   "ver en Discord" (unchanged deep link)**, both `target="_blank" rel="noopener noreferrer"`
-  with trailing `ExternalLinkIcon`. The prototype (`KeepHive Web.dc.html`) is pre-pivot and has
+  with trailing `ExternalLinkIcon`. The prototype (`Share2Brain Web.dc.html`) is pre-pivot and has
   NO authority over the new title/link elements — these values are the ratified defaults.
 - **D2 — `.kh-resource-link` CSS class** (new, in `components.css`): base
   `color: var(--text-muted)`, `:hover { color: var(--accent-ink) }`. Used by BOTH the SearchView
@@ -160,7 +160,7 @@ copy + one small contract guarantee, not plumbing.
    (unit+web, new SearchView/DocsView/ChatWidget/schema cases green) && `npm run build`
    (5 pkgs) && `npm run test:integration` (backend suites untouched but MUST re-run — a shared
    contract changed; expected 120 pass, no fixture uses an empty title) &&
-   `npm run test:e2e -w @hivly/web` (13 chromium, pass-count unchanged, only the AC-4 anchor
+   `npm run test:e2e -w @share2brain/web` (13 chromium, pass-count unchanged, only the AC-4 anchor
    patches) + screenshots captured. Explicitly flag in the completion notes that the NEW
    elements' visual/CSS ACs (title typography, link hovers, chip title styling) are deferred to
    the 7.6 harness extension per the epic plan — named, not silently passed.
@@ -169,7 +169,7 @@ copy + one small contract guarantee, not plumbing.
 
 - [x] Task 0 — Branch + preconditions (AC: all)
   - [x] `git branch --show-current` → if `main`, `git switch -c feat/7-5-web-resource-rendering`.
-  - [x] Baseline sanity: `npm run test -w @hivly/web` green before touching anything.
+  - [x] Baseline sanity: `npm run test -w @share2brain/web` green before touching anything.
 - [x] Task 1 — Shared `title: .min(1)`, tests-first (AC: 1)
   - [x] Flip `citation.test.ts` / `search.test.ts` / `documents.test.ts` / `sse.test.ts` red
         with reject-empty-title cases, then add `.min(1)` in `citation.ts` / `search.ts` /
@@ -207,7 +207,7 @@ copy + one small contract guarantee, not plumbing.
 ### Architecture compliance (invariants that bind this story)
 
 - **AD-3**: static SPA — no SSR, no server code in web. API types come ONLY from `z.infer<>`
-  of `@hivly/shared/schemas` (ESLint `no-restricted-imports` bans the root barrel and `/db`).
+  of `@share2brain/shared/schemas` (ESLint `no-restricted-imports` bans the root barrel and `/db`).
 - **AD-6**: the `.min(1)` change is scoped `shared`; web consumes it by inference. Never
   redefine request/response shapes in web.
 - **AD-2**: no cross-service imports. This story touches `shared` + `web` + docs only.
@@ -320,7 +320,7 @@ copy + one small contract guarantee, not plumbing.
   Only ASSERTIONS are missing — add them, don't rebuild fixtures.
 - The F2 bubbling test: `fireEvent.click` on the anchor → assert the mocked `markRead` was
   called with the doc id (D6 jsdom navigation-noise caveat).
-- Shared: `npm run test -w @hivly/shared` covers the AC-1 flips fast during TDD.
+- Shared: `npm run test -w @share2brain/shared` covers the AC-1 flips fast during TDD.
 
 ### Do-NOT-touch look-alikes
 
@@ -431,7 +431,7 @@ None — no blocking issues; all tests went red-then-green on first implementati
   by this story's new/extended assertions). `npm run build` → clean across all 5 packages
   (backend/bot/shared/workers `tsc --noEmit`, web `vite build`). `npm run test:integration` → 120
   passed across 19 files (backend/bot/workers; unchanged count — no fixture used an empty title).
-  `npm run test:e2e -w @hivly/web` → 13/13 chromium specs passed (pass-count unchanged), only the
+  `npm run test:e2e -w @share2brain/web` → 13/13 chromium specs passed (pass-count unchanged), only the
   `docs.spec.ts` anchor patch. Screenshots captured by the harness under
   `packages/web/test-results/` (not committed, per existing convention).
 - **Explicitly flagged per AC-8**: the NEW elements' visual/CSS acceptance criteria — the

@@ -2,9 +2,9 @@
 // answer ONLY from the curated community resources retrieved and admit when it
 // has nothing; buildRAGContext renders those resources (title/description/link,
 // channel/author/date) so the model can ground, cite, and link them.
-import type { SearchFragment } from '@hivly/shared/schemas';
+import type { SearchFragment } from '@share2brain/shared/schemas';
 
-export const SYSTEM_PROMPT = `You are Hivly, an assistant that answers questions using ONLY the curated community resources retrieved from the server's knowledge index, provided below as context.
+export const SYSTEM_PROMPT = `You are Share2Brain, an assistant that answers questions using ONLY the curated community resources retrieved from the server's knowledge index, provided below as context.
 
 Rules:
 - Ground every claim in the provided resources. Do not use outside knowledge.

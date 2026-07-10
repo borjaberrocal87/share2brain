@@ -1,7 +1,7 @@
 // Presentation: HTTP handler for GET /api/search. Owns HTTP concerns (query
 // validation, status codes) and maps errors to the unified ErrorSchema shape.
 // Raw DB/LLM errors are never leaked to the client. Mirrors authController.
-import { SEARCH_ERROR, SearchQuerySchema } from '@hivly/shared/schemas';
+import { SEARCH_ERROR, SearchQuerySchema } from '@share2brain/shared/schemas';
 import type { Request, Response } from 'express';
 
 import type { SearchService } from '../../application/services/searchService.js';

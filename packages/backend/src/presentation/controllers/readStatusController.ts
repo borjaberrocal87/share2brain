@@ -6,7 +6,7 @@ import {
   EmbeddingIdParamSchema,
   MarkAllRequestSchema,
   READ_STATUS_ERROR,
-} from '@hivly/shared/schemas';
+} from '@share2brain/shared/schemas';
 import type { Request, Response } from 'express';
 
 import type { ReadStatusService } from '../../application/services/readStatusService.js';

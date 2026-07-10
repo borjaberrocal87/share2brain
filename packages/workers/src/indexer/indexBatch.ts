@@ -10,10 +10,10 @@
 // no-URL/all-blocked message, after the SAME stamp with zero rows (D2/discard).
 // An enrichment or embedding hard failure for the message leaves it un-ACKed
 // entirely (D1) — no partial persistence; later messages still run.
-import type { HivlyConfig } from '@hivly/shared';
-import { discordMessages, embeddings, inArray, sql } from '@hivly/shared/db';
-import type { Database } from '@hivly/shared/db';
-import { assertEmbeddingDimensions } from '@hivly/shared/providers';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import { discordMessages, embeddings, inArray, sql } from '@share2brain/shared/db';
+import type { Database } from '@share2brain/shared/db';
+import { assertEmbeddingDimensions } from '@share2brain/shared/providers';
 
 import { buildEmbeddingText, type EnrichmentChatModel } from '../enrichment/enrich.js';
 import { buildResourceRows, type ResourceRow } from '../enrichment/resourceRows.js';
@@ -27,7 +27,7 @@ export interface IndexBatchDeps {
   entries: RawStreamEntry[];
   db: Database;
   embedder: Embedder;
-  config: HivlyConfig;
+  config: Share2BrainConfig;
   logger: Logger;
   /** The enrichment chat model — built once at boot, injected (AC-6, mirrors
    *  the `embedder` injection pattern; never constructed here). */

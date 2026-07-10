@@ -148,7 +148,7 @@ marked/read (AD-12; project-context.md Testing rules).
         `listDocuments(userId: string, allowedChannelIds: string[], limit: number, offset: number): Promise<DocumentFragmentRow[]>`
         and `countDocuments(allowedChannelIds: string[]): Promise<number>` (raw pre-Zod row shape).
   - [x] `infrastructure/documentRepository.drizzle.ts` — the ONLY file that knows this SQL. Use
-        `db.execute(sql\`…\`)` + the re-exported `inArray` from `@hivly/shared/db` (never import
+        `db.execute(sql\`…\`)` + the re-exported `inArray` from `@share2brain/shared/db` (never import
         `drizzle-orm` directly, AD-2). Mirror `embeddingSearchRepository.drizzle.ts` exactly.
     - [x] **Short-circuit AC7:** `if (allowedChannelIds.length === 0) return [];` (and `countDocuments` → `0`)
           FIRST — `inArray`/`ANY([])` on an empty array is unsafe (the shared/db barrel warns `inArray` throws on empty).
@@ -518,7 +518,7 @@ docs → tests), never a single dump commit. **Branch first:**
 Full rules: `_bmad-output/project-context.md` (read before coding). Authoritative sources:
 `docs/context/ARCHITECTURE-SPINE.md` (AD-1…AD-13), `docs/context/TECHNICAL-DESIGN.md`, `docs/*-standards.md`.
 Story-critical invariants: **AD-2** (no cross-service imports; no direct `drizzle-orm` — use
-`@hivly/shared/db` re-exports), **AD-5** (DDL only in shared — this story adds none), **AD-6** (Zod
+`@share2brain/shared/db` re-exports), **AD-5** (DDL only in shared — this story adds none), **AD-6** (Zod
 contracts only in `packages/shared/src/schemas`; validate at the edge with `.parse()`), **AD-12** (RBAC
 inside the query, never a post-filter). Verification gate (`npm run lint && npm run test && npm run build`)
 is mandatory and the **agent** runs it — paste evidence; never commit red.

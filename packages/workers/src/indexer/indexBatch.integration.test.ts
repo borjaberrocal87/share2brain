@@ -12,9 +12,9 @@
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-import type { HivlyConfig } from '@hivly/shared';
-import { sql } from '@hivly/shared/db';
-import { STREAM_KEYS } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import { sql } from '@share2brain/shared/db';
+import { STREAM_KEYS } from '@share2brain/shared/types/events';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { EnrichmentChatModel } from '../enrichment/enrich.js';
@@ -35,12 +35,12 @@ const config = {
       timeout_ms: 5_000,
       max_bytes: 2_000_000,
       max_redirects: 3,
-      user_agent: 'HivlyIntegrationTest/1.0',
+      user_agent: 'Share2BrainIntegrationTest/1.0',
       allowed_schemes: ['http', 'https'],
       block_private_ips: false,
     },
   },
-} as unknown as HivlyConfig;
+} as unknown as Share2BrainConfig;
 
 // Silent logger — these tests assert on state, not logs.
 const logger: Logger = { debug() {}, info() {}, warn() {}, error() {} };
@@ -139,7 +139,7 @@ describe('Indexer resource pipeline (integration)', () => {
   /** Create a fresh test consumer group at the CURRENT tail so a following read of
    *  '>' delivers only the entries this test XADDs — isolating from other entries. */
   async function freshGroup(suffix: string): Promise<string> {
-    const group = `hivly:indexer:${suffix}`;
+    const group = `share2brain:indexer:${suffix}`;
     createdGroups.push(group);
     await clients.redis.xGroupCreate(STREAM, group, '$', { MKSTREAM: true });
     return group;
@@ -337,7 +337,7 @@ describe('Indexer resource pipeline (integration)', () => {
 
   it('should reject a duplicate consumer-group creation with BUSYGROUP (AC-1 tolerance basis)', async () => {
     const suffix = runSuffix();
-    const group = `hivly:indexer:${suffix}-busy`;
+    const group = `share2brain:indexer:${suffix}-busy`;
     createdGroups.push(group);
 
     await clients.redis.xGroupCreate(STREAM, group, '$', { MKSTREAM: true });

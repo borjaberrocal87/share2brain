@@ -1,4 +1,4 @@
-// Centralized behavior configuration (AD-8). loadConfig() reads Hivly.config.yml,
+// Centralized behavior configuration (AD-8). loadConfig() reads Share2Brain.config.yml,
 // interpolates ${ENV_VAR} references from process.env, and validates the result
 // with Zod. On ANY failure it throws a descriptive ConfigError — the caller's
 // main.ts is expected to abort BEFORE opening any DB/Redis/Discord connection.
@@ -37,7 +37,7 @@ const RateLimitTierSchema = z.object({
   max_requests: z.number().int().positive(),
 });
 
-export const HivlyConfigSchema = z.object({
+export const Share2BrainConfigSchema = z.object({
   version: z.string(),
   discord: z.object({
     guild_id: z.string(),
@@ -146,7 +146,7 @@ export const HivlyConfigSchema = z.object({
     }),
   }),
   // Redis Streams retention (Story OPS-1). The whole block AND each field are
-  // optional; resolveStreamsConfig (in @hivly/workers) supplies per-field defaults
+  // optional; resolveStreamsConfig (in @share2brain/workers) supplies per-field defaults
   // (enabled / 5-min / no-ceiling), so a config omitting the block OR setting only
   // some fields (e.g. just `trim_enabled: false`) remains valid. Behavior only — no
   // secrets. `max_len` is an OPTIONAL APPROXIMATE (~) ceiling backstop (null = off);
@@ -221,11 +221,11 @@ export const HivlyConfigSchema = z.object({
   }
 });
 
-export type HivlyConfig = z.infer<typeof HivlyConfigSchema>;
-export type NotificationsConfig = NonNullable<HivlyConfig['notifications']>;
-export type EnrichmentConfig = HivlyConfig['enrichment'];
+export type Share2BrainConfig = z.infer<typeof Share2BrainConfigSchema>;
+export type NotificationsConfig = NonNullable<Share2BrainConfig['notifications']>;
+export type EnrichmentConfig = Share2BrainConfig['enrichment'];
 
-const DEFAULT_CONFIG_FILE = 'Hivly.config.yml';
+const DEFAULT_CONFIG_FILE = 'Share2Brain.config.yml';
 const ENV_PLACEHOLDER = /\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
 
 /** Substitute ${ENV_VAR} placeholders from process.env; an unset var is a failure. */
@@ -250,21 +250,21 @@ function formatZodError(error: z.ZodError): string {
       return `  - ${path}: ${issue.message}`;
     })
     .join('\n');
-  return `Invalid Hivly configuration:\n${details}`;
+  return `Invalid Share2Brain configuration:\n${details}`;
 }
 
 /**
- * Load, interpolate, and validate the Hivly behavior configuration.
+ * Load, interpolate, and validate the Share2Brain behavior configuration.
  *
- * Path resolution: `configPath` arg → `HIVLY_CONFIG_PATH` env →
- * `Hivly.config.yml` in the current working directory (Compose mounts it at
- * `/app/Hivly.config.yml`).
+ * Path resolution: `configPath` arg → `SHARE2BRAIN_CONFIG_PATH` env →
+ * `Share2Brain.config.yml` in the current working directory (Compose mounts it at
+ * `/app/Share2Brain.config.yml`).
  *
  * @throws {ConfigError} on a missing file, malformed YAML, an unset referenced
  *   env var, or a schema validation failure. Never opens a network connection.
  */
-export function loadConfig(configPath?: string): HivlyConfig {
-  const path = configPath ?? process.env.HIVLY_CONFIG_PATH ?? DEFAULT_CONFIG_FILE;
+export function loadConfig(configPath?: string): Share2BrainConfig {
+  const path = configPath ?? process.env.SHARE2BRAIN_CONFIG_PATH ?? DEFAULT_CONFIG_FILE;
 
   let raw: string;
   try {
@@ -284,7 +284,7 @@ export function loadConfig(configPath?: string): HivlyConfig {
     throw new ConfigError(`Malformed YAML in config file "${path}": ${reason}`);
   }
 
-  const result = HivlyConfigSchema.safeParse(parsed);
+  const result = Share2BrainConfigSchema.safeParse(parsed);
   if (!result.success) {
     throw new ConfigError(formatZodError(result.error));
   }

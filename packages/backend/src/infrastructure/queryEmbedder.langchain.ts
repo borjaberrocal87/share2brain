@@ -3,8 +3,8 @@
 // never leaks into the service/controller (AD-2 spirit). Uses the SAME factory
 // Story 3.3 used for `.embedDocuments()`, which forces `encodingFormat: 'float'`
 // to avoid the corrupt all-zero-vector bug found in Story 3.0.
-import type { HivlyConfig } from '@hivly/shared';
-import { assertEmbeddingDimensions, createEmbeddingsModel } from '@hivly/shared/providers';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import { assertEmbeddingDimensions, createEmbeddingsModel } from '@share2brain/shared/providers';
 
 import type { QueryEmbedder } from '../domain/repositories/queryEmbedder.js';
 
@@ -35,7 +35,7 @@ function assertUsableQueryVector(vector: number[]): void {
 }
 
 export function createLangchainQueryEmbedder(
-  embeddingsConfig: HivlyConfig['embeddings'],
+  embeddingsConfig: Share2BrainConfig['embeddings'],
 ): QueryEmbedder {
   // Build the model once; reuse across requests. No network I/O at construction.
   const model = createEmbeddingsModel(embeddingsConfig);

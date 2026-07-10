@@ -6,7 +6,7 @@
 import type { Request, Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ConversationDetail, ConversationsResponse } from '@hivly/shared/schemas';
+import type { ConversationDetail, ConversationsResponse } from '@share2brain/shared/schemas';
 
 import type { ConversationService } from '../../application/services/conversationService.js';
 import { createConversationController } from './conversationController.js';

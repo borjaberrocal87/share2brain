@@ -2,7 +2,7 @@
 // roles, expands them to the allowed channel IDs, and attaches them to the request
 // for downstream handlers. Recomputed on EVERY request (never cached in the
 // session), so a config/permission change takes effect on the next request (AC3).
-import { AUTH_ERROR } from '@hivly/shared/schemas';
+import { AUTH_ERROR } from '@share2brain/shared/schemas';
 import type { NextFunction, Request, Response } from 'express';
 
 import type { RbacService } from '../application/services/rbacService.js';

@@ -1,8 +1,8 @@
 // Tiny browser-safe auth client for the SPA. Talks to the same-origin /api/auth/*
 // endpoints (nginx in prod, the Vite dev proxy in dev — see vite.config.ts). Imports
-// types/schemas ONLY from @hivly/shared/schemas — never the root barrel or /db,
+// types/schemas ONLY from @share2brain/shared/schemas — never the root barrel or /db,
 // which pull `pg` into the bundle (ESLint no-restricted-imports enforces this, AD-3).
-import { AuthMeResponseSchema, type AuthMeResponse } from '@hivly/shared/schemas';
+import { AuthMeResponseSchema, type AuthMeResponse } from '@share2brain/shared/schemas';
 
 /** Full-page navigation target to start the Discord OAuth2 login (AC6). */
 export const LOGIN_URL = '/api/auth/login';

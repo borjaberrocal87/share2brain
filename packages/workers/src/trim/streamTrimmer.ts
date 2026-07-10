@@ -1,4 +1,4 @@
-// Redis Streams retention (Story OPS-1). A third long-lived loop in @hivly/workers
+// Redis Streams retention (Story OPS-1). A third long-lived loop in @share2brain/workers
 // (alongside the Indexer and Sync consumers) that periodically trims the Discord
 // streams WITHOUT ever dropping an unprocessed entry, so a long-running self-hosted
 // instance does not grow Redis memory without limit while at-least-once delivery
@@ -22,9 +22,9 @@
 // and Sync loops each park on a blocking XREADGROUP, and node-redis serializes
 // commands per connection, so a shared client would queue the trimmer's admin
 // commands behind a parked read (the one-client-per-loop lesson from Story 6.2).
-import type { HivlyConfig } from '@hivly/shared';
-import type { RedisClient } from '@hivly/shared/redis';
-import { STREAM_KEYS } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { RedisClient } from '@share2brain/shared/redis';
+import { STREAM_KEYS } from '@share2brain/shared/types/events';
 
 import type { Logger } from '../logger.js';
 
@@ -50,7 +50,7 @@ export interface ResolvedStreamsConfig {
 /** Resolve the optional `streams` config block to concrete values (D1: optional
  *  with in-code defaults so configs omitting the block still work — enabled,
  *  5-min interval, no ceiling). */
-export function resolveStreamsConfig(config: HivlyConfig): ResolvedStreamsConfig {
+export function resolveStreamsConfig(config: Share2BrainConfig): ResolvedStreamsConfig {
   const s = config.streams;
   return {
     enabled: s?.trim_enabled ?? true,
@@ -199,7 +199,7 @@ function sleepOrAbort(ms: number, signal: AbortSignal): Promise<void> {
 export interface RunStreamTrimmerDeps {
   /** Dedicated client — must NOT be shared with a blocking consumer loop (note #5). */
   redis: RedisClient;
-  config: HivlyConfig;
+  config: Share2BrainConfig;
   logger: Logger;
   /** Aborted on SIGTERM/SIGINT — the loop stops before the next tick. */
   signal: AbortSignal;

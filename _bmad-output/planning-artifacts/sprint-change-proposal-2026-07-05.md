@@ -2,7 +2,7 @@
 type: sprint-change-proposal
 date: 2026-07-05
 author: Amelia (Dev) — bmad-correct-course
-project: hivly
+project: share2brain
 status: approved
 scope_classification: moderate
 mode: incremental
@@ -38,7 +38,7 @@ API**, so "Anthropic for embeddings" is not a real option — the embeddings sel
 1. Embeddings selector = `openai | custom` (no Anthropic).
 2. Embedding **dimension is configurable** (`embeddings.dimensions`) — this touches AD-5.
 3. Config split preserved: `dimensions`, `provider`, `model`, `base_url` are **behavior →
-   `Hivly.config.yml`**; only API keys are **secrets → `.env`**. The operator edits both
+   `Share2Brain.config.yml`**; only API keys are **secrets → `.env`**. The operator edits both
    files (two-file model is a core invariant; not collapsed into `.env`).
 
 ## 2. Impact Analysis
@@ -78,7 +78,7 @@ API**, so "Anthropic for embeddings" is not a real option — the embeddings sel
 - New **provider-factory** in `shared`: config → `ChatAnthropic` / `ChatOpenAI({configuration:
   {baseURL}})` / `OpenAIEmbeddings({configuration:{baseURL}})`.
 - Runtime **guard**: `assert(vector.length === embeddings.dimensions)` (protects AD-13).
-- `Hivly.config.yml(.example)`, `.env.example`, `docker-compose.yml` env propagation.
+- `Share2Brain.config.yml(.example)`, `.env.example`, `docker-compose.yml` env propagation.
 - Ties into the open Epic-2 spike action item (real embeddings-API smoke, verify dimension).
 
 **Invariants touched:** AD-6 (Zod contract) and AD-8 (loadConfig) — always. **AD-5** — dimension
@@ -99,7 +99,7 @@ documentation updates.
 
 ## 4. Detailed Change Proposals
 
-### 4.1 Config contract — `Hivly.config.yml`, `config/index.ts`, `.env.example`
+### 4.1 Config contract — `Share2Brain.config.yml`, `config/index.ts`, `.env.example`
 Extract embeddings into its own top-level block; add provider enum, `base_url?`, `api_key`,
 `dimensions`.
 
@@ -150,7 +150,7 @@ dimension read; runtime dimension guard; `.example`/`.env.example` updates. Bloc
   audit comment.
 - **docker-compose.yml:** propagate `LLM_API_KEY`, `LLM_BASE_URL`, `EMBEDDINGS_API_KEY`,
   `EMBEDDINGS_BASE_URL` to bot/backend/workers per consumption.
-- **Hivly.config.yml.example:** mirror 4.1.
+- **Share2Brain.config.yml.example:** mirror 4.1.
 
 ## 5. Implementation Handoff
 
@@ -175,7 +175,7 @@ Story 3.0 is a **hard dependency** of 3.3.
 - Docs (PRD/architecture/data-model/standards) reflect configurable providers + dimension.
 
 ## 6. Notes
-- The two-file config model (secrets in `.env`, behavior in `Hivly.config.yml`) is preserved —
+- The two-file config model (secrets in `.env`, behavior in `Share2Brain.config.yml`) is preserved —
   a core invariant; not collapsed into a single file.
 - No data migration needed now (greenfield pipeline); the AD-5 note documents the
   migrate + reindex requirement for any future dimension change once embeddings exist.

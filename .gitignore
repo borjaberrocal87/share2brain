@@ -4,7 +4,7 @@ node_modules/
 .env.*
 !.env.example
 # Operator-specific behavior config; only the .example is tracked (AD-8).
-Hivly.config.yml
+Share2Brain.config.yml
 *.log
 .DS_Store
 *.tsbuildinfo

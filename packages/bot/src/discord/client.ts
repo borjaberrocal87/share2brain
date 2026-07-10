@@ -1,5 +1,5 @@
 // Discord Gateway client factory (AC-1, AC-5). Creates a discord.js Client with
-// exactly the three intents Hivly needs and binds the ClientReady log.
+// exactly the three intents Share2Brain needs and binds the ClientReady log.
 //
 //   Guilds         → guild lifecycle (required for any guild event)
 //   GuildMessages  → receive messageCreate/messageUpdate/messageDelete in guild channels
@@ -15,7 +15,7 @@ import { Client, Events, GatewayIntentBits, Partials } from 'discord.js';
 
 import type { Logger } from '../logger.js';
 
-/** Create the Gateway client with Hivly's intents and a ClientReady → info log. */
+/** Create the Gateway client with Share2Brain's intents and a ClientReady → info log. */
 export function createDiscordClient(logger: Logger, guildId: string): Client {
   const client = new Client({
     intents: [

@@ -1,9 +1,9 @@
 // Infrastructure adapter: LangChain-backed ChatModel. The ONLY agent-side file
 // that imports the provider factory — LangChain stays behind this boundary and
 // never leaks into the graph/service (AD-2 spirit). Mirrors queryEmbedder.langchain.ts.
-import type { HivlyConfig } from '@hivly/shared';
+import type { Share2BrainConfig } from '@share2brain/shared';
 import { AIMessage, HumanMessage, SystemMessage, type BaseMessage } from '@langchain/core/messages';
-import { createChatModel } from '@hivly/shared/providers';
+import { createChatModel } from '@share2brain/shared/providers';
 
 import type { ChatModel, ChatTurn } from '../domain/repositories/chatModel.js';
 
@@ -64,7 +64,7 @@ function chunkToText(content: unknown): string {
   return '';
 }
 
-export function createLangchainChatModel(agent: HivlyConfig['agent']): ChatModel {
+export function createLangchainChatModel(agent: Share2BrainConfig['agent']): ChatModel {
   // Build once; reuse across requests. No network I/O at construction.
   const model = createChatModel(agent);
 

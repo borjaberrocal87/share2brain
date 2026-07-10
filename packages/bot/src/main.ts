@@ -1,11 +1,11 @@
-// @hivly/bot — Discord ingestion process (AD-1: standalone Node process).
+// @share2brain/bot — Discord ingestion process (AD-1: standalone Node process).
 // Boot order (AD-8): loadConfig() first, then read the required secrets from the
 // environment, then open the DB + Redis clients, then connect to the Gateway. A
 // config or missing-secret failure aborts BEFORE any network I/O.
-import { loadConfig } from '@hivly/shared';
-import { createDatabase, type Database } from '@hivly/shared/db';
-import { createNotifier } from '@hivly/shared/notifier';
-import { createRedisClient } from '@hivly/shared/redis';
+import { loadConfig } from '@share2brain/shared';
+import { createDatabase, type Database } from '@share2brain/shared/db';
+import { createNotifier } from '@share2brain/shared/notifier';
+import { createRedisClient } from '@share2brain/shared/redis';
 import { Events } from 'discord.js';
 
 import { runBackfill } from './backfill/backfiller.js';
@@ -36,7 +36,7 @@ async function main(): Promise<void> {
   // bot behaves exactly as before this story (AC-1).
   const notifier = createNotifier(config.notifications, logger);
 
-  // Secrets live in .env, never in Hivly.config.yml. A missing token aborts here,
+  // Secrets live in .env, never in Share2Brain.config.yml. A missing token aborts here,
   // before any network I/O (AC-1).
   const token = requireEnv('DISCORD_BOT_TOKEN');
   const databaseUrl = requireEnv('DATABASE_URL');

@@ -15,9 +15,9 @@
 // throwing) is `error` and never re-thrown — a transient Gateway/Redis blip must
 // not crash the process (AC-4, mirrors messageCreate). Never log `newContent` or
 // original content (AC-6).
-import type { HivlyConfig } from '@hivly/shared';
-import type { RedisClient } from '@hivly/shared/redis';
-import { STREAM_KEYS, type MessageUpdatedEvent } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { RedisClient } from '@share2brain/shared/redis';
+import { STREAM_KEYS, type MessageUpdatedEvent } from '@share2brain/shared/types/events';
 
 import type { Logger } from '../../logger.js';
 import { isChannelEnabled } from './channelGuard.js';
@@ -40,7 +40,7 @@ export interface UpdatableMessage {
 }
 
 export interface MessageUpdateDeps {
-  config: HivlyConfig;
+  config: Share2BrainConfig;
   redis: RedisClient;
   logger: Logger;
 }

@@ -1,7 +1,7 @@
-import type { HivlyConfig } from '@hivly/shared';
-import type { Database } from '@hivly/shared/db';
-import type { RedisClient } from '@hivly/shared/redis';
-import { STREAM_KEYS } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { Database } from '@share2brain/shared/db';
+import type { RedisClient } from '@share2brain/shared/redis';
+import { STREAM_KEYS } from '@share2brain/shared/types/events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { EnrichmentChatModel } from '../enrichment/enrich.js';
@@ -15,7 +15,7 @@ import type { Embedder } from './types.js';
 // its own unit + integration tests; here we control exactly which ids it "acks".
 vi.mock('./indexBatch.js', () => ({ indexBatch: vi.fn() }));
 
-const config = {} as unknown as HivlyConfig;
+const config = {} as unknown as Share2BrainConfig;
 const db = {} as unknown as Database;
 const embedder = {} as unknown as Embedder;
 const enrichModel = {} as unknown as EnrichmentChatModel;

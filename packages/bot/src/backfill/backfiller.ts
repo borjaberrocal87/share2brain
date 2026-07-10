@@ -12,10 +12,10 @@
 // loop continues. The completed event is ALWAYS emitted after attempting all
 // channels — except on shutdown abort, where not all channels were attempted
 // and Redis is already being torn down.
-import type { HivlyConfig } from '@hivly/shared';
-import type { Database } from '@hivly/shared/db';
-import type { RedisClient } from '@hivly/shared/redis';
-import { STREAM_KEYS, type BackfillCompletedEvent } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { Database } from '@share2brain/shared/db';
+import type { RedisClient } from '@share2brain/shared/redis';
+import { STREAM_KEYS, type BackfillCompletedEvent } from '@share2brain/shared/types/events';
 import type { Client } from 'discord.js';
 
 import { waitOrAbort } from '../discord/reconnect.js';
@@ -86,7 +86,7 @@ async function persistWithRetry(
 
 export interface BackfillDeps {
   client: Client;
-  config: HivlyConfig;
+  config: Share2BrainConfig;
   db: Database;
   redis: RedisClient;
   logger: Logger;

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { SearchFragment, SSEFrame } from '@hivly/shared/schemas';
+import type { SearchFragment, SSEFrame } from '@share2brain/shared/schemas';
 
 import type { ChatModel, ChatTurn } from '../domain/repositories/chatModel.js';
 import type { RagRetriever } from '../domain/repositories/ragRetriever.js';

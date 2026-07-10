@@ -32,7 +32,7 @@ so that I know what new knowledge I still have pending to review.
 
 **AC8 — "Cargar más" pagination.** The table loads 20 fragments per page. A "Cargar más" button (`padding:9px 20px`, `border:1px solid var(--border-strong)`, `border-radius:10px`, `background:var(--surface)`, `color:var(--text-secondary)`, 13px 500; hover `border-color:var(--accent-ink)` + `color:var(--accent-ink)`) appears at the foot of the table only while more fragments are available (`loaded < total`). Clicking it fetches the next page and **appends** the rows to the list. A count line "mostrando N de TOTAL" (mono 11.5px, `--text-subtle`) sits to its left.
 
-**AC9 — Backend: documents filter params (dependency).** `GET /api/documents` accepts two new optional query params: `channelId` (string) restricts the page to that channel **inside the query** (AD-12 — narrow the RBAC scope, never post-filter; an out-of-scope or unknown `channelId` yields an empty page, no existence leak); `unreadOnly` (boolean, default `false`) restricts to fragments the caller has not read. `total` reflects the same filters. Existing behavior (no params) is unchanged. Contract lives in `@hivly/shared` (AD-6).
+**AC9 — Backend: documents filter params (dependency).** `GET /api/documents` accepts two new optional query params: `channelId` (string) restricts the page to that channel **inside the query** (AD-12 — narrow the RBAC scope, never post-filter; an out-of-scope or unknown `channelId` yields an empty page, no existence leak); `unreadOnly` (boolean, default `false`) restricts to fragments the caller has not read. `total` reflects the same filters. Existing behavior (no params) is unchanged. Contract lives in `@share2brain/shared` (AD-6).
 
 ## Tasks / Subtasks
 
@@ -71,7 +71,7 @@ so that I know what new knowledge I still have pending to review.
 ### Frontend — API clients (browser-safe)
 
 - [x] **Task 5 — documents + read-status clients** (AC: 3, 4, 5, 6, 7, 8)
-  - [x] Create `packages/web/src/api/documents.ts` mirroring `api/search.ts`: `fetchDocuments(params: { page: number; limit: number; channelId?: string; unreadOnly?: boolean }, signal?: AbortSignal): Promise<DocumentsResponse>`. Build the query with `URLSearchParams` (`page`, `limit`, plus `channelId` / `unreadOnly=true` **only when set** — never send `unreadOnly=false` or an empty `channelId`). `fetch('/api/documents?' + qs, { credentials: 'include', signal })`; throw on `!res.ok`; `return DocumentsResponseSchema.parse(await res.json())`. Import **only** from `@hivly/shared/schemas`.
+  - [x] Create `packages/web/src/api/documents.ts` mirroring `api/search.ts`: `fetchDocuments(params: { page: number; limit: number; channelId?: string; unreadOnly?: boolean }, signal?: AbortSignal): Promise<DocumentsResponse>`. Build the query with `URLSearchParams` (`page`, `limit`, plus `channelId` / `unreadOnly=true` **only when set** — never send `unreadOnly=false` or an empty `channelId`). `fetch('/api/documents?' + qs, { credentials: 'include', signal })`; throw on `!res.ok`; `return DocumentsResponseSchema.parse(await res.json())`. Import **only** from `@share2brain/shared/schemas`.
   - [x] Create `packages/web/src/api/readStatus.ts` with:
     - `markRead(embeddingId: string): Promise<void>` → `fetch('/api/read-status/' + embeddingId, { method: 'POST', credentials: 'include' })`; throw on `!res.ok` (so the optimistic UI can revert). Response body `{}` — no parse needed.
     - `markAll(channelId?: string): Promise<MarkAllResponse>` → `fetch('/api/read-status/mark-all', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(channelId ? { channelId } : {}) })`; `return MarkAllResponseSchema.parse(await res.json())`.
@@ -155,7 +155,7 @@ Like 4.3, this is a **thin full-stack** story — bulk is the frontend Documento
 
 ### 🔴 CRITICAL: design tokens were renamed — translate the mockup names
 
-The mockup `docs/context/design/KeepHive Web.dc.html` (Documentos view, lines 218-280) uses `--tx`…`--tx5`. Story 2.1 renamed these (values identical, only names changed). **All other tokens the ACs use already exist unchanged** in `packages/web/src/styles/global.css` (verified): `--line`, `--hover-row`, `--dot-read`, `--track`, `--bg`, `--surface`, `--border`, `--border-strong`, `--border-hover`, `--accent-ink`, `--on-accent`.
+The mockup `docs/context/design/Share2Brain Web.dc.html` (Documentos view, lines 218-280) uses `--tx`…`--tx5`. Story 2.1 renamed these (values identical, only names changed). **All other tokens the ACs use already exist unchanged** in `packages/web/src/styles/global.css` (verified): `--line`, `--hover-row`, `--dot-read`, `--track`, `--bg`, `--surface`, `--border`, `--border-strong`, `--border-hover`, `--accent-ink`, `--on-accent`.
 
 | Mockup name | Implemented token | Where used in 4.4 |
 |---|---|---|
@@ -167,7 +167,7 @@ The mockup `docs/context/design/KeepHive Web.dc.html` (Documentos view, lines 21
 
 Fixed brand hexes (only raw hex allowed): amber `#F5A623`, positive `#3BA55D`. Do NOT invent `--tx*` tokens in CSS — they don't exist.
 
-### Exact Documentos spec (source: `KeepHive Web.dc.html` lines 218-280, JS 534-548 & 745-839)
+### Exact Documentos spec (source: `Share2Brain Web.dc.html` lines 218-280, JS 534-548 & 745-839)
 
 - **Container**: `padding:34px 40px 60px`, inner `max-width:980px; margin:0 auto` (note: **980px**, wider than Búsqueda's 860px).
 - **Title** `h2`: Space Grotesk 600, 25px, `letter-spacing:-0.02em`. **Description** `p`: `margin:7px 0 0`, 14px `--text-tertiary`.
@@ -189,7 +189,7 @@ Fixed brand hexes (only raw hex allowed): amber `#F5A623`, positive `#3BA55D`. D
 - **No router** (UX-DR5): the `docs` screen is already `Screen='docs'` (`Sidebar.tsx:10`) with a placeholder branch in `AppLayout.tsx:80-100`. You **replace that placeholder**, not add a route.
 - **No data library**: `useState` + `useEffect` + `fetch` + `AbortController`. Mirror `SearchView.tsx` (debounce is not needed here — filters fire on discrete clicks, not keystrokes).
 - **API client pattern** (`api/auth.ts` / `api/search.ts` / `api/channels.ts`): native `fetch` to same-origin `/api/*`, **`credentials: 'include'`** on every call, validate responses with the shared Zod schema, throw on unexpected status.
-- **Import boundary (AD-3, ESLint `no-restricted-imports`)**: from `packages/web` import contracts **only** from `@hivly/shared/schemas`. `@hivly/shared/schemas` already re-exports `documents`, `readStatus`, `channels` (no `index.ts` change needed this story).
+- **Import boundary (AD-3, ESLint `no-restricted-imports`)**: from `packages/web` import contracts **only** from `@share2brain/shared/schemas`. `@share2brain/shared/schemas` already re-exports `documents`, `readStatus`, `channels` (no `index.ts` change needed this story).
 - **Hover** → `kh-*` classes in `styles/components.css` (Task 9); static layout stays inline. Reuse `.kh-chip` (from 4.3) for the channel chips.
 - **Reuse**: `initialsFromUsername` (`lib/initials.ts`); `authorColor` (`lib/authorColor.ts`); `fetchChannels` (`api/channels.ts`); the chip component pattern from `SearchView.tsx` (a small local `ChannelChip` is fine — copy it or extract; do not over-engineer a shared component this story). Do **not** add an icon library.
 
@@ -223,13 +223,13 @@ Start the real Express app (`createApp`) against real Postgres/Redis with an inj
 
 - **New**: `packages/web/src/api/documents.ts`, `api/readStatus.ts`, `components/DocsView.tsx`, `components/DocsView.test.tsx` (+ optional `api/documents.test.ts`).
 - **Modified**: `packages/shared/src/schemas/documents.ts` (+`.test.ts`); `packages/backend/src/{domain/repositories/documentRepository.ts, infrastructure/documentRepository.drizzle.ts (+integration test), application/services/documentService.ts (+test), presentation/controllers/documentController.ts (+test)}`; `packages/web/src/{App.tsx (+App.test.tsx), components/AppLayout.tsx, components/Sidebar.tsx (JSDoc only), components/icons.tsx, styles/components.css}`; `docs/api-spec.yml`.
-- **No DB migration** (read-only + reuses `user_read_status` which already exists). **No `app.ts` wiring change** (route already mounted; constructor arg lists change at their existing call sites). **No `@hivly/shared/schemas/index.ts` change** (documents/readStatus/channels already re-exported).
+- **No DB migration** (read-only + reuses `user_read_status` which already exists). **No `app.ts` wiring change** (route already mounted; constructor arg lists change at their existing call sites). **No `@share2brain/shared/schemas/index.ts` change** (documents/readStatus/channels already re-exported).
 - Naming: modules `camelCase.ts`, React components `PascalCase.tsx`; endpoints `/api/<resource>` kebab plural.
 
 ### References
 
 - [Source: _bmad-output/planning-artifacts/epics.md#Historia 4.4 (lines 703-743)] — the 7 epic ACs + goal.
-- [Source: docs/context/design/KeepHive Web.dc.html lines 218-280 (markup), 534-548 (unreadChipStyle/markRead), 745-839 (docs view-model, badge)] — the pixel-exact Documentos mockup.
+- [Source: docs/context/design/Share2Brain Web.dc.html lines 218-280 (markup), 534-548 (unreadChipStyle/markRead), 745-839 (docs view-model, badge)] — the pixel-exact Documentos mockup.
 - [Source: packages/shared/src/schemas/documents.ts] — `DocumentsQuerySchema`, `DocumentFragmentSchema`, `DocumentsResponseSchema`, `DOCUMENTS_ERROR`.
 - [Source: packages/shared/src/schemas/readStatus.ts] — `EmbeddingIdParamSchema`, `MarkAllRequestSchema`, `MarkAllResponseSchema`, `UnreadCountResponseSchema`, `READ_STATUS_ERROR`.
 - [Source: packages/backend/src/infrastructure/documentRepository.drizzle.ts] — `listDocuments`/`countDocuments` SQL (the `unreadOnly` edit target; LEFT JOIN already present).

@@ -2,7 +2,7 @@
 // RBAC scope into a validated SearchResponse. Depends ONLY on the two domain ports
 // (QueryEmbedder, EmbeddingSearchRepository) — no Drizzle, no LangChain, no Express
 // — so it is unit-testable with plain fakes. Mirrors rbacService.ts.
-import { SearchResponseSchema, type SearchResponse } from '@hivly/shared/schemas';
+import { SearchResponseSchema, type SearchResponse } from '@share2brain/shared/schemas';
 
 import type { EmbeddingSearchRepository } from '../../domain/repositories/embeddingSearchRepository.js';
 import type { QueryEmbedder } from '../../domain/repositories/queryEmbedder.js';

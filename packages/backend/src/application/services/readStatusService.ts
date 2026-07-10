@@ -9,7 +9,7 @@ import {
   UnreadCountResponseSchema,
   type MarkAllResponse,
   type UnreadCountResponse,
-} from '@hivly/shared/schemas';
+} from '@share2brain/shared/schemas';
 
 import type { ReadStatusRepository } from '../../domain/repositories/readStatusRepository.js';
 

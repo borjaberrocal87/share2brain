@@ -10,9 +10,9 @@
 // embedding chunks (and their dependent read-status rows, note #5 FK order)
 // AND sets deleted_at — keeping the raw row for audit/6.3 while never leaving
 // an anchor-less chunk behind (note #7).
-import type { HivlyConfig } from '@hivly/shared';
-import { sql, type Database } from '@hivly/shared/db';
-import type { MessageDeletedEvent } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import { sql, type Database } from '@share2brain/shared/db';
+import type { MessageDeletedEvent } from '@share2brain/shared/types/events';
 
 import type { Logger } from '../logger.js';
 import type { ProcessResult } from './types.js';
@@ -24,7 +24,7 @@ export interface ProcessDeleteDeps {
   /** Stream key the entry came from — logged on failure (AC-5). */
   stream: string;
   db: Database;
-  config: HivlyConfig;
+  config: Share2BrainConfig;
   logger: Logger;
 }
 

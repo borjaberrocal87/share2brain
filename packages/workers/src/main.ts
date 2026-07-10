@@ -1,18 +1,18 @@
-// @hivly/workers — Indexer + Sync consumer process (AD-1: standalone Node
+// @share2brain/workers — Indexer + Sync consumer process (AD-1: standalone Node
 // process). Boot order (AD-8): loadConfig() first, then read the required
 // secrets from the environment, then open the DB + Redis clients, then run the
 // consumer loops. A config or missing-secret failure aborts BEFORE any network
 // I/O.
 //
-// The Indexer (Story 7.2) drains hivly:discord:messages, extracts+enriches
+// The Indexer (Story 7.2) drains share2brain:discord:messages, extracts+enriches
 // resource links and upserts into pgvector. The Sync consumer (Story 7.3)
 // drains the updated/deleted streams, re-indexing edits by link-diff and
 // purging deletes — gated by config.sync.enabled.
-import { loadConfig } from '@hivly/shared';
-import { createDatabase, type Database } from '@hivly/shared/db';
-import { createNotifier } from '@hivly/shared/notifier';
-import { createChatModel, createEmbeddingsModel } from '@hivly/shared/providers';
-import { createRedisClient, type RedisClient } from '@hivly/shared/redis';
+import { loadConfig } from '@share2brain/shared';
+import { createDatabase, type Database } from '@share2brain/shared/db';
+import { createNotifier } from '@share2brain/shared/notifier';
+import { createChatModel, createEmbeddingsModel } from '@share2brain/shared/providers';
+import { createRedisClient, type RedisClient } from '@share2brain/shared/redis';
 
 import { createGuardedDispatcher } from './enrichment/ssrfGuard.js';
 import { runIndexer } from './indexer/consumer.js';
@@ -172,7 +172,7 @@ async function main(): Promise<void> {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
 
-  // Secrets live in .env, never in Hivly.config.yml. A missing URL aborts here,
+  // Secrets live in .env, never in Share2Brain.config.yml. A missing URL aborts here,
   // before any network I/O (AC-1).
   const databaseUrl = requireEnv('DATABASE_URL');
   const redisUrl = requireEnv('REDIS_URL');
@@ -211,7 +211,7 @@ async function main(): Promise<void> {
     logger.info('sync disabled — not starting Sync consumer');
   }
 
-  logger.info('indexer starting — draining hivly:discord:messages');
+  logger.info('indexer starting — draining share2brain:discord:messages');
   indexerPromise = runIndexer({
     redis,
     db,

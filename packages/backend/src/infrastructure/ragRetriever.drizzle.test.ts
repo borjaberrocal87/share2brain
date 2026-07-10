@@ -4,7 +4,7 @@
 // + Logger. Mirrors searchService.test.ts.
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Logger } from '@hivly/shared/logger';
+import type { Logger } from '@share2brain/shared/logger';
 
 import type { EmbeddingSearchRepository, SearchFragmentRow } from '../domain/repositories/embeddingSearchRepository.js';
 import type { QueryEmbedder } from '../domain/repositories/queryEmbedder.js';

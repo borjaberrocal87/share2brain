@@ -4,8 +4,8 @@
 // `streamChat` runs the turn against an already-resolved conversation. Depends
 // only on the agent + ConversationRepository port — no Drizzle, no Express, no
 // LangChain — so it is unit-testable with fakes. Mirrors searchService.ts.
-import type { Citation } from '@hivly/shared/db';
-import type { SSEFrame } from '@hivly/shared/schemas';
+import type { Citation } from '@share2brain/shared/db';
+import type { SSEFrame } from '@share2brain/shared/schemas';
 
 import type { RagAgent } from '../../agent/graph.js';
 import type { ChatTurn } from '../../domain/repositories/chatModel.js';

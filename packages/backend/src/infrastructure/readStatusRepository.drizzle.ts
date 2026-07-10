@@ -1,8 +1,8 @@
 // Infrastructure adapter: the ONLY file that knows the read-status SQL. Uses the
-// `sql`/`inArray` re-exported by @hivly/shared/db so the backend never imports
+// `sql`/`inArray` re-exported by @share2brain/shared/db so the backend never imports
 // drizzle-orm directly (AD-2). Mirrors documentRepository.drizzle.ts (D1
 // anti-join, RBAC-inside-query).
-import { inArray, sql, type Database } from '@hivly/shared/db';
+import { inArray, sql, type Database } from '@share2brain/shared/db';
 
 import type { ReadStatusRepository } from '../domain/repositories/readStatusRepository.js';
 

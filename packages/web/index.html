@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hivly</title>
+    <title>Share2Brain</title>
     <!-- FOUC-free theme init (Story 2.2, AC6): runs synchronously before the stylesheet
          <link>s below, so the persisted theme is applied to <html data-kh> before the
          first paint — no flash of the wrong theme on reload. useTheme reads this back.
@@ -11,7 +11,7 @@
          else dark. Wrapped in try/catch because private-mode Safari throws on localStorage. -->
     <script>
       try {
-        var t = localStorage.getItem('hivly-theme');
+        var t = localStorage.getItem('share2brain-theme');
         if (t !== 'light' && t !== 'dark') {
           t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
         }

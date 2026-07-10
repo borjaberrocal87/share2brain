@@ -14,9 +14,9 @@
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-import type { HivlyConfig } from '@hivly/shared';
-import { sql } from '@hivly/shared/db';
-import type { MessageDeletedEvent, MessageUpdatedEvent } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import { sql } from '@share2brain/shared/db';
+import type { MessageDeletedEvent, MessageUpdatedEvent } from '@share2brain/shared/types/events';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { EnrichmentChatModel } from '../enrichment/enrich.js';
@@ -30,10 +30,10 @@ import { processUpdate as processUpdateImpl, type ProcessUpdateDeps } from './pr
 // The consumer always supplies streamId/stream (AC-4); inject fixed values so
 // these state-focused integration calls stay unchanged.
 function processUpdate(deps: Omit<ProcessUpdateDeps, 'streamId' | 'stream'>) {
-  return processUpdateImpl({ ...deps, streamId: 's-itest', stream: 'hivly:discord:messages:updated' });
+  return processUpdateImpl({ ...deps, streamId: 's-itest', stream: 'share2brain:discord:messages:updated' });
 }
 function processDelete(deps: Omit<ProcessDeleteDeps, 'streamId' | 'stream'>) {
-  return processDeleteImpl({ ...deps, streamId: 's-itest', stream: 'hivly:discord:messages:deleted' });
+  return processDeleteImpl({ ...deps, streamId: 's-itest', stream: 'share2brain:discord:messages:deleted' });
 }
 
 const DIMENSIONS = 1536;
@@ -44,7 +44,7 @@ const enrichmentConfig = {
     timeout_ms: 5_000,
     max_bytes: 2_000_000,
     max_redirects: 3,
-    user_agent: 'HivlyIntegrationTest/1.0',
+    user_agent: 'Share2BrainIntegrationTest/1.0',
     allowed_schemes: ['http', 'https'] as Array<'http' | 'https'>,
     block_private_ips: false,
   },
@@ -54,12 +54,12 @@ const softConfig = {
   embeddings: { dimensions: DIMENSIONS },
   enrichment: enrichmentConfig,
   sync: { enabled: true, sync_on_start: false, delete_policy: 'soft' },
-} as unknown as HivlyConfig;
+} as unknown as Share2BrainConfig;
 
 const hardConfig = {
   ...softConfig,
   sync: { enabled: true, sync_on_start: false, delete_policy: 'hard' },
-} as unknown as HivlyConfig;
+} as unknown as Share2BrainConfig;
 
 // Silent logger — these tests assert on state, not logs.
 const logger: Logger = { debug() {}, info() {}, warn() {}, error() {} };

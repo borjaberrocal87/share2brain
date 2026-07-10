@@ -1,7 +1,7 @@
 // Shared inline-SVG icon set (Story 2.2). Dependency-free presentational
 // components — no icon library. Each accepts an optional `size` (px, default 20)
 // and inherits color via `currentColor`, so callers drive color through CSS.
-// Paths are extracted verbatim from the design prototype (KeepHive Web.dc.html).
+// Paths are extracted verbatim from the design prototype (Share2Brain Web.dc.html).
 import type { ReactElement } from 'react';
 
 interface IconProps {
@@ -188,7 +188,7 @@ export function StatsIcon({ size = 20 }: IconProps): ReactElement {
 }
 
 // Chat/message glyph — the FAB launcher icon (25px) and the history-row icon
-// (15px). Story 5.3; path verbatim from KeepHive Web.dc.html.
+// (15px). Story 5.3; path verbatim from Share2Brain Web.dc.html.
 export function ChatIcon({ size = 20 }: IconProps): ReactElement {
   return (
     <svg

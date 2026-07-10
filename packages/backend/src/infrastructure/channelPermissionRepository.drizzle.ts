@@ -1,8 +1,8 @@
 // Infrastructure adapter: Drizzle-backed implementation of the
 // ChannelPermissionRepository domain port. The only channel-RBAC file that knows
-// about the DB. Uses `arrayOverlaps` re-exported by @hivly/shared/db so the backend
+// about the DB. Uses `arrayOverlaps` re-exported by @share2brain/shared/db so the backend
 // never imports drizzle-orm directly (AD-2). Mirrors userRepository.drizzle.ts.
-import { arrayOverlaps, channelPermissions, sql, type Database } from '@hivly/shared/db';
+import { arrayOverlaps, channelPermissions, sql, type Database } from '@share2brain/shared/db';
 
 import type {
   ChannelPermissionInput,

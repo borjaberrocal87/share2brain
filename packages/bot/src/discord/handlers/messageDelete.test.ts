@@ -1,14 +1,14 @@
 // Unit test for handleMessageDelete — channel guard, uncached-partial support,
 // and the error-swallowing behavior (AC-2, AC-3, AC-4).
-import type { HivlyConfig } from '@hivly/shared';
-import type { RedisClient } from '@hivly/shared/redis';
-import { STREAM_KEYS } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { RedisClient } from '@share2brain/shared/redis';
+import { STREAM_KEYS } from '@share2brain/shared/types/events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Logger } from '../../logger.js';
 import { handleMessageDelete, type DeletableMessage, type MessageDeleteDeps } from './messageDelete.js';
 
-function makeConfig(): HivlyConfig {
+function makeConfig(): Share2BrainConfig {
   return {
     discord: {
       guild_id: 'guild-1',
@@ -18,7 +18,7 @@ function makeConfig(): HivlyConfig {
       ],
       backfill: { enabled: false, limit: 0, ignore_bots: true },
     },
-  } as unknown as HivlyConfig;
+  } as unknown as Share2BrainConfig;
 }
 
 function fakeLogger(): Logger {

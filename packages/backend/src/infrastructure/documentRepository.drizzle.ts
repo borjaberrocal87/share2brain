@@ -1,9 +1,9 @@
 // Infrastructure adapter: the ONLY file that knows the documents-list SQL. Uses
-// the `sql`/`inArray` re-exported by @hivly/shared/db so the backend never
+// the `sql`/`inArray` re-exported by @share2brain/shared/db so the backend never
 // imports drizzle-orm directly (AD-2). Mirrors embeddingSearchRepository.drizzle.ts
 // (D1 anti-join, D2 anchor join) plus a LEFT JOIN against user_read_status for
 // the per-user `isRead` annotation (D3).
-import { inArray, sql, type Database } from '@hivly/shared/db';
+import { inArray, sql, type Database } from '@share2brain/shared/db';
 
 import type { DocumentFragmentRow, DocumentRepository } from '../domain/repositories/documentRepository.js';
 

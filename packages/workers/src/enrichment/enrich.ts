@@ -5,7 +5,7 @@
 // the `Embedder` pattern in `indexer/types.ts` — so unit tests supply a fake and
 // never mock `BaseChatModel` itself. `main.ts` builds the real model ONCE via
 // `createChatModel(config.enrichment.llm)` and injects it (AD-2-safe reuse of
-// `@hivly/shared/providers`).
+// `@share2brain/shared/providers`).
 //
 // Primary path: `.withStructuredOutput(EnrichmentOutputSchema)`, re-parsed with
 // the same Zod schema (zod-4 inference through LangChain can degrade to

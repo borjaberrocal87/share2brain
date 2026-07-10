@@ -1,7 +1,7 @@
 // Shared internal shapes for the Indexer pipeline. Kept separate from the pure
 // stages (events/partition) and the orchestrator (indexBatch) so both sides
 // depend on the same definitions without a cycle.
-import type { MessageCreatedEvent } from '@hivly/shared/types/events';
+import type { MessageCreatedEvent } from '@share2brain/shared/types/events';
 
 /** A raw entry as node-redis delivers it from XREADGROUP: the stream id plus the
  *  flat all-string field map of the XADD. `message` is `null` for a tombstoned

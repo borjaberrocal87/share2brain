@@ -1,7 +1,7 @@
 // Application service: orchestrates the Discord OAuth2 login. Depends only on the
 // domain ports (UserRepository, DiscordOAuthClient) — never on Drizzle, fetch or
 // express — so it is unit-testable with plain fakes and the layering stays honest.
-import { AuthMeResponseSchema, type AuthMeResponse } from '@hivly/shared/schemas';
+import { AuthMeResponseSchema, type AuthMeResponse } from '@share2brain/shared/schemas';
 
 import {
   GuildMembershipError,

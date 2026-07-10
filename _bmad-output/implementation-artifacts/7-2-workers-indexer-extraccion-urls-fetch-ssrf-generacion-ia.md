@@ -13,7 +13,7 @@ Status: done
 
 ## Story
 
-As a **community operator pivoting Hivly into an AI-curated resource index**,
+As a **community operator pivoting Share2Brain into an AI-curated resource index**,
 I want **the Indexer worker to index ONLY messages containing URLs — fetching each URL behind a
 real SSRF guard and generating an AI `title`+`description` per resource in `enrichment.language`**,
 so that **the knowledge base becomes the curated resource index ratified by the Epic 7 pivot
@@ -40,7 +40,7 @@ deferred. `indexBatch` must NOT emit notifications.
 |---|---|---|
 | D1 | LLM enrichment hard failure (provider down, persistent 429, invalid output after retry) | **No-ACK → PEL replay**, exactly like embedder failures today. The curated index never receives non-AI rows; transient outages self-heal via redelivery/boot replay. Accepted cost: a poison entry replays on every boot (no retry-cap by design — AD-13 / P2.2 stays deferred). Fetch failure is NOT a processing failure (ratified fallback); only LLM/embed/DB errors leave the entry un-ACKed. |
 | D2 | SSRF-blocked URL (disallowed scheme, private/link-local/metadata IP, rebinding) | **Skip that URL entirely — no row.** A link the fetcher refuses for security must not become a citable resource (it would surface private/internal URLs as clickable citations). If ALL URLs of a message are blocked, the message is discarded like a no-URL message. Blocked ≠ failure: the entry is still ACKed. |
-| D3 | New dependency | **`undici` added as an explicit dependency of `@hivly/workers`** — the story's ONLY new dep. Needed for `Agent({ connect: { lookup } })` (SSRF Layer B: validates the IP the socket actually connects to → defeats DNS rebinding; Node's bundled undici doesn't export `Agent`). Also pins ≥ 7.18.0 (CVE-2026-22036 unbounded-decompression fix) independently of the base image. |
+| D3 | New dependency | **`undici` added as an explicit dependency of `@share2brain/workers`** — the story's ONLY new dep. Needed for `Agent({ connect: { lookup } })` (SSRF Layer B: validates the IP the socket actually connects to → defeats DNS rebinding; Node's bundled undici doesn't export `Agent`). Also pins ≥ 7.18.0 (CVE-2026-22036 unbounded-decompression fix) independently of the base image. |
 | D4 | `knowledge` config block + chunking fate | **Retire in 7.3.** `sync/processUpdate.ts` still consumes `chunkContents` + `knowledge.chunk_size` until 7.3 rewrites it. 7.2 deletes only the indexer-exclusive grouping (`groupByChannel`, `MAX_GROUPING_WINDOW`, the `MessageGroup` type, main.ts grouping clamp warning) and stops the Indexer using chunking. `chunking.ts`, `@langchain/textsplitters`, the `knowledge` config block, and the main.ts chunk-size clamp warning survive untouched. |
 
 ### Design decisions embedded in the ACs (recommended defaults — veto at review)
@@ -139,7 +139,7 @@ deferred. `indexBatch` must NOT emit notifications.
      sufficient for title/description generation.
 5. **AI enrichment module** — `packages/workers/src/enrichment/enrich.ts` (**tests-first**):
    - The chat model is built ONCE in `main.ts` via `createChatModel(config.enrichment.llm)`
-     (`@hivly/shared/providers` — reuse, AD-2-safe) and injected into the pipeline behind a
+     (`@share2brain/shared/providers` — reuse, AD-2-safe) and injected into the pipeline behind a
      **narrow structural interface** (mirror the `Embedder` pattern in `types.ts:18-20`) so
      unit tests inject fakes — never mock `BaseChatModel` itself.
    - Primary path: `.withStructuredOutput(EnrichmentOutputSchema)` where the schema is
@@ -285,7 +285,7 @@ deferred. `indexBatch` must NOT emit notifications.
 11. **Verification gate green and pasted as evidence** (agent-run): `npm run lint` &&
     `npm run test` (unit+web) && `npm run build`; `npm run test:integration` (backend + bot +
     workers against real Postgres/Redis — **stop compose app containers first**; `docker
-    compose stop bot backend workers`); `npm run test:e2e -w @hivly/web` (13 specs must stay
+    compose stop bot backend workers`); `npm run test:e2e -w @share2brain/web` (13 specs must stay
     green — the backend e2e seed still writes placeholder rows until 7.4; specs assert
     testids/classes, not content). New dep `undici` appears ONLY in
     `packages/workers/package.json`.
@@ -295,8 +295,8 @@ deferred. `indexBatch` must NOT emit notifications.
 - [x] Task 0 — Branch + preconditions (AC: all)
   - [x] `git branch --show-current` → if `main`, `git switch -c feat/7-2-indexer-url-enrichment`.
   - [x] `docker compose up -d postgres redis`; stop app containers (bot/backend/workers) if running.
-  - [x] `npm install undici -w @hivly/workers` (latest 7.x/8.x, must be ≥ 7.18.0 — D3). Verify
-        local `.env` has `ENRICHMENT_LLM_API_KEY` and `Hivly.config.yml` has the `enrichment` block
+  - [x] `npm install undici -w @share2brain/workers` (latest 7.x/8.x, must be ≥ 7.18.0 — D3). Verify
+        local `.env` has `ENRICHMENT_LLM_API_KEY` and `Share2Brain.config.yml` has the `enrichment` block
         (both landed in 7.1; local dev may reuse `LLM_API_KEY`'s value).
 - [x] Task 1 — Shared `link` refine hardening (AC: 7) — `feat(shared)` slice
   - [x] Write the reject/accept cases red in `search.test.ts`/`documents.test.ts`/`citation.test.ts`,
@@ -362,7 +362,7 @@ Dismissed (verified false positives / intended):
   *failures* (no ACK). Idempotency mechanism: deterministic `chunk_key` + UPSERT convergence —
   redelivery re-runs fetch+LLM and may produce DIFFERENT AI text; last-write-wins per chunk_key
   is the ratified convergence model (spine AD-13 note).
-- **AD-2**: no cross-service imports. The enrichment LLM comes from `@hivly/shared/providers`
+- **AD-2**: no cross-service imports. The enrichment LLM comes from `@share2brain/shared/providers`
   (`createChatModel` already accepts `config.enrichment.llm` — widened in 7.1). `providers/` is
   subpath-only; never re-export from the shared root barrel.
 - **AD-8**: `loadConfig()` in `main.ts` aborts on invalid YAML pre-I/O. The `enrichment` block
@@ -389,7 +389,7 @@ failures.** `persistGroup` (`:174-219`): one transaction — per chunk
 `insert(embeddings).values({ chunkKey: \`${group.messageIds[0]}:${i}\`, title: '',
 description: chunks[i], link: '', … }).onConflictDoUpdate({ target: embeddings.chunkKey,
 set: { title: sql\`excluded.title\`, … } })`, then `update(discordMessages).set({ indexedAt:
-sql\`now()\` }).where(inArray(…)).returning({ id })`. Imports from `@hivly/shared/db`:
+sql\`now()\` }).where(inArray(…)).returning({ id })`. Imports from `@share2brain/shared/db`:
 `discordMessages, embeddings, inArray, sql`.
 
 **Keep-list vs demolition inside the file**: parse step, dedup SELECT, partition, producer-dup
@@ -442,13 +442,13 @@ will want it.
 (empty-or-URL refine; REQUIRED for custom via superRefine `:179-185`), api_key }`,
 `enrichment.fetch { timeout_ms int>0, max_bytes int>0, max_redirects int≥0, user_agent min 1,
 allowed_schemes nonempty array of 'http'|'https', block_private_ips boolean }`.
-`export type EnrichmentConfig = HivlyConfig['enrichment']` (`:231`). Shipped example defaults:
+`export type EnrichmentConfig = Share2BrainConfig['enrichment']` (`:231`). Shipped example defaults:
 `language: "en"`, anthropic `claude-sonnet-4-6` temp 0.3, `timeout_ms: 5000`,
-`max_bytes: 2000000`, `max_redirects: 3`, `user_agent: "HivlyBot/1.0"`,
+`max_bytes: 2000000`, `max_redirects: 3`, `user_agent: "Share2BrainBot/1.0"`,
 `allowed_schemes: ["https"]` (https-only default; the schema permits http too),
 `block_private_ips: true`.
 
-**Providers (`@hivly/shared/providers`)**: `createChatModel(agent: ChatModelConfig):
+**Providers (`@share2brain/shared/providers`)**: `createChatModel(agent: ChatModelConfig):
 BaseChatModel` (`:50`; ChatAnthropic | ChatOpenAI with `configuration.baseURL` for custom),
 `createEmbeddingsModel` (`:85`), `assertEmbeddingDimensions` (`:124`). Keys passed explicitly —
 never rely on LangChain env lookup. Compose already plumbs `ENRICHMENT_LLM_API_KEY`/
@@ -522,7 +522,7 @@ version is the one actually used — do NOT mix the package `Agent` with the glo
 
 - Root vitest `unit` project picks up any new `*.test.ts` under `packages/workers/src/`
   automatically; integration project (`workers-integration`) picks up `*.integration.test.ts`
-  (15s timeouts, real PG/Redis at `postgres://hivly:changeme@127.0.0.1:5432/hivly` /
+  (15s timeouts, real PG/Redis at `postgres://share2brain:changeme@127.0.0.1:5432/share2brain` /
   `redis://127.0.0.1:6379`, env-overridable).
 - Reuse patterns: `makeFakeDb` (hand-rolled fake Drizzle capturing inserted rows + RETURNING
   control via `stampMiss`), deterministic fake embedder keyed on magic strings, `sqlText()`
@@ -533,7 +533,7 @@ version is the one actually used — do NOT mix the package `Agent` with the glo
   still parse — `''` links remain valid under AC-7).
 - jsdom/web gotcha (only if you accidentally touch web — you shouldn't): no jest-dom matchers.
 - Integration hygiene: stop compose app containers first; `assertNoCompetingWriter` does NOT
-  catch a same-host `npm run dev -w @hivly/workers` — stop that too. **This Mac has TWO Redis
+  catch a same-host `npm run dev -w @share2brain/workers` — stop that too. **This Mac has TWO Redis
   instances** (Homebrew on :6379; compose Redis publishes no ports) — local runs hit Homebrew.
 
 ### Previous story intelligence (7.1 + inherited)
@@ -611,11 +611,11 @@ Claude Sonnet 5 (claude-sonnet-5)
   `inArray(discordMessages.id, [messageId])` where-condition's `queryChunks` (drizzle wraps each
   array element in a `Param { value }`, not a raw string — empirically verified via a throwaway
   node script before committing to the extraction helper).
-- Local `Hivly.config.yml` (gitignored, not a story deliverable) had `enrichment.llm.provider:
+- Local `Share2Brain.config.yml` (gitignored, not a story deliverable) had `enrichment.llm.provider:
   "anthropic"` with a non-Anthropic-shaped `ENRICHMENT_LLM_API_KEY` (copy of the `agent`/
   `embeddings` blocks' custom-endpoint key) — the real-LLM smoke test failed until the local
   provider was switched to `"custom"` to match the working `agent`/`embeddings` blocks. Local-only
-  fix, does not touch the tracked `Hivly.config.yml.example`.
+  fix, does not touch the tracked `Share2Brain.config.yml.example`.
 
 ### Completion Notes List
 

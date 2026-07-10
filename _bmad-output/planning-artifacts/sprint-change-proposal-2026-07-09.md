@@ -48,7 +48,7 @@ scoping decisions + three design decisions recorded below).
 | Citation link | **Yes in v1** — `link` added to `CitationSchema` |
 | Non-HTML resources | Fetch-failure → message-text fallback (no extractors in v1) |
 | Deploy migration | Destructive + **full wipe & fresh ingest** (truncate `discord_messages` + `embeddings`) |
-| Enrichment output language | **`enrichment.language`** in `Hivly.config.yml` (behavior, not `.env`) |
+| Enrichment output language | **`enrichment.language`** in `Share2Brain.config.yml` (behavior, not `.env`) |
 
 ---
 
@@ -72,7 +72,7 @@ only (they read the changed columns).
 | **Backend** | `embeddingSearchRepository.drizzle.ts`, `documentRepository.drizzle.ts`, `ragRetriever.drizzle.ts` (SELECT), `searchService.ts`/`documentService.ts` (map), `agent/prompt.ts` (context block), citations (+link), `e2e/seed.ts`. |
 | **Frontend** | `SearchView.tsx` (card: title heading + description + "view resource" link), `DocsView.tsx` (row: title + description clamp), chat citations (+link). UX-DR11/12/13/21 revised. |
 | **Config** | New `enrichment` block (`llm` + `fetch`); new secret `ENRICHMENT_LLM_API_KEY`. |
-| **Workers** | `createChatModel` **already exists** in `@hivly/shared/providers` → reused (no AD-2 break). New `UrlFetcher` with SSRF guard. `grouping.ts`/`chunking.ts` retired or repurposed. |
+| **Workers** | `createChatModel` **already exists** in `@share2brain/shared/providers` → reused (no AD-2 break). New `UrlFetcher` with SSRF guard. `grouping.ts`/`chunking.ts` retired or repurposed. |
 
 ### 2.3 Key Risks (surfaced, not silently accepted)
 
@@ -145,7 +145,7 @@ RAG answer cites the source URL. **NOTE**: this changes the `Citation` interface
 `db/schema.ts` (`messages.citations` jsonb) and the SSE `citation` frame — keep the
 compile-time `satisfies` guard in sync (Story 7.1 + 7.4).
 
-### 4.3 Config — `Hivly.config.yml` + `loadConfig` schema
+### 4.3 Config — `Share2Brain.config.yml` + `loadConfig` schema
 
 ```yaml
 enrichment:
@@ -160,7 +160,7 @@ enrichment:
     timeout_ms: 8000
     max_bytes: 2000000          # size cap
     max_redirects: 3
-    user_agent: "HivlyBot/1.0"
+    user_agent: "Share2BrainBot/1.0"
     allowed_schemes: ["http", "https"]
     block_private_ips: true     # SSRF guard — DNS resolve + reject private/link-local
 ```
@@ -169,7 +169,7 @@ config aborts the process (AR12/AD-8).
 
 ### 4.4 FR edits — `epics.md`
 
-- **FR5 (rewrite)**: "El Worker Indexer consume `hivly:discord:messages`, extrae las URLs del
+- **FR5 (rewrite)**: "El Worker Indexer consume `share2brain:discord:messages`, extrae las URLs del
   texto del mensaje y **descarta el mensaje si no contiene ninguna**. Por cada URL: hace fetch
   del recurso (con guarda SSRF, timeout y tope de tamaño), genera **título y descripción con
   el LLM de `enrichment.llm`** a partir del texto del mensaje + el contenido del recurso (con
@@ -247,5 +247,5 @@ Historia 7.6 · e2e: extender harness visual (patrón Epic 4) a los campos nuevo
    `embeddings` and re-ingest from scratch after deploy (even simpler than replaying the
    stream). No data to preserve. Documented as the deploy runbook for Epic 7.
 4. **Enrichment language** — ✅ AI title/description generated in **`enrichment.language`**
-   (`Hivly.config.yml`, behavior config — NOT `.env`). Drives the LLM prompt (Story 7.2);
+   (`Share2Brain.config.yml`, behavior config — NOT `.env`). Drives the LLM prompt (Story 7.2);
    `loadConfig` validates it (Story 7.1).

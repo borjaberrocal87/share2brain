@@ -9,7 +9,7 @@ import {
   ConversationsResponseSchema,
   type ConversationDetail,
   type ConversationsResponse,
-} from '@hivly/shared/schemas';
+} from '@share2brain/shared/schemas';
 
 import type { ConversationRepository } from '../../domain/repositories/conversationRepository.js';
 

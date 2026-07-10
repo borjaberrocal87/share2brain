@@ -1,14 +1,14 @@
 // Integration tests for the backfill primitives against a REAL Postgres + Redis:
 // the cursor query's newest-by-created_at guarantee (including the 18- vs
 // 19-digit snowflake trap a lexicographic MAX would fail), and the completed
-// event landing in hivly:knowledge:events with the exact string fields.
+// event landing in share2brain:knowledge:events with the exact string fields.
 // Discord itself is NEVER hit — the API is faked at the client boundary.
 //
 // Requires infra:  docker compose up -d postgres redis
 // Run:             npm run test:integration
-import type { HivlyConfig } from '@hivly/shared';
-import { sql } from '@hivly/shared/db';
-import { STREAM_KEYS } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import { sql } from '@share2brain/shared/db';
+import { STREAM_KEYS } from '@share2brain/shared/types/events';
 import type { Client } from 'discord.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -26,7 +26,7 @@ const config = {
     channels: [{ id: CHANNEL, name: 'itest', enabled: true }],
     backfill: { enabled: true, limit: 1000, ignore_bots: true },
   },
-} as unknown as HivlyConfig;
+} as unknown as Share2BrainConfig;
 
 const silentLogger = {
   debug: () => undefined,
@@ -77,7 +77,7 @@ describe('backfill (integration)', () => {
     await expect(getChannelCursor(clients.db, `${RUN}-empty-chan`)).resolves.toBeNull();
   });
 
-  it('should land the completed event in hivly:knowledge:events with exact string fields', async () => {
+  it('should land the completed event in share2brain:knowledge:events with exact string fields', async () => {
     // Fake Discord at the client boundary: one gap page with a single message.
     const fetchedMessage = {
       id: '1000000000000000001',

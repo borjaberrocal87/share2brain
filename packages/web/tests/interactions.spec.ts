@@ -17,7 +17,7 @@ test.describe('Frontend-debt fixes (Epic 4 retro AI#4/#5)', () => {
     page,
   }, testInfo) => {
     await loginAs(page, 'e2e-member');
-    await page.locator('.kh-search-input').fill('hivly');
+    await page.locator('.kh-search-input').fill('share2brain');
 
     // Result card: base --border at rest, --border-hover on hover (previously the
     // inline `border` shorthand pinned it and the :hover rule never applied).

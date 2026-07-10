@@ -4,7 +4,7 @@
 // DB errors are never leaked to the client. Mirrors documentController.ts.
 import { z } from 'zod';
 
-import { CONVERSATIONS_ERROR, ConversationsQuerySchema } from '@hivly/shared/schemas';
+import { CONVERSATIONS_ERROR, ConversationsQuerySchema } from '@share2brain/shared/schemas';
 import type { Request, Response } from 'express';
 
 import type { ConversationService } from '../../application/services/conversationService.js';

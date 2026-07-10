@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Story Execution: Mandatory Steps Enforcement (BMAD Method)
 
-Hivly is driven with the **BMAD Method** (BMM module, installed under `_bmad/`, configured in `_bmad/core/config.yaml` and `_bmad/bmm/config.yaml`). The way of working is story-based:
+Share2Brain is driven with the **BMAD Method** (BMM module, installed under `_bmad/`, configured in `_bmad/core/config.yaml` and `_bmad/bmm/config.yaml`). The way of working is story-based:
 
 - **Plan** with `bmad-prd` (PRD), `bmad-ux` (UX specs), `bmad-architecture` (architecture spine), then `bmad-create-epics-and-stories` to break the PRD into epics and stories. Gate the plan with `bmad-check-implementation-readiness`.
 - **Sprint** with `bmad-sprint-planning` (generate sprint status from epics) and `bmad-create-story` (author a self-contained story spec with all context).
@@ -71,7 +71,7 @@ npm run test          # Vitest across affected workspaces
 npm run build
 ```
 
-Scope to a workspace when appropriate (`-w @hivly/backend`). If red, fix within the story's scope and re-run — never commit red. If it can't be fixed within scope, record it in the story's implementation notes, leave the work uncommitted, and stop with a clear report (or open a follow-up story via `bmad-correct-course`).
+Scope to a workspace when appropriate (`-w @share2brain/backend`). If red, fix within the story's scope and re-run — never commit red. If it can't be fixed within scope, record it in the story's implementation notes, leave the work uncommitted, and stop with a clear report (or open a follow-up story via `bmad-correct-course`).
 
 ### 3.2 Data/state verification for DB-affecting changes (MANDATORY)
 
@@ -86,7 +86,7 @@ For changes that touch the schema, ingestion, or persisted state, the agent MUST
 
 The agent MUST exercise endpoints itself (start the Backend if needed):
 
-- **REST** (GET/POST/PATCH/DELETE): call the endpoint (e.g. `curl` or a test client), verify status codes and that the response matches the Zod schema in `@hivly/shared/schemas`. Verify the unified error shape `{ error, code }` for error cases (validation → 400/422, missing session → 401, not found → 404).
+- **REST** (GET/POST/PATCH/DELETE): call the endpoint (e.g. `curl` or a test client), verify status codes and that the response matches the Zod schema in `@share2brain/shared/schemas`. Verify the unified error shape `{ error, code }` for error cases (validation → 400/422, missing session → 401, not found → 404).
 - **RBAC**: verify a request never returns fragments/documents outside the caller's `allowedChannelIds`.
 - **SSE** (`POST /api/chat`): verify the stream emits `token` frames incrementally (not buffered), then `citation`/`done`, matching the `SSEFrame` schema. Confirm nginx config disables buffering for `/api/chat` when testing through the proxy.
 - **Restore state**: for CREATE/UPDATE/DELETE, restore the DB to its pre-test state and document the cleanup.
@@ -95,7 +95,7 @@ The agent MUST exercise endpoints itself (start the Backend if needed):
 
 **Concrete verification path for this repo** — the Playwright harness landed by Story 4.5
 (`packages/web/playwright.config.ts` + `packages/web/tests/`, run via
-`npm run test:e2e -w @hivly/web`). When a story affects `@hivly/web` user workflows, the agent MUST:
+`npm run test:e2e -w @share2brain/web`). When a story affects `@share2brain/web` user workflows, the agent MUST:
 
 1. Boot the harness backend: `createApp` with an **injected fake `DiscordOAuthClient`**
    (the `opts.oauth` pattern from `*.integration.test.ts`) + a deterministic fake
@@ -157,7 +157,7 @@ Update the docs the change implies (see `documentation-standards.md`): `data-mod
 - [ ] Write acceptance/integration tests (red)
 - [ ] Implement schema change in packages/shared (drizzle-kit generate)
 - [ ] Implement domain/orchestration to green
-- [ ] Implement adapter/endpoint + Zod schema in @hivly/shared/schemas
+- [ ] Implement adapter/endpoint + Zod schema in @share2brain/shared/schemas
 - [ ] Verify REST/SSE endpoints (AGENT MUST EXECUTE); check RBAC; restore state
 - [ ] Gate: npm run lint && npm run test && npm run build (paste output)
 - [ ] Update story notes in _bmad-output/implementation-artifacts + durable docs in docs/

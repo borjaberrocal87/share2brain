@@ -4,9 +4,9 @@
 // format is `data: <json>\n\n` frames with NO `event:` line (chatController.ts:76);
 // the discriminator is the JSON `type` field, validated by SSEFrameSchema.
 //
-// Imports types/schemas ONLY from @hivly/shared/schemas — never the root barrel
+// Imports types/schemas ONLY from @share2brain/shared/schemas — never the root barrel
 // or /db, which pull `pg` into the bundle (ESLint no-restricted-imports, AD-3).
-import { SSEFrameSchema, type SSEFrame, type ChatRequest } from '@hivly/shared/schemas';
+import { SSEFrameSchema, type SSEFrame, type ChatRequest } from '@share2brain/shared/schemas';
 
 /** Thrown on a PRE-stream failure: the endpoint returned `{ error, code }` JSON
  * (400/404/500) instead of a stream. Carries the stable `code` + HTTP status so

@@ -15,7 +15,7 @@ As a **community member**,
 I want Discord messages to be transformed into semantic search vectors,
 so that I can find relevant knowledge with natural-language queries.
 
-This is the **fourth and final story of Epic 3** (Knowledge Indexing Pipeline), after 3.0 (provider config, `done`), 3.1 (Gateway + live ingestion, `done`) and 3.2 (backfill, `done`). It turns `packages/workers` from a placeholder into the first real Redis Streams **consumer**: it drains `hivly:discord:messages` (fed by 3.1/3.2), generates embeddings with the 3.0 provider factory, and upserts into pgvector. It closes FR5 and unblocks Epic 4 (search reads what this story writes).
+This is the **fourth and final story of Epic 3** (Knowledge Indexing Pipeline), after 3.0 (provider config, `done`), 3.1 (Gateway + live ingestion, `done`) and 3.2 (backfill, `done`). It turns `packages/workers` from a placeholder into the first real Redis Streams **consumer**: it drains `share2brain:discord:messages` (fed by 3.1/3.2), generates embeddings with the 3.0 provider factory, and upserts into pgvector. It closes FR5 and unblocks Epic 4 (search reads what this story writes).
 
 **Baseline commit:** `40fb5e0` — Story 3.2 merged. The bot publishes `MessageCreatedEvent`s (live + backfill, idempotent producer); `packages/workers/src/main.ts` is a 29-line placeholder (loadConfig + keep-alive). **No consumer-group code (`xReadGroup`/`xGroupCreate`/`xAck`) exists anywhere in the repo yet.**
 
@@ -26,7 +26,7 @@ This is the **fourth and final story of Epic 3** (Knowledge Indexing Pipeline), 
 The epic AC (`epics.md` §Historia 3.3) and `TECHNICAL-DESIGN.md` §5.3/§7 leave four design gaps that this story resolves. Verified against the real source at baseline `40fb5e0`:
 
 1. **"UPSERT into `embeddings`" has no conflict target today.** `embeddings.id` is a random-default UUID and the table has **no unique key** — a literal `onConflictDoNothing` can never fire and duplicates WOULD be created on redelivery. This story adds a deterministic **`chunk_key` text column + unique index** to the schema (`shared` scope, AD-5 — only shared does DDL): `chunk_key = "<firstMessageId>:<chunkIndex>"` (message snowflakes are globally unique, so the channel is implicit). Upsert = `onConflictDoUpdate({ target: embeddings.chunkKey, set: {...} })`. **[DECIDED with Borja, 2026-07-06]**
-2. **Dimension mismatch is live and blocking: config says 4096, the deployed DB says 1536.** `Hivly.config.yml` has `embeddings.dimensions: 4096` (qwen3-embedding), but the committed migration `0001_tough_skrulls.sql` created `vector(1536)` + the HNSW index. First insert would fail. Worse: **pgvector 0.8 cannot build an HNSW/ivfflat index on `vector` columns wider than 2000 dims** (halfvec caps at 4000 — still < 4096), so "just migrate to 4096" silently loses the vector index. Recommended: set `embeddings.dimensions: 1536` — qwen3-embedding supports Matryoshka custom output dims and the factory already passes `dimensions` through; verify with `npx tsx --env-file=.env spike/embeddings-factory.ts` before generating the migration. **[DECIDED with Borja, 2026-07-06]: `dimensions: 1536`.** The spike verification is still the FIRST dev step (Task 1) — if the endpoint does not honor 1536, STOP and escalate back to Borja before generating any migration.
+2. **Dimension mismatch is live and blocking: config says 4096, the deployed DB says 1536.** `Share2Brain.config.yml` has `embeddings.dimensions: 4096` (qwen3-embedding), but the committed migration `0001_tough_skrulls.sql` created `vector(1536)` + the HNSW index. First insert would fail. Worse: **pgvector 0.8 cannot build an HNSW/ivfflat index on `vector` columns wider than 2000 dims** (halfvec caps at 4000 — still < 4096), so "just migrate to 4096" silently loses the vector index. Recommended: set `embeddings.dimensions: 1536` — qwen3-embedding supports Matryoshka custom output dims and the factory already passes `dimensions` through; verify with `npx tsx --env-file=.env spike/embeddings-factory.ts` before generating the migration. **[DECIDED with Borja, 2026-07-06]: `dimensions: 1536`.** The spike verification is still the FIRST dev step (Task 1) — if the endpoint does not honor 1536, STOP and escalate back to Borja before generating any migration.
 3. **`grouping_window` semantics are deferred to this story** (TECHNICAL-DESIGN §17: "Batching del Indexer — lógica exacta de grouping_window — el config fija los parámetros"). The config comment says `grouping_window: 10 # consecutive same-channel messages grouped before chunking` → it is a **message count**, not a time window. Resolved semantics: within one `XREADGROUP` batch, partition entries by `channelId` preserving stream order, and cap each group at `grouping_window` messages. Pure, deterministic function of the batch. **[DECIDED with Borja, 2026-07-06]**
 4. **`chunk_size` is "tokens" but there is no tokenizer for qwen3-embedding.** Use `RecursiveCharacterTextSplitter` from `@langchain/textsplitters` (v1.0.1, peer-compatible with `@langchain/core` 1.2) with a `lengthFunction` of `Math.ceil(text.length / 4)` — the standard ~4-chars-per-token heuristic — so `chunk_size: 500` / `chunk_overlap: 50` keep their configured meaning approximately. Discord messages are short; most groups will produce exactly one chunk. **[DECIDED with Borja, 2026-07-06]**
 5. **Read `content` from the event itself, and tolerate a missing `discord_messages` row without ACK.** Standing directive from the 3.1 review (`deferred-work.md` §3-1): the bot's XADD fires inside the tx callback *before* COMMIT, so an event can be durable in Redis a beat before (or, on a COMMIT failure, without) its row. The event carries `content` + `authorId` — never re-read content from the DB. If the row is missing at processing time, leave that entry **pending (no XACK)**; it will be retried and the row will have landed.
@@ -40,7 +40,7 @@ The epic AC (`epics.md` §Historia 3.3) and `TECHNICAL-DESIGN.md` §5.3/§7 leav
 
 ### AC-1 — Boot, consumer group, and replay-then-live loop
 
-**Given** the workers service starting with a valid `Hivly.config.yml`
+**Given** the workers service starting with a valid `Share2Brain.config.yml`
 **When** `main.ts` boots
 **Then** it runs `loadConfig()` before any I/O (AD-8), connects Postgres + Redis, and **fail-fasts the Redis connect with a 10 s `Promise.race` → `exit(1)`** (node-redis `reconnectStrategy` never rejects — same pattern as `packages/bot/src/main.ts`)
 **And** it creates the consumer group idempotently: `xGroupCreate(STREAM_KEYS.DISCORD_MESSAGES, CONSUMER_GROUPS.INDEXER, '0', { MKSTREAM: true })`, treating a BUSYGROUP rejection as success
@@ -59,7 +59,7 @@ The epic AC (`epics.md` §Historia 3.3) and `TECHNICAL-DESIGN.md` §5.3/§7 leav
 ### AC-3 — Dimension guard (protects AD-13 and the fixed vector column)
 
 **Given** vectors returned by the provider
-**When** any vector fails `assertEmbeddingDimensions(vector, config.embeddings.dimensions)` (exported by `@hivly/shared/providers`; its docstring names this exact story)
+**When** any vector fails `assertEmbeddingDimensions(vector, config.embeddings.dimensions)` (exported by `@share2brain/shared/providers`; its docstring names this exact story)
 **Then** the group is **not persisted**, its entries are **not XACKed** (they stay pending for redelivery), one `error` is logged with `{ channelId, expected, actual }`, and the loop continues with the next group.
 
 ### AC-4 — Idempotent persistence (UPSERT, never plain INSERT)
@@ -89,7 +89,7 @@ The epic AC (`epics.md` §Historia 3.3) and `TECHNICAL-DESIGN.md` §5.3/§7 leav
 - `npm run test` — all green, incl. new unit tests (parsing, dedup partition, grouping, chunking, guard-fail → no-ack, consumer loop with fake redis) — see Task 9.
 - `npm run test:integration` — new `workers-integration` project against **real** Postgres + Redis (fake embeddings model, deterministic vectors — never a real API in tests): end-to-end batch → `embeddings` rows + `indexed_at` stamped + PEL drained; redelivery → no duplicates; failing embedder → entry stays pending un-acked; BUSYGROUP tolerated on second boot.
 - `npm run build` — all 5 workspaces clean.
-- **Manual smoke** (real embeddings endpoint): docker bot+workers containers stopped; run bot and workers locally (they share the Homebrew Redis on `localhost:6379` and the compose Postgres on `127.0.0.1:5432` — see Env gotcha in Dev Notes); post a message in `general` (`1498305410942369908`) → within seconds a row lands in `embeddings` (correct dims, `chunk_key`, `channel_id`), `discord_messages.indexed_at` is stamped, `XPENDING hivly:discord:messages hivly:indexer` shows 0; restart the worker → nothing re-indexed (dedup); stop the endpoint (or break the key) → entry stays pending, worker keeps running, restore → replay drains it.
+- **Manual smoke** (real embeddings endpoint): docker bot+workers containers stopped; run bot and workers locally (they share the Homebrew Redis on `localhost:6379` and the compose Postgres on `127.0.0.1:5432` — see Env gotcha in Dev Notes); post a message in `general` (`1498305410942369908`) → within seconds a row lands in `embeddings` (correct dims, `chunk_key`, `channel_id`), `discord_messages.indexed_at` is stamped, `XPENDING share2brain:discord:messages share2brain:indexer` shows 0; restart the worker → nothing re-indexed (dedup); stop the endpoint (or break the key) → entry stays pending, worker keeps running, restore → replay drains it.
 
 ---
 
@@ -97,9 +97,9 @@ The epic AC (`epics.md` §Historia 3.3) and `TECHNICAL-DESIGN.md` §5.3/§7 leav
 
 - [x] **Task 0 — Open Questions #1–#4 RESOLVED with Borja (2026-07-06)**: dimensions → **1536**; `chunk_key` unique column + `onConflictDoUpdate` → **yes**; grouping → **per-batch by-channel partition capped at `grouping_window`**; chunking → **approx-token `ceil(chars/4)`**. Remaining gate: Task 1's spike run must confirm the endpoint honors `dimensions: 1536` — on failure, stop and escalate.
 - [x] **Task 1 — Schema: `chunk_key` + migration** (AC: 4) — `shared` scope
-  - [x] **First**: run `npx tsx --env-file=.env spike/embeddings-factory.ts` with `Hivly.config.yml` set to `dimensions: 1536` — confirm the endpoint returns real 1536-dim vectors (MRL). If not, STOP and escalate to Borja. → ✅ VALIDATED: vector length 1536, L2 norm 1.0, non-zero components (endpoint honors MRL).
+  - [x] **First**: run `npx tsx --env-file=.env spike/embeddings-factory.ts` with `Share2Brain.config.yml` set to `dimensions: 1536` — confirm the endpoint returns real 1536-dim vectors (MRL). If not, STOP and escalate to Borja. → ✅ VALIDATED: vector length 1536, L2 norm 1.0, non-zero components (endpoint honors MRL).
   - [x] `packages/shared/src/db/schema.ts`: add `chunkKey: text('chunk_key').notNull()` to `embeddings` + `uniqueIndex('idx_embeddings_chunk_key').on(table.chunkKey)`. Table is empty in every deployment — `notNull` without default is safe.
-  - [x] Applied `dimensions: 1536` to the (gitignored) real `Hivly.config.yml` before `npx drizzle-kit generate`. `.example` already said 1536 — unchanged. Generated `0002_lush_fabian_cortez.sql` reviewed by hand: adds only the column + unique index (vector stays 1536, HNSW untouched).
+  - [x] Applied `dimensions: 1536` to the (gitignored) real `Share2Brain.config.yml` before `npx drizzle-kit generate`. `.example` already said 1536 — unchanged. Generated `0002_lush_fabian_cortez.sql` reviewed by hand: adds only the column + unique index (vector stays 1536, HNSW untouched).
   - [x] OQ#1 landed on 1536 (≤2000) → HNSW index kept; no drop needed.
   - [x] **Applied the migration** via `DATABASE_URL=… npx drizzle-kit migrate` against the local compose Postgres; verified `\d embeddings` shows `chunk_key text NOT NULL` + `idx_embeddings_chunk_key UNIQUE` + intact `vector(1536)` HNSW index. (Also re-exported `inArray` from `packages/shared/src/db/index.ts` for Task 6.)
 - [x] **Task 2 — Workers package scaffolding** (AC: 7)
@@ -107,7 +107,7 @@ The epic AC (`epics.md` §Historia 3.3) and `TECHNICAL-DESIGN.md` §5.3/§7 leav
   - [x] `packages/workers/vitest.config.ts`: `workers-integration` project (include `src/**/*.integration.test.ts`, timeouts 15 000).
   - [x] Root `vitest.config.ts`: added `./packages/workers/vitest.config.ts`. Root `package.json`: added `--project workers-integration` to `test:integration`.
   - [x] `packages/workers/src/logger.ts`: bot's `createLogger` shape with `[workers]` prefix.
-  - [x] `packages/workers/src/test-helpers.ts`: mirrors `packages/bot/src/test-helpers.ts` — imports only `@hivly/shared`.
+  - [x] `packages/workers/src/test-helpers.ts`: mirrors `packages/bot/src/test-helpers.ts` — imports only `@share2brain/shared`.
 - [x] **Task 3 — Event parsing (pure)** (AC: 2)
   - [x] `packages/workers/src/indexer/events.ts`: `parseCreatedEvent` validates type + non-empty `messageId`/`channelId`/`content` (content carried un-trimmed; the chunker owns trimming). No Zod.
 - [x] **Task 4 — Dedup partition + grouping (pure, tests-first)** (AC: 2)
@@ -124,10 +124,10 @@ The epic AC (`epics.md` §Historia 3.3) and `TECHNICAL-DESIGN.md` §5.3/§7 leav
   - [x] Unit (38 tests across events/grouping/chunking/indexBatch/consumer): parsing valid/malformed/foreign/whitespace; partition indexed→ack / missing→pending / fresh→process; grouping order+window+overflow; chunking single/long/approx-token; indexBatch guard-throw→no-ack / embed-throw isolation / RETURNING-miss / ackNow / malformed→ack; consumer BUSYGROUP tolerated / replay advances+stops / null loops / ack-only-returned / abort exits.
   - [x] Integration (real PG + Redis, fake embedder): event-content embedded (not DB content) + dims/channel/message_ids + `indexed_at` stamped + PEL drained; redelivery (dedup) and forced `chunk_key` UPSERT → count unchanged; failing embedder → `XPENDING=1` + no row + `indexed_at` null; duplicate `xGroupCreate` → BUSYGROUP.
 - [x] **Task 10 — Docs + deferred-work touch** (AC: 7)
-  - [x] Stream tables in SPINE / TECHNICAL-DESIGN / backend-standards: `hivly:indexer` consumer marked active/live since 3.3. SPINE §Deferred: retry/DLQ + Indexer-batching items marked **resolved in Story 3.3**.
+  - [x] Stream tables in SPINE / TECHNICAL-DESIGN / backend-standards: `share2brain:indexer` consumer marked active/live since 3.3. SPINE §Deferred: retry/DLQ + Indexer-batching items marked **resolved in Story 3.3**.
   - [x] `deferred-work.md`: 3-1 "Indexer reads content / tolerates row-not-found" note struck through as resolved; new §"Decisions & deferrals from Story 3.3" records PEL-as-DLQ (no retry-max, no `MAXLEN`), stream-trimming still deferred, and the accepted stale-chunk crash-window corner.
 - [x] **Task 11 — Verification gate** (AC: 7)
-  - [x] `npm run lint` 0 · `npm run test` 203 (30 files) · `npm run build` clean (5 workspaces) · `npm run test:integration` 22 (6 files). Manual smoke on the REAL embeddings endpoint: seeded #general event → 1536-dim embeddings row + `chunk_key`/`channel_id`/`message_ids` + `indexed_at` stamped + `XPENDING hivly:indexer`=0; re-XADD same id → count stays 1 (dedup, no re-embed). Branch `feat/3-3-workers-indexer-pgvector`; PR next; hand off to `bmad-code-review`.
+  - [x] `npm run lint` 0 · `npm run test` 203 (30 files) · `npm run build` clean (5 workspaces) · `npm run test:integration` 22 (6 files). Manual smoke on the REAL embeddings endpoint: seeded #general event → 1536-dim embeddings row + `chunk_key`/`channel_id`/`message_ids` + `indexed_at` stamped + `XPENDING share2brain:indexer`=0; re-XADD same id → count stays 1 (dedup, no re-embed). Branch `feat/3-3-workers-indexer-pgvector`; PR next; hand off to `bmad-code-review`.
 
 ### Review Findings
 
@@ -164,7 +164,7 @@ All round-2 patches verified: `npm run lint` 0 · `npm run test` 213 (30 files, 
 ```
 packages/shared/src/db/schema.ts               # UPDATE — chunk_key column + unique index on embeddings
 packages/shared/src/db/migrations/0002_*.sql   # NEW — generated (chunk_key; dimensions per OQ#1)
-Hivly.config.yml / Hivly.config.yml.example    # UPDATE only if OQ#1 changes dimensions
+Share2Brain.config.yml / Share2Brain.config.yml.example    # UPDATE only if OQ#1 changes dimensions
 packages/workers/package.json                  # UPDATE — @langchain/textsplitters, test scripts
 packages/workers/vitest.config.ts              # NEW — workers-integration project
 packages/workers/src/
@@ -190,12 +190,12 @@ package.json (root)                            # UPDATE — test:integration += 
 - **`packages/workers/src/main.ts`** (29 lines) — placeholder: `loadConfig()`, `console.log`, SIGTERM/SIGINT → `exit(0)`, `setInterval` keep-alive. Everything is replaced; keep only the try/catch-around-main + `[workers] fatal:` convention.
 - **`packages/shared/src/db/schema.ts`** — `embeddings` at lines 56–70: `id` uuid random PK, `content`, `embedding vector(EMBEDDING_DIMENSIONS)`, `channelId` (AD-12 filter), `messageIds text[]`, `createdAt`, HNSW cosine index + channel btree. `EMBEDDING_DIMENSIONS = readEmbeddingDimensions()` at module load (generate-time YAML reader, default 1536, no Zod). `discord_messages.indexedAt` (line 47) is nullable, commented "set by the Indexer" — this story is that Indexer.
 - **Root `vitest.config.ts`** — Vitest 4 `test.projects`: `unit` glob + web + backend + bot configs. Add the workers config entry beside bot's.
-- **`packages/workers/package.json`** — scripts `dev/start/typecheck/build` only; sole dep `@hivly/shared`. `Dockerfile` copies manifests + `npm ci` → a new dep flows into the image without Dockerfile changes.
+- **`packages/workers/package.json`** — scripts `dev/start/typecheck/build` only; sole dep `@share2brain/shared`. `Dockerfile` copies manifests + `npm ci` → a new dep flows into the image without Dockerfile changes.
 
 ### Reference: consumer loop skeleton (node-redis v6 — exact shapes)
 
 ```ts
-import { STREAM_KEYS, CONSUMER_GROUPS } from '@hivly/shared/types/events';
+import { STREAM_KEYS, CONSUMER_GROUPS } from '@share2brain/shared/types/events';
 
 const CONSUMER = 'consumer-1'; // per epic AC; single-consumer group
 const COUNT = 10;
@@ -265,19 +265,19 @@ const ackable = await db.transaction(async (tx) => {
 });
 ```
 
-- `sql` is already re-exported by `@hivly/shared/db`; **re-export `inArray` from `packages/shared/src/db/index.ts` too** (one line, same pattern as the existing `arrayOverlaps` re-export) — workers must not depend on `drizzle-orm` directly (AD-2 spirit; mirror how the bot consumes `sql`).
+- `sql` is already re-exported by `@share2brain/shared/db`; **re-export `inArray` from `packages/shared/src/db/index.ts` too** (one line, same pattern as the existing `arrayOverlaps` re-export) — workers must not depend on `drizzle-orm` directly (AD-2 spirit; mirror how the bot consumes `sql`).
 - Guard `messageIds.length > 0` before `inArray` (it throws on empty arrays).
 - Why RETURNING-gated acks: a row that hasn't COMMITted on the bot side yet (XADD-before-COMMIT race) simply isn't stamped; its entry stays pending and the next delivery attempt finds the row. Entries acked ⊆ entries stamped — that IS the AD-13 "XACK only after success" invariant, made concrete.
 - Redelivery corner: if a crash lands between the tx and the acks, the replay re-processes the same PEL entries; grouping is deterministic on that input, so chunks land on the same `chunk_key`s (conflict-update, no dupes). If a *later, different* batch composition regroups an unstamped message, its chunks key off a different first-id — the `indexed_at` dedup check is what prevents that from ever happening to already-stamped messages, and unstamped ones are by definition not yet indexed. A stale extra chunk is only reachable through a crash inside this narrow window and is overwritten/ignored at query time by similarity — accepted, do not build compensation for it.
 
 ### Guardrails (ARCHITECTURE-SPINE AD-*)
 
-- **AD-1/AD-2** — all service code in `packages/workers`; imports only `@hivly/shared/*` subpaths (`/db`, `/redis`, `/providers`, `/types/events`, root for `loadConfig`). `@hivly/shared/providers` is deliberately NOT in the root barrel (it pulls LangChain) — use the subpath.
+- **AD-1/AD-2** — all service code in `packages/workers`; imports only `@share2brain/shared/*` subpaths (`/db`, `/redis`, `/providers`, `/types/events`, root for `loadConfig`). `@share2brain/shared/providers` is deliberately NOT in the root barrel (it pulls LangChain) — use the subpath.
 - **AD-5** — the `chunk_key` DDL lives in `packages/shared/src/db/schema.ts` + generated migration. Workers define no tables.
 - **AD-8** — `loadConfig()` first in `main.ts`; invalid YAML aborts before any connection.
 - **AD-13** — stream key + group via `STREAM_KEYS`/`CONSUMER_GROUPS` constants; `XACK` only after commit; no-ack on failure; UPSERT for at-least-once. This story is the invariant's first consumer-side implementation — the reference for Epic 6's Sync worker.
 - **Write ownership** — workers own `embeddings` (all columns) and exactly one column of `discord_messages`: `indexed_at`. Never touch `content`/`deleted_at`/anything else (sanctioned in data-model.md + schema comment).
-- **Sync is Epic 6** — do not consume `hivly:discord:messages:updated/deleted`, do not create `hivly:sync`, do not add a `sync/` folder. `/health`'s `indexer: "pending"` component also stays as-is (backend wiring is a later story).
+- **Sync is Epic 6** — do not consume `share2brain:discord:messages:updated/deleted`, do not create `share2brain:sync`, do not add a `sync/` folder. `/health`'s `indexer: "pending"` component also stays as-is (backend wiring is a later story).
 - **Logging** — never log message `content` or API keys; log `contentLength`, counts, ids.
 
 ### Env gotcha (from 3.2's smoke — documented for this story's smoke)
@@ -286,7 +286,7 @@ const ackable = await db.transaction(async (tx) => {
 
 ### Testing standards
 
-Vitest, co-located `*.test.ts`, AAA, names `should <behavior> when <condition>`. **Tests-first for the pipeline core** — `backend-standards.md` names "the Indexer pipeline" explicitly (grouping, chunking, partition logic red → green). Adapter glue (consumer loop wiring, main.ts) may test after. Unit tests mock db/redis/embedder — never a real connection; integration hits real PG + Redis via the new workers `test-helpers.ts` (mirror bot's) and a **fake embedder** (deterministic `number[]` of the configured dims — a real embeddings API is never called in any test). Always cover the two Hivly-mandated cases: **idempotency** (re-delivered event → no duplicate `embeddings` rows) and **failure leaves the entry un-ACKed** (visible via `XPENDING`). Epic 2 retro action item: integration tests against real Redis Streams (consumer group, XREADGROUP, XACK-after-success) + real pgvector are part of this story's DoD.
+Vitest, co-located `*.test.ts`, AAA, names `should <behavior> when <condition>`. **Tests-first for the pipeline core** — `backend-standards.md` names "the Indexer pipeline" explicitly (grouping, chunking, partition logic red → green). Adapter glue (consumer loop wiring, main.ts) may test after. Unit tests mock db/redis/embedder — never a real connection; integration hits real PG + Redis via the new workers `test-helpers.ts` (mirror bot's) and a **fake embedder** (deterministic `number[]` of the configured dims — a real embeddings API is never called in any test). Always cover the two Share2Brain-mandated cases: **idempotency** (re-delivered event → no duplicate `embeddings` rows) and **failure leaves the entry un-ACKed** (visible via `XPENDING`). Epic 2 retro action item: integration tests against real Redis Streams (consumer group, XREADGROUP, XACK-after-success) + real pgvector are part of this story's DoD.
 
 ### Project Structure Notes
 
@@ -352,7 +352,7 @@ claude-opus-4-8 (bmad-dev-story, 2026-07-06)
 - **Task 1 spike gate** — `npx tsx --env-file=.env spike/embeddings-factory.ts` with `dimensions: 1536`: `vector length = 1536`, L2 norm 1.0, non-zero components → endpoint honors MRL. Gate passed; migration generated with 1536 (no HNSW drop needed).
 - **Migration 0002** — `drizzle-kit generate` emitted only `ADD COLUMN chunk_key` + `CREATE UNIQUE INDEX idx_embeddings_chunk_key`; applied via `drizzle-kit migrate`; `\d embeddings` confirmed column + unique index + intact `vector(1536)` HNSW.
 - **Verification gate** — lint 0 · unit 203/203 · build 5/5 clean · integration 22/22.
-- **Manual smoke (real endpoint)** — seeded #general event → embeddings row `dims=1536`, `chunk_key=<id>:0`, `indexed_at` stamped, `XPENDING hivly:indexer`=0; redelivery of same id → count unchanged (dedup), content not re-embedded.
+- **Manual smoke (real endpoint)** — seeded #general event → embeddings row `dims=1536`, `chunk_key=<id>:0`, `indexed_at` stamped, `XPENDING share2brain:indexer`=0; redelivery of same id → count unchanged (dedup), content not re-embedded.
 
 ### Completion Notes List
 
@@ -360,7 +360,7 @@ claude-opus-4-8 (bmad-dev-story, 2026-07-06)
 - Pipeline split into pure stages (`events`/`grouping`/`chunking`, deterministic on redelivery) and I/O orchestration (`indexBatch`/`consumer`), mirroring the bot's `computeDelay` vs `connectWithRetry` split.
 - AD-13 made concrete: ids are XACKed only from the stamp `RETURNING` set (∪ already-indexed ∪ malformed); a missing row stays pending, a failing embed/guard/DB error leaves the group pending, malformed/foreign entries are ACKed so they don't clog the PEL.
 - Content is read from the stream event, never re-read from the DB row (reconciliation note 5) — proven in the integration test (seeded DB content marker never surfaces in `embeddings.content`).
-- Retry/DLQ decision recorded (PEL-as-DLQ, no retry-max, no `MAXLEN`); stream trimming remains deferred. `dimensions` in the gitignored real `Hivly.config.yml` set to 1536 (the committed `.example` already said 1536).
+- Retry/DLQ decision recorded (PEL-as-DLQ, no retry-max, no `MAXLEN`); stream trimming remains deferred. `dimensions` in the gitignored real `Share2Brain.config.yml` set to 1536 (the committed `.example` already said 1536).
 
 ### File List
 

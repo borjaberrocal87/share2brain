@@ -1,7 +1,7 @@
 // THROWAWAY helper — lists the text channels the bot can see in the configured guild,
-// so the real IDs can be copied into Hivly.config.yml → discord.channels.
+// so the real IDs can be copied into Share2Brain.config.yml → discord.channels.
 // Run:  npx tsx --env-file=.env spike/channels.ts
-import { loadConfig } from '@hivly/shared';
+import { loadConfig } from '@share2brain/shared';
 import { ChannelType, Client, Events, GatewayIntentBits } from 'discord.js';
 
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
@@ -25,7 +25,7 @@ client.once(Events.ClientReady, (c) => {
       console.log(`  id: "${ch.id}"   name: "${ch.name}"`);
     }
   }
-  console.log('\nCopy the ones you want into Hivly.config.yml → discord.channels (id + name, enabled: true).');
+  console.log('\nCopy the ones you want into Share2Brain.config.yml → discord.channels (id + name, enabled: true).');
   void c.destroy().then(() => process.exit(0));
 });
 

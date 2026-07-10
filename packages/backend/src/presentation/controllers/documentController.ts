@@ -1,7 +1,7 @@
 // Presentation: HTTP handler for GET /api/documents. Owns HTTP concerns (query
 // validation, status codes) and maps errors to the unified ErrorSchema shape.
 // Raw DB errors are never leaked to the client. Mirrors searchController.ts.
-import { DOCUMENTS_ERROR, DocumentsQuerySchema } from '@hivly/shared/schemas';
+import { DOCUMENTS_ERROR, DocumentsQuerySchema } from '@share2brain/shared/schemas';
 import type { Request, Response } from 'express';
 
 import type { DocumentService } from '../../application/services/documentService.js';

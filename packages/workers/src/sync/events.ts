@@ -5,7 +5,7 @@
 // as a string, so `fields` is always Record<string, string>; a malformed or
 // foreign-typed entry yields `null` and the caller XACKs+skips it (AC-2) so it
 // never clogs the PEL.
-import type { MessageDeletedEvent, MessageUpdatedEvent } from '@hivly/shared/types/events';
+import type { MessageDeletedEvent, MessageUpdatedEvent } from '@share2brain/shared/types/events';
 
 /**
  * Validate and narrow a raw stream field map to a MessageUpdatedEvent.

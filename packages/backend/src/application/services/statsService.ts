@@ -4,7 +4,7 @@
 // readPct (AC5). Depends ONLY on the domain port (StatsRepository) — no
 // Drizzle, no Express — so it is unit-testable with plain fakes. Mirrors
 // documentService.ts.
-import { StatsResponseSchema, type StatsResponse } from '@hivly/shared/schemas';
+import { StatsResponseSchema, type StatsResponse } from '@share2brain/shared/schemas';
 
 import type { StatsRepository } from '../../domain/repositories/statsRepository.js';
 

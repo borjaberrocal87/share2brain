@@ -2,7 +2,7 @@
 type: sprint-change-proposal
 date: 2026-07-07
 author: Amelia (Dev) — bmad-correct-course
-project: hivly
+project: share2brain
 status: approved
 scope_classification: moderate
 mode: incremental
@@ -21,8 +21,8 @@ Búsqueda), the first frontend story of Epic 4. Story 4.3 was marked `done`/merg
 
 **Core problem:** The mandatory verification gate (`docs/bmad-story-mandatory-steps.md`
 §3.4 + §7) **requires the agent to execute Playwright E2E whenever a story affects
-`@hivly/web`**, and `frontend-standards.md` / `development_guide.md` document
-`npm run test:e2e -w @hivly/web` **as if it existed**. In reality:
+`@share2brain/web`**, and `frontend-standards.md` / `development_guide.md` document
+`npm run test:e2e -w @share2brain/web` **as if it existed**. In reality:
 
 1. **No harness exists.** `packages/web` has no `playwright.config`, no `test:e2e` script,
    and no `@playwright/test` dependency. Verified on disk — the sprint-status:45 comment
@@ -147,7 +147,7 @@ amendments + explicit-fallback definition + light architecture note.
 
 ### 4.3 docs/bmad-story-mandatory-steps.md §3.4 + §4
 Rewrite §3.4 to define this repo's concrete E2E verification (Playwright harness + fake-OAuth
-injected session + `getComputedStyle` + screenshots, via `npm run test:e2e -w @hivly/web`)
+injected session + `getComputedStyle` + screenshots, via `npm run test:e2e -w @share2brain/web`)
 **and the explicit fallback** when no browser is available in the agent environment:
 (a) run the backend slice smoke the agent can; (b) **explicitly flag** the unverified visual
 ACs in the story notes + PR; (c) those ACs are covered by the harness — **never mark a visual
@@ -182,7 +182,7 @@ flag) → then create & implement Story 4.5 (harness) which retroactively verifi
 then Epic 5. Story 4.5 is a **hard dependency** of 5.3/5.4.
 
 **Success criteria:**
-- `npm run test:e2e -w @hivly/web` runs Playwright against an authenticated SPA using an
+- `npm run test:e2e -w @share2brain/web` runs Playwright against an authenticated SPA using an
   injected fake-OAuth session (no real Discord, no prod auth-bypass route).
 - The initial spec asserts the 4.3 + 4.4 visual/CSS ACs via `getComputedStyle` and captures
   screenshots as artifacts.

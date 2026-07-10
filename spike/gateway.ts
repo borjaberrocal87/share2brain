@@ -14,7 +14,7 @@
 // Run:  npx tsx --env-file=.env spike/gateway.ts
 //       (then post a message in an enabled channel while it waits)
 
-import { loadConfig } from '@hivly/shared';
+import { loadConfig } from '@share2brain/shared';
 import { Client, Events, GatewayIntentBits } from 'discord.js';
 
 const TOKEN = process.env.DISCORD_BOT_TOKEN;
@@ -23,7 +23,7 @@ if (!TOKEN || TOKEN === 'your-discord-bot-token') {
   process.exit(1);
 }
 
-// Reuse the real config path: validates Hivly.config.yml and interpolates ${DISCORD_GUILD_ID}.
+// Reuse the real config path: validates Share2Brain.config.yml and interpolates ${DISCORD_GUILD_ID}.
 const config = loadConfig();
 const enabledChannels = config.discord.channels.filter((c) => c.enabled);
 const enabledChannelIds = new Set(enabledChannels.map((c) => c.id));

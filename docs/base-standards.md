@@ -1,5 +1,5 @@
 ---
-description: This document contains all development rules and guidelines for the Hivly project, applicable to all AI agents (Claude, Cursor, Codex, Gemini, etc.).
+description: This document contains all development rules and guidelines for the Share2Brain project, applicable to all AI agents (Claude, Cursor, Codex, Gemini, etc.).
 alwaysApply: true
 ---
 
@@ -9,7 +9,7 @@ alwaysApply: true
 - **Respect the architecture invariants**: `docs/context/ARCHITECTURE-SPINE.md` defines invariants `AD-1 … AD-13`. Before touching an area, read the AD that governs it. Never break one without an explicit, recorded decision.
 - **Test-Driven Development**: Start with failing tests for any new functionality (TDD), according to the task details. For core/domain and orchestration work, write the story's acceptance/integration tests first (red), then implement to green. UI and adapter glue may test after.
 - **Type Safety**: All code must be fully typed. Strict TypeScript; avoid `any` (use `unknown` or specific types).
-- **Contracts in `@hivly/shared`**: DB schema (Drizzle), API shapes (Zod) and config live only in `packages/shared`. Services never redefine them locally, and never import each other (AD-2).
+- **Contracts in `@share2brain/shared`**: DB schema (Drizzle), API shapes (Zod) and config live only in `packages/shared`. Services never redefine them locally, and never import each other (AD-2).
 - **Clear Naming**: Use clear, descriptive names for all variables and functions.
 - **Incremental Changes**: Prefer incremental, focused changes over large, complex modifications.
 - **Question Assumptions**: Always question assumptions and inferences.
@@ -116,9 +116,9 @@ The repository uses **[Conventional Commits](https://www.conventionalcommits.org
 
 ### Scope
 
-The `<scope>` is the affected workspace, without the `@hivly/` prefix: **`shared`, `bot`, `backend`, `workers`, `web`**. Use `repo` for cross-cutting/root-level changes (Compose, root config, docs spanning several packages). Scope is recommended; omit it only when genuinely global.
+The `<scope>` is the affected workspace, without the `@share2brain/` prefix: **`shared`, `bot`, `backend`, `workers`, `web`**. Use `repo` for cross-cutting/root-level changes (Compose, root config, docs spanning several packages). Scope is recommended; omit it only when genuinely global.
 
-Because contracts live in `@hivly/shared` (AD-2/AD-5/AD-6), a change that alters the schema or a Zod contract is scoped `shared` even if a consumer motivated it.
+Because contracts live in `@share2brain/shared` (AD-2/AD-5/AD-6), a change that alters the schema or a Zod contract is scoped `shared` even if a consumer motivated it.
 
 ### Breaking changes
 

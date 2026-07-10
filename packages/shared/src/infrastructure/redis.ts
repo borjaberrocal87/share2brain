@@ -1,7 +1,7 @@
 // node-redis client factory (project-wide Redis client — sessions in the backend,
 // Redis Streams for bot/workers in Epic 3+). node-redis is the maintained client
 // for Redis 8 and the one connect-redis@9 supports natively; ioredis was dropped.
-// This lives in @hivly/shared so every service (backend, bot, workers) uses the
+// This lives in @share2brain/shared so every service (backend, bot, workers) uses the
 // SAME factory without importing another service (AD-2).
 //
 // Importing this module opens NO connection — the caller decides when to

@@ -3,10 +3,10 @@
 // per-channel failure isolation, abort semantics, and the completed event.
 // discord.js is faked structurally; persistMessage is module-mocked so the tests
 // observe the ingestion contract without a db.
-import type { HivlyConfig } from '@hivly/shared';
-import type { Database } from '@hivly/shared/db';
-import type { RedisClient } from '@hivly/shared/redis';
-import { STREAM_KEYS } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { Database } from '@share2brain/shared/db';
+import type { RedisClient } from '@share2brain/shared/redis';
+import { STREAM_KEYS } from '@share2brain/shared/types/events';
 import type { Client } from 'discord.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -64,7 +64,7 @@ function fakeLogger(): Logger {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 }
 
-function makeConfig(overrides: { channels?: Array<{ id: string; enabled: boolean }>; limit?: number; ignoreBots?: boolean } = {}): HivlyConfig {
+function makeConfig(overrides: { channels?: Array<{ id: string; enabled: boolean }>; limit?: number; ignoreBots?: boolean } = {}): Share2BrainConfig {
   return {
     discord: {
       guild_id: 'guild-1',
@@ -78,11 +78,11 @@ function makeConfig(overrides: { channels?: Array<{ id: string; enabled: boolean
         ignore_bots: overrides.ignoreBots ?? true,
       },
     },
-  } as unknown as HivlyConfig;
+  } as unknown as Share2BrainConfig;
 }
 
 function makeDeps(opts: {
-  config?: HivlyConfig;
+  config?: Share2BrainConfig;
   channels?: Record<string, FakeChannel | Error>;
   cursors?: Map<string, string | null>;
   signal?: AbortSignal;

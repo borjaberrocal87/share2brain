@@ -39,7 +39,7 @@ the invariants it cites. Each AC below is the DEV agent's contract.
 3. **Provider factory.** The graph's chat model is built via the provider factory from `agent`
    config (`provider` / `model` / `base_url` / `api_key` / `temperature`), supporting
    `anthropic | openai | custom`. No agent code constructs a LangChain client directly. [AD-6,
-   provider factory in `@hivly/shared/providers`]
+   provider factory in `@share2brain/shared/providers`]
 
 4. **RBAC inside the retrieve query.** The `retrieve` node filters vectors by the caller's
    `allowedChannelIds` (computed per-request by the RBAC middleware from
@@ -105,7 +105,7 @@ the invariants it cites. Each AC below is the DEV agent's contract.
 
 - [x] **Task 2 — Backend deps + ESLint legacy ban** (AC: 2, 3, 7)
   - [x] Add `"@langchain/langgraph": "^1.4.7"` to `packages/backend/package.json` dependencies (peer `@langchain/core ^1.1.48` is satisfied by the installed `^1.2.1`). Run `npm install` and commit the `package-lock.json` diff.
-  - [x] `packages/backend` already depends on `@hivly/shared` (→ `@hivly/shared/providers` for `createChatModel`). Do NOT add `@langchain/anthropic`/`@langchain/openai` to backend — those stay behind the shared provider factory.
+  - [x] `packages/backend` already depends on `@share2brain/shared` (→ `@share2brain/shared/providers` for `createChatModel`). Do NOT add `@langchain/anthropic`/`@langchain/openai` to backend — those stay behind the shared provider factory.
   - [x] `eslint.config.js`: FOLD the langchain-legacy ban into the existing `banSiblingServices('backend')` block (see D9 — a later flat-config object would clobber the whole `no-restricted-imports` option, the exact gotcha already documented for the `web` block at `eslint.config.js:22-29`). Add a `patterns` entry banning `langchain/chains`, `langchain/memory` (and `langchain/chains/**`, `langchain/memory/**`) alongside the sibling-import ban, with a message citing AD-11.
   - [x] Prove the rule bites: temporarily add `import 'langchain/memory'` in a backend file, confirm `npm run lint` errors, then remove it. Confirm the sibling-service ban still fires (don't regress it).
 
@@ -115,9 +115,9 @@ the invariants it cites. Each AC below is the DEV agent's contract.
   - [x] `packages/backend/src/domain/repositories/conversationRepository.ts`: port for persistence — `createConversation(userId)`, `getOwnedConversation(id, userId)` (null if missing/not owned), `appendMessage({conversationId, role, content, citations})`, `touchConversation(id)`.
 
 - [x] **Task 4 — Infrastructure adapters** (AC: 3, 4, 5, 9)
-  - [x] `packages/backend/src/infrastructure/chatModel.langchain.ts`: `createLangchainChatModel(agent: HivlyConfig['agent']): ChatModel` — build once via `createChatModel(agent)` from `@hivly/shared/providers`, adapt `.stream()` to yield string chunks. The ONLY agent-side file importing the provider factory (mirrors `queryEmbedder.langchain.ts`). No network I/O at construction.
+  - [x] `packages/backend/src/infrastructure/chatModel.langchain.ts`: `createLangchainChatModel(agent: Share2BrainConfig['agent']): ChatModel` — build once via `createChatModel(agent)` from `@share2brain/shared/providers`, adapt `.stream()` to yield string chunks. The ONLY agent-side file importing the provider factory (mirrors `queryEmbedder.langchain.ts`). No network I/O at construction.
   - [x] `packages/backend/src/infrastructure/ragRetriever.drizzle.ts`: `RagRetriever` adapter that composes the EXISTING `queryEmbedder.embedQuery()` + `embeddingSearchRepository.searchByEmbedding()`. Do NOT hand-write a new pgvector query — reusing `searchByEmbedding` gives AC4 (RBAC-in-query) + AC5 (deleted-message exclusion) + anchor join for free. Empty scope short-circuits (already handled downstream).
-  - [x] `packages/backend/src/infrastructure/conversationRepository.drizzle.ts`: Drizzle adapter over `conversations`/`messages` using the `sql`/query builder re-exported by `@hivly/shared/db` (never import `drizzle-orm` directly, AD-2). `getOwnedConversation` filters by BOTH id AND `userId` (ownership).
+  - [x] `packages/backend/src/infrastructure/conversationRepository.drizzle.ts`: Drizzle adapter over `conversations`/`messages` using the `sql`/query builder re-exported by `@share2brain/shared/db` (never import `drizzle-orm` directly, AD-2). `getOwnedConversation` filters by BOTH id AND `userId` (ownership).
 
 - [x] **Task 5 — The RAG agent (LangGraph StateGraph)** (AC: 2, 4, 5, 6)
   - [x] `packages/backend/src/agent/` — build the `StateGraph` with `AgentState` = `{ messages, allowedChannelIds, retrievedFragments, conversationId }` and nodes:
@@ -188,7 +188,7 @@ This story is mostly composition. Verified present on disk:
 | Need | Already built | Location |
 |---|---|---|
 | SSE frame contract | `SSEFrameSchema` (token/citation/done/error) + `SSEFrame` type | `packages/shared/src/schemas/sse.ts` (exported via `schemas/index.ts`) |
-| LLM provider factory | `createChatModel(agent) → BaseChatModel` (anthropic/openai/custom, explicit api_key/base_url) | `packages/shared/src/providers/index.ts` — import via `@hivly/shared/providers` ONLY |
+| LLM provider factory | `createChatModel(agent) → BaseChatModel` (anthropic/openai/custom, explicit api_key/base_url) | `packages/shared/src/providers/index.ts` — import via `@share2brain/shared/providers` ONLY |
 | Query embedder | `createLangchainQueryEmbedder(config.embeddings)` + `QueryEmbedder` port (+ degenerate-vector guards) | `packages/backend/src/infrastructure/queryEmbedder.langchain.ts` |
 | pgvector RBAC search | `searchByEmbedding(vec, allowedChannelIds, limit)` — RBAC-in-query (AD-12), deleted-if-ANY exclusion (D1), anchor join, empty-scope short-circuit | `packages/backend/src/infrastructure/embeddingSearchRepository.drizzle.ts` |
 | Fragment/citation shape | `SearchFragmentSchema` (`{channel..author..date..}`) + `Citation` (`{channel,author,date}`) | `packages/shared/src/schemas/search.ts`, `packages/shared/src/db/schema.ts:30` |
@@ -212,7 +212,7 @@ This story is mostly composition. Verified present on disk:
 ### Architecture compliance (guardrails — non-negotiable)
 
 - **AD-1/AD-2:** code under `packages/backend/src/`; agent/service/controller depend on
-  `@hivly/shared` and local ports only — never on `drizzle-orm` or LangChain directly. LangChain
+  `@share2brain/shared` and local ports only — never on `drizzle-orm` or LangChain directly. LangChain
   lives behind `chatModel.langchain.ts` (the only agent-side importer of the provider factory);
   Drizzle behind the `*.drizzle.ts` adapters. Never import a sibling service.
 - **AD-4:** SSE, not WebSocket; `text/event-stream`; frames per `sse.ts`. Client (5.4) uses fetch
@@ -245,7 +245,7 @@ This story is mostly composition. Verified present on disk:
   emit no tool frames now.
 - **D3 — Config key corrections (the TECHNICAL-DESIGN pseudo-code is wrong here).**
   `TECHNICAL-DESIGN.md §9` references `config.knowledge.topK` and `config.agent.memoryBudget` —
-  **neither exists** in `HivlyConfigSchema`. Real keys: there is NO topK anywhere (Story 4.1
+  **neither exists** in `Share2BrainConfigSchema`. Real keys: there is NO topK anywhere (Story 4.1
   hardcoded a local cap; do the same — `RETRIEVE_TOP_K = 5` constant in the agent), and history
   budgeting uses `config.agent.memory_window` (a NUMBER — treat as a turn-COUNT window in 5.1).
   For 5.1, `reason` TRUNCATES history to the last `memory_window` turns (cheap, deterministic).
@@ -397,7 +397,7 @@ Claude Sonnet 5 (claude-sonnet-5)
 ### Debug Log References
 
 Live SSE exercise (AC12) — `docker compose` postgres/redis already running; started the e2e
-backend (`npm run e2e:server -w @hivly/backend`, port 3100), logged in via the fake OAuth
+backend (`npm run e2e:server -w @share2brain/backend`, port 3100), logged in via the fake OAuth
 (`code=e2e-member`), then `curl -N` POST `/api/chat`:
 
 ```
@@ -405,7 +405,7 @@ data: {"type":"token","content":"Hola"}
 
 data: {"type":"token","content":" desde"}
 
-data: {"type":"token","content":" Hivly"}
+data: {"type":"token","content":" Share2Brain"}
 
 data: {"type":"token","content":"."}
 

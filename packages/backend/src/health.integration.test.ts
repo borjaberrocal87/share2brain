@@ -4,7 +4,7 @@
 //
 // Requires infra:  docker compose up -d postgres redis
 // Run:             npm run test:integration
-import { HealthResponseSchema } from '@hivly/shared/schemas';
+import { HealthResponseSchema } from '@share2brain/shared/schemas';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

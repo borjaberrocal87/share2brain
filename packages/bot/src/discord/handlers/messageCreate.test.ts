@@ -1,16 +1,16 @@
 // Unit test for handleMessageCreate — the channel + bot-author guards and the
 // error-swallowing behavior (AC-2, AC-3). db/redis are mocked; persistence is
 // observed through the db.transaction spy.
-import type { HivlyConfig } from '@hivly/shared';
-import type { Database } from '@hivly/shared/db';
-import type { RedisClient } from '@hivly/shared/redis';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { Database } from '@share2brain/shared/db';
+import type { RedisClient } from '@share2brain/shared/redis';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Logger } from '../../logger.js';
 import type { IngestibleMessage } from '../../persistence/persistMessage.js';
 import { handleMessageCreate, type MessageCreateDeps } from './messageCreate.js';
 
-function makeConfig(ignoreBots: boolean): HivlyConfig {
+function makeConfig(ignoreBots: boolean): Share2BrainConfig {
   return {
     discord: {
       guild_id: 'guild-1',
@@ -20,7 +20,7 @@ function makeConfig(ignoreBots: boolean): HivlyConfig {
       ],
       backfill: { enabled: false, limit: 0, ignore_bots: ignoreBots },
     },
-  } as unknown as HivlyConfig;
+  } as unknown as Share2BrainConfig;
 }
 
 function fakeLogger(): Logger {

@@ -4,7 +4,7 @@
 // active screen.
 import type { CSSProperties, ReactElement } from 'react';
 
-import type { UnreadCountResponse } from '@hivly/shared/schemas';
+import type { UnreadCountResponse } from '@share2brain/shared/schemas';
 
 import { DocsView } from './DocsView';
 import { Header } from './Header';

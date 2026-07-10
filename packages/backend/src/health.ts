@@ -3,11 +3,11 @@
 // socket still yields a prompt 503. discord/indexer are "pending" until Bot and
 // Workers report readiness (Epic 3). The response is validated against the
 // shared Zod contract (AD-6) before it leaves the process.
-import { sql, type Database } from '@hivly/shared/db';
-import { HealthResponseSchema, type HealthResponse } from '@hivly/shared/schemas';
+import { sql, type Database } from '@share2brain/shared/db';
+import { HealthResponseSchema, type HealthResponse } from '@share2brain/shared/schemas';
 import type { Request, Response } from 'express';
 
-import type { RedisClient } from '@hivly/shared/redis';
+import type { RedisClient } from '@share2brain/shared/redis';
 
 /** Max time a single dependency probe may take before it counts as disconnected. */
 const PROBE_TIMEOUT_MS = 2000;

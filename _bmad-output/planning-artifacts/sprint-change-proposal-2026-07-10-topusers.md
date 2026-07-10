@@ -9,7 +9,7 @@
 
 ## Section 1 — Issue Summary
 
-**Problem statement.** The Statistics design (`KeepHive Web.dc.html`, `isStats`) includes a 5th
+**Problem statement.** The Statistics design (`Share2Brain Web.dc.html`, `isStats`) includes a 5th
 section, **"Top 5 · usuarios más activos"**, that was deliberately left OUT of the ratified
 `StatsResponse` contract in Story 9.1 (decision **D9** — the ratified SCP §4.2 shape has exactly
 `kpis / activity / channels / coverage`).

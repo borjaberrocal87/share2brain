@@ -1,7 +1,7 @@
 // Domain port: conversation + message persistence. Pure — no Drizzle. The
 // Drizzle implementation lives in infrastructure/ so the application layer
 // depends only on this contract (AD-2 spirit). Mirrors embeddingSearchRepository.ts.
-import type { Citation } from '@hivly/shared/db';
+import type { Citation } from '@share2brain/shared/db';
 
 export interface Conversation {
   id: string;

@@ -5,9 +5,9 @@
 // does not filter bot authors (AC-2 requires publishing regardless; the
 // worker's delete is idempotent for a never-indexed message). A handler
 // failure (xAdd throwing) is logged at `error` and never re-thrown (AC-4).
-import type { HivlyConfig } from '@hivly/shared';
-import type { RedisClient } from '@hivly/shared/redis';
-import { STREAM_KEYS, type MessageDeletedEvent } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { RedisClient } from '@share2brain/shared/redis';
+import { STREAM_KEYS, type MessageDeletedEvent } from '@share2brain/shared/types/events';
 
 import type { Logger } from '../../logger.js';
 import { isChannelEnabled } from './channelGuard.js';
@@ -23,7 +23,7 @@ export interface DeletableMessage {
 }
 
 export interface MessageDeleteDeps {
-  config: HivlyConfig;
+  config: Share2BrainConfig;
   redis: RedisClient;
   logger: Logger;
 }

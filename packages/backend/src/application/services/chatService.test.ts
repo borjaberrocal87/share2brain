@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { Citation } from '@hivly/shared/db';
-import type { SSEFrame } from '@hivly/shared/schemas';
+import type { Citation } from '@share2brain/shared/db';
+import type { SSEFrame } from '@share2brain/shared/schemas';
 
 import type { RagAgent, RunChatInput } from '../../agent/graph.js';
 import type {

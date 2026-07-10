@@ -1,10 +1,10 @@
-# PRD — Hivly Self-Hosted
+# PRD — Share2Brain Self-Hosted
 
 **Agente de IA para comunidades de Discord — Sistema desplegable por el operador**
 
 | | |
 |---|---|
-| **Nombre** | Hivly Self-Hosted |
+| **Nombre** | Share2Brain Self-Hosted |
 | **Versión** | 1.0 |
 | **Fecha** | 30 de junio de 2026 |
 | **Estado** | Final |
@@ -14,9 +14,9 @@
 
 ## 0. Supuestos de partida
 
-Este documento define el **sistema core de Hivly** que cada operador despliega en su propia infraestructura para servir a una comunidad de Discord.
+Este documento define el **sistema core de Share2Brain** que cada operador despliega en su propia infraestructura para servir a una comunidad de Discord.
 
-**Fuera de alcance (ver PRD-Landing-Hivly.md):**
+**Fuera de alcance (ver PRD-Landing-Share2Brain.md):**
 - Landing page del proyecto
 - Documentación pública del producto
 - Sitio web institucional
@@ -51,7 +51,7 @@ Este documento define el **sistema core de Hivly** que cada operador despliega e
 
 | Término | Definición |
 |---------|------------|
-| **Operador** | Persona o entidad que despliega y mantiene la instancia de Hivly para su comunidad |
+| **Operador** | Persona o entidad que despliega y mantiene la instancia de Share2Brain para su comunidad |
 | **Admin** | Administrador del servidor Discord con permisos para gestionar roles y canales. Se asume coincidente con el Operador en v1. |
 | **Miembro** | Integrante autenticado de la comunidad Discord que usa la web app para buscar y chatear |
 | **Guild** | Servidor de Discord identificado por su `guild_id` |
@@ -67,7 +67,7 @@ Este documento define el **sistema core de Hivly** que cada operador despliega e
 
 ## 1. Resumen ejecutivo
 
-Hivly es un agente de IA que **cura automáticamente un índice de recursos (enlaces) de una comunidad de Discord**: solo los mensajes que contienen una URL se indexan — cada enlace se enriquece con un título y una descripción generados por IA — y responde preguntas en lenguaje natural citando esos recursos con fuentes verificables.
+Share2Brain es un agente de IA que **cura automáticamente un índice de recursos (enlaces) de una comunidad de Discord**: solo los mensajes que contienen una URL se indexan — cada enlace se enriquece con un título y una descripción generados por IA — y responde preguntas en lenguaje natural citando esos recursos con fuentes verificables.
 
 > **Nota de alcance (2026-07-09, Epic 7 — pivote a índice curado):** el sistema ya NO indexa el
 > texto de cualquier mensaje. Solo los mensajes con al menos una URL entran al índice; el
@@ -78,13 +78,13 @@ Hivly es un agente de IA que **cura automáticamente un índice de recursos (enl
 > del pivote. El resto de este documento describe el diseño pre-pivote y se actualiza
 > incrementalmente a medida que las Historias 7.2–7.6 lo reemplazan.
 
-Cada operador despliega una instancia independiente que sirve a **una comunidad de Discord** (un guild). La configuración se realiza mediante `Hivly.config.yml` y el sistema se levanta con `docker compose up -d`.
+Cada operador despliega una instancia independiente que sirve a **una comunidad de Discord** (un guild). La configuración se realiza mediante `Share2Brain.config.yml` y el sistema se levanta con `docker compose up -d`.
 
 **Componentes del sistema:**
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Hivly SELF-HOSTED                          │
+│                    Share2Brain SELF-HOSTED                          │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
@@ -123,7 +123,7 @@ Cada operador despliega una instancia independiente que sirve a **una comunidad 
 | SO-2 | Búsqueda semántica | Resultados por similitud de embedding, no solo keyword |
 | SO-3 | Chat con agente RAG | Respuestas con fuentes citadas (canal, autor, fecha) |
 | SO-4 | Read Tracking | Cada miembro tiene su propio estado de lectura |
-| SO-5 | Configuración como código | Todo en `Hivly.config.yml` + `.env` |
+| SO-5 | Configuración como código | Todo en `Share2Brain.config.yml` + `.env` |
 | SO-6 | Despliegue trivial | Un comando: `docker compose up -d` |
 | SO-7 | Datos bajo control | Self-hosted; datos en reposo nunca salen del servidor del operador. El procesamiento se delega a los proveedores configurados por el operador — LLM (Anthropic/OpenAI/custom) y embeddings (OpenAI/custom), posiblemente distintos e incl. endpoint custom self-hosted — delegación explícita y documentada (ver §13). |
 | SO-8 | Multi-comunidad | Cada despliegue sirve a un guild independiente |
@@ -144,7 +144,7 @@ Cada operador despliega una instancia independiente que sirve a **una comunidad 
 
 | Persona | Quién es | Qué necesita |
 |---------|----------|--------------|
-| **Operador** | Quien despliega Hivly para su comunidad | Configurar canales, levantar instancia, monitorear |
+| **Operador** | Quien despliega Share2Brain para su comunidad | Configurar canales, levantar instancia, monitorear |
 | **Admin del guild** | Administrador de Discord con permisos | Configurar el bot, revisar métricas |
 | **Miembro** | Integrante de la comunidad | Buscar información y recibir respuestas con fuentes |
 
@@ -158,14 +158,14 @@ Cada operador despliega una instancia independiente que sirve a **una comunidad 
 └─────────────────────────────────────────────────────────────────┘
 
 1. INSTALACIÓN
-   └─▶ git clone https://github.com/Hivly/Hivly.git
-   └─▶ cp Hivly.config.yml.example Hivly.config.yml
+   └─▶ git clone https://github.com/Share2Brain/Share2Brain.git
+   └─▶ cp Share2Brain.config.yml.example Share2Brain.config.yml
    └─▶ cp .env.example .env
    └─▶ Configurar variables (Discord, DB, LLM)
    └─▶ docker compose up -d
 
 2. CONFIGURACIÓN
-   └─▶ Definir canales a indexar en Hivly.config.yml
+   └─▶ Definir canales a indexar en Share2Brain.config.yml
    └─▶ Configurar modelo de IA y proveedor
    └─▶ Habilitar/deshabilitar tools
    └─▶ Configurar notificaciones Telegram (opcional)
@@ -188,12 +188,12 @@ Cada operador despliega una instancia independiente que sirve a **una comunidad 
 1. ACCESO
    └─▶ Ana entra a la web app y hace clic "Login with Discord"
    └─▶ Discord OAuth2 autentica su identidad y membresía en el guild
-   └─▶ Hivly verifica sus roles → determina qué canales puede ver
+   └─▶ Share2Brain verifica sus roles → determina qué canales puede ver
    └─▶ Ana entra a la pantalla principal con su estado de lectura cargado
 
 2. BÚSQUEDA
    └─▶ Ana escribe una pregunta en lenguaje natural en el buscador
-   └─▶ Hivly devuelve fragmentos ordenados por relevancia semántica
+   └─▶ Share2Brain devuelve fragmentos ordenados por relevancia semántica
    └─▶ Cada resultado muestra: canal origen, autor, fecha, badge 🔵 No leído / ✅ Leído
    └─▶ Ana puede filtrar por "Solo no leídos" o por canal
 
@@ -299,7 +299,7 @@ Cada operador despliega una instancia independiente que sirve a **una comunidad 
 | Escenario | Comportamiento esperado |
 |-----------|------------------------|
 | Desconexión del Discord Gateway | El bot reintenta conexión con exponential backoff (máx. 5 min). Persiste el último `message_id` visto por canal; al reconectar hace backfill desde ese punto, no desde `backfill_limit`. |
-| Sin eventos en N minutos (configurable, default 10 min) | El bot emite alerta via Notifier: `⚠️ Hivly — Sin actividad en N minutos. Verificar conexión.` |
+| Sin eventos en N minutos (configurable, default 10 min) | El bot emite alerta via Notifier: `⚠️ Share2Brain — Sin actividad en N minutos. Verificar conexión.` |
 | Rate limit de Discord API durante backfill | Respeta el header `Retry-After`; delay mínimo de 1s entre páginas; procesa canales de forma secuencial, no paralela. |
 | Token del bot expirado o revocado | Log de error crítico + alerta Notifier; el bot no intenta auto-renovar (requiere intervención del Operador). |
 
@@ -458,14 +458,14 @@ CREATE INDEX idx_user_read_status_embedding ON user_read_status(embedding_id);
 
 | Archivo | Propósito |
 |---------|-----------|
-| `Hivly.config.yml` | Configuración principal del sistema |
+| `Share2Brain.config.yml` | Configuración principal del sistema |
 | `.env` | Secretos (tokens, API keys, URLs) |
 
-**Estructura de Hivly.config.yml:**
+**Estructura de Share2Brain.config.yml:**
 
 ```yaml
-# Hivly.config.yml
-version: "1.0"  # Versión del schema de configuración; Hivly valida compatibilidad al arrancar
+# Share2Brain.config.yml
+version: "1.0"  # Versión del schema de configuración; Share2Brain valida compatibilidad al arrancar
 
 # Discord Bot
 discord:
@@ -566,7 +566,7 @@ notifications:
   slack:
     enabled: true
     bot_token: "${SLACK_BOT_TOKEN}"
-    channel: "#Hivly-alerts"
+    channel: "#Share2Brain-alerts"
 
 # Security
 security:
@@ -863,7 +863,7 @@ CREATE INDEX idx_user_roles_cache_expires ON user_roles_cache(expires_at);
 ├── docker-compose.yml
 ├── docker-compose.prod.yml
 ├── .env.example
-├── Hivly.config.yml.example
+├── Share2Brain.config.yml.example
 ├── package.json
 ├── tsconfig.json
 ├── vitest.config.ts
@@ -1028,7 +1028,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://Hivly:Hivly@postgres:5432/Hivly
+      - DATABASE_URL=postgresql://share2brain:share2brain@postgres:5432/share2brain
       - REDIS_URL=redis://redis:6379
       - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
       - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
@@ -1038,7 +1038,7 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
-      - ./Hivly.config.yml:/app/Hivly.config.yml
+      - ./Share2Brain.config.yml:/app/Share2Brain.config.yml
       - ./src:/app/src
     depends_on:
       postgres:
@@ -1052,14 +1052,14 @@ services:
     ports:
       - "127.0.0.1:5432:5432"  # solo localhost en desarrollo; nunca exponer en 0.0.0.0
     environment:
-      - POSTGRES_USER=Hivly
-      - POSTGRES_PASSWORD=Hivly
-      - POSTGRES_DB=Hivly
+      - POSTGRES_USER=share2brain
+      - POSTGRES_PASSWORD=share2brain
+      - POSTGRES_DB=share2brain
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./src/infrastructure/database/migrations:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U Hivly"]
+      test: ["CMD-SHELL", "pg_isready -U share2brain"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -1121,15 +1121,15 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     environment:
-      - POSTGRES_USER=Hivly
+      - POSTGRES_USER=share2brain
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=Hivly
+      - POSTGRES_DB=share2brain
     volumes:
       - postgres_data:/var/lib/postgresql/data
     secrets:
       - postgres_password
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U Hivly"]
+      test: ["CMD-SHELL", "pg_isready -U share2brain"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -1211,7 +1211,7 @@ DISCORD_BOT_TOKEN=your_bot_token
 DISCORD_REDIRECT_URI=http://localhost:3000/api/auth/callback
 
 # Database
-DATABASE_URL=postgresql://Hivly:password@localhost:5432/Hivly
+DATABASE_URL=postgresql://share2brain:password@localhost:5432/share2brain
 
 # Redis
 REDIS_URL=redis://localhost:6379
@@ -1231,7 +1231,7 @@ TELEGRAM_CHAT_ID=your_chat_id
 
 # Slack (opcional)
 SLACK_BOT_TOKEN=your_slack_bot_token
-SLACK_CHANNEL=#Hivly-alerts
+SLACK_CHANNEL=#Share2Brain-alerts
 
 # Sentry (opcional)
 SENTRY_DSN=your_sentry_dsn
@@ -1254,7 +1254,7 @@ SENTRY_DSN=your_sentry_dsn
 | SS-7 | SQL injection | Queries parametrizadas |
 | SS-8 | XSS | React auto-escaping; CSP |
 | SS-9 | RBAC por canal | Filtro de permisos en queries; cache con TTL configurable (default 300s). El Operador puede forzar invalidación inmediata de un usuario via `POST /api/admin/roles/invalidate/:userId`. Trade-off documentado: TTL <60s aumenta significativamente las llamadas a Discord API. |
-| SS-10 | Backup y recuperación | `pg_dump` diario programado (configurable en `Hivly.config.yml`). Retención mínima recomendada: 7 días. El Operador es responsable del backup del volumen `postgres_data`. Procedimiento de restore documentado en `/docs/operations.md`. |
+| SS-10 | Backup y recuperación | `pg_dump` diario programado (configurable en `Share2Brain.config.yml`). Retención mínima recomendada: 7 días. El Operador es responsable del backup del volumen `postgres_data`. Procedimiento de restore documentado en `/docs/operations.md`. |
 | SS-11 | Expiración de sesiones | TTL de sesión configurable (default 7 días) via `SESSION_TTL_DAYS` en `.env`. Limpieza automática de sesiones expiradas ejecutada al inicio y cada 24h via cron interno. Un token expirado retorna HTTP 401 inmediatamente. |
 
 ### 9.2 Rate Limiting
@@ -1304,7 +1304,7 @@ const rateLimitConfig = {
 ```typescript
 // Pino logger
 const logger = pino({
-  name: 'Hivly',
+  name: 'Share2Brain',
   level: process.env.LOG_LEVEL || 'info',
   formatters: {
     level: (label) => ({ level: label })
@@ -1319,14 +1319,14 @@ const logger = pino({
 
 | Evento | Formato |
 |--------|---------|
-| Backfill completado | ✅ Hivly — Backfill completado |
+| Backfill completado | ✅ Share2Brain — Backfill completado |
 | Nuevo contenido indexado | 📝 Nuevo conocimiento indexado |
-| Error en indexación | ❌ Hivly — Error en indexación |
-| Servicio iniciado | 🚀 Hivly — Servicio iniciado |
-| Errores críticos | 🔴 Hivly — Error crítico |
-| Mensaje editado | ✏️ Hivly — Mensaje editado en #canal |
-| Mensaje borrado | 🗑️ Hivly — Mensaje borrado en #canal |
-| Sync completado | 🔄 Hivly — Sincronización completada |
+| Error en indexación | ❌ Share2Brain — Error en indexación |
+| Servicio iniciado | 🚀 Share2Brain — Servicio iniciado |
+| Errores críticos | 🔴 Share2Brain — Error crítico |
+| Mensaje editado | ✏️ Share2Brain — Mensaje editado en #canal |
+| Mensaje borrado | 🗑️ Share2Brain — Mensaje borrado en #canal |
+| Sync completado | 🔄 Share2Brain — Sincronización completada |
 
 ---
 
@@ -1372,16 +1372,16 @@ const logger = pino({
 
 ```bash
 # 1. Clonar repositorio
-git clone https://github.com/Hivly/Hivly.git
-cd Hivly
+git clone https://github.com/Share2Brain/Share2Brain.git
+cd Share2Brain
 
 # 2. Configurar variables de entorno
 cp .env.example .env
 # Editar .env con tus valores
 
-# 3. Configurar Hivly
-cp Hivly.config.yml.example Hivly.config.yml
-# Editar Hivly.config.yml
+# 3. Configurar Share2Brain
+cp Share2Brain.config.yml.example Share2Brain.config.yml
+# Editar Share2Brain.config.yml
 
 # 4. Levantar servicios
 docker compose up -d
@@ -1452,11 +1452,11 @@ SENTRY_DSN=
 
 | ID | Pregunta | Propietario | Condición de revisión |
 |----|----------|-------------|----------------------|
-| PO-1 | ¿Qué ocurre con las sesiones activas de un usuario al que se le revocan permisos en Discord durante una sesión activa de Hivly? ¿Se termina la sesión al expirar la cache de roles (max TTL) o hay logout forzado? | Ingeniería + Producto | Antes de implementar RBAC |
-| PO-2 | ¿Cuál es la estrategia de migración de `Hivly.config.yml` cuando se añaden o eliminan campos entre versiones? ¿Error fatal o warning y valores default? | Ingeniería | Antes del primer release público |
-| PO-3 | ¿El Operador es responsable de configurar y pagar el proveedor de búsqueda web si habilita `search_web`? ¿O Hivly provee un proveedor por defecto con límites de uso? | Producto | Antes de activar la tool en v1 |
-| PO-4 | ¿Cómo se gestiona el upgrade de `Hivly.config.yml` para Operadores existentes cuando migran a una nueva versión del sistema? | Ingeniería | Antes del segundo release público |
-| PO-5 | RESUELTO (Story 3.0): el proveedor y modelo de embeddings son configurables (`embeddings.provider`: OpenAI o custom OpenAI-compatible; `embeddings.model`; `embeddings.dimensions`) vía `Hivly.config.yml`. Anthropic no aplica (sin API de embeddings). Queda validar en piloto qué modelo rinde mejor con jerga técnica (Solidity, Rust). | Producto + Ingeniería | Validar con comunidades piloto técnicas en beta sobre el modelo configurado |
+| PO-1 | ¿Qué ocurre con las sesiones activas de un usuario al que se le revocan permisos en Discord durante una sesión activa de Share2Brain? ¿Se termina la sesión al expirar la cache de roles (max TTL) o hay logout forzado? | Ingeniería + Producto | Antes de implementar RBAC |
+| PO-2 | ¿Cuál es la estrategia de migración de `Share2Brain.config.yml` cuando se añaden o eliminan campos entre versiones? ¿Error fatal o warning y valores default? | Ingeniería | Antes del primer release público |
+| PO-3 | ¿El Operador es responsable de configurar y pagar el proveedor de búsqueda web si habilita `search_web`? ¿O Share2Brain provee un proveedor por defecto con límites de uso? | Producto | Antes de activar la tool en v1 |
+| PO-4 | ¿Cómo se gestiona el upgrade de `Share2Brain.config.yml` para Operadores existentes cuando migran a una nueva versión del sistema? | Ingeniería | Antes del segundo release público |
+| PO-5 | RESUELTO (Story 3.0): el proveedor y modelo de embeddings son configurables (`embeddings.provider`: OpenAI o custom OpenAI-compatible; `embeddings.model`; `embeddings.dimensions`) vía `Share2Brain.config.yml`. Anthropic no aplica (sin API de embeddings). Queda validar en piloto qué modelo rinde mejor con jerga técnica (Solidity, Rust). | Producto + Ingeniería | Validar con comunidades piloto técnicas en beta sobre el modelo configurado |
 | PO-6 | ¿Qué ocurre con los embeddings al re-indexar si el modelo de embedding cambia (ej. el Operador cambia `embedding_model` en config)? ¿Reindexación total automática o manual? | Ingeniería | Antes de exponer `embedding_model` como config pública |
 | PO-7 | ¿El formato de fecha y autor en las citas del agente sigue la zona horaria del servidor o la del usuario? | UX + Ingeniería | Antes de implementar el Agent Runtime |
 | PO-8 | ¿Cómo se gestiona el `backfill_limit` si un canal tiene más mensajes que el límite? ¿Se documenta explícitamente que los mensajes más antiguos no estarán indexados? | Producto | Antes del lanzamiento; añadir advertencia visible en la UI |
@@ -1522,7 +1522,7 @@ SENTRY_DSN=
 - [ ] Dominio configurado (opcional)
 - [ ] Certificado SSL (si aplica)
 - [ ] Variables de entorno configuradas
-- [ ] Hivly.config.yml personalizado
+- [ ] Share2Brain.config.yml personalizado
 - [ ] Discord Bot creado y con permisos
 - [ ] `DISCORD_REDIRECT_URI` configurada en el dashboard de la aplicación Discord
 - [ ] Credenciales del/los proveedor(es) elegido(s): LLM (Anthropic/OpenAI/custom) y embeddings (OpenAI/custom) con API key (y base_url si custom)

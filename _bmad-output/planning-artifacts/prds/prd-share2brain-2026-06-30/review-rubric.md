@@ -1,4 +1,4 @@
-# PRD Quality Review — Hivly Self-Hosted
+# PRD Quality Review — Share2Brain Self-Hosted
 
 ## Overall verdict
 
@@ -10,7 +10,7 @@ This PRD is technically credible and unusually well-specified at the infrastruct
 
 The Decisions table (§14, SD-1 through SD-15) is genuinely useful: each decision has a rationale and is traceable. The Non-Goals list (§2.3) is concrete and does real work. However, the PRD reads as having already resolved all trade-offs in one direction, with no surfaced alternatives or honest cost acknowledgment.
 
-There are no Open Questions anywhere in the document. For a 1.0 of a self-hosted AI product, this is implausible. Unresolved questions that should be visible include: (a) what happens when the Discord API returns an error mid-backfill — is the partial index acceptable?; (b) what is the degradation behavior when the LLM provider is unavailable?; (c) how does an operator migrate data across Hivly versions?; (d) is `delete_policy: soft` the right default, given that soft-deleted content could appear in citations and confuse members?
+There are no Open Questions anywhere in the document. For a 1.0 of a self-hosted AI product, this is implausible. Unresolved questions that should be visible include: (a) what happens when the Discord API returns an error mid-backfill — is the partial index acceptable?; (b) what is the degradation behavior when the LLM provider is unavailable?; (c) how does an operator migrate data across Share2Brain versions?; (d) is `delete_policy: soft` the right default, given that soft-deleted content could appear in citations and confuse members?
 
 The roadmap (§15) separates MVP from v1 at the phase level but no individual FR or component is tagged with its phase. An engineer reading §4 cannot determine which components are in scope for MVP. The statement "sync de ediciones/borrados" appears in v1 in §15, yet SB-16, SB-17, SNF-13, SNF-14, SNF-15 are written as first-class requirements alongside MVP components in §4 and §11 — this creates an incoherent implementation boundary.
 
@@ -91,7 +91,7 @@ The document also implicitly assumes the operator is a solo technical person —
 
 - **high** No assumptions are tagged (entire document) — At least four load-bearing assumptions exist (OAuth redirect URL requirement, embedding cost model, Discord API rate limit adequacy, embedding quality threshold) that could invalidate scope if wrong. *Fix:* Add a §0.1 Assumptions table with [ASSUMPTION] tags and owner/validation plan for each.
 - **medium** Roadmap phase boundaries have no decision criteria (§15) — "v1" items are listed but there is no criterion for when MVP is considered complete and v1 begins. Without a definition of MVP exit, the boundary is meaningless to a PM. *Fix:* Add one or two objective criteria per phase transition (e.g., "MVP complete when SM-1 > 70% across 3 active communities in production for 30 days").
-- **medium** Operator vs. Admin persona distinction is underdeveloped (§3) — The PRD assumes the operator and the Discord Admin are the same person, but they need not be. If they are different, the Admin has no access path to Hivly (no admin endpoints, no login). *Fix:* Explicitly state whether Operator = Admin is a required constraint or an assumption.
+- **medium** Operator vs. Admin persona distinction is underdeveloped (§3) — The PRD assumes the operator and the Discord Admin are the same person, but they need not be. If they are different, the Admin has no access path to Share2Brain (no admin endpoints, no login). *Fix:* Explicitly state whether Operator = Admin is a required constraint or an assumption.
 - **low** "Lista de canales a excluir" mentioned in §13 Threat Model but not in §4.6 config — The YAML schema in §4.6 shows `channels[].enabled: true/false` but the threat model implies a separate exclusion list. *Fix:* Reconcile: clarify that `enabled: false` is the exclusion mechanism and remove the ambiguity from §13.
 
 ---

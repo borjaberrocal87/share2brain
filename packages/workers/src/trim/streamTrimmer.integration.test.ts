@@ -6,7 +6,7 @@
 //
 // Requires infra:  docker compose up -d redis   (or Homebrew redis on :6379)
 // Run:             npm run test:integration
-import type { RedisClient } from '@hivly/shared/redis';
+import type { RedisClient } from '@share2brain/shared/redis';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import type { Logger } from '../logger.js';

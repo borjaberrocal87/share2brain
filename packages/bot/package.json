@@ -1,5 +1,5 @@
 {
-  "name": "@hivly/bot",
+  "name": "@share2brain/bot",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@hivly/shared": "*",
+    "@share2brain/shared": "*",
     "discord.js": "^14.26.4",
     "redis": "^6.1.0"
   }

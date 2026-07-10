@@ -1,9 +1,9 @@
 // Infrastructure adapter: the ONLY file that knows the stats aggregation SQL. Uses
-// the `sql`/`inArray` re-exported by @hivly/shared/db so the backend never
+// the `sql`/`inArray` re-exported by @share2brain/shared/db so the backend never
 // imports drizzle-orm directly (AD-2). Every channel-scoped query embeds
 // `inArray(channel_id, allowedChannelIds)` (AD-12) plus the D4 deleted-message
 // exclusion predicate, copied verbatim from documentRepository.drizzle.ts.
-import { inArray, sql, type Database } from '@hivly/shared/db';
+import { inArray, sql, type Database } from '@share2brain/shared/db';
 
 import type {
   ActivityDay,

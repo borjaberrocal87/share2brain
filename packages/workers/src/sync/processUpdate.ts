@@ -11,10 +11,10 @@
 // would hit when URL positions shift between edits. A zero-URL edit (F3 — none
 // extracted, all SSRF-blocked, or blank content) converges on the SAME flow
 // with an empty new row set: it purges every old row.
-import type { HivlyConfig } from '@hivly/shared';
-import { discordMessages, embeddings, inArray, sql, type Database } from '@hivly/shared/db';
-import { assertEmbeddingDimensions } from '@hivly/shared/providers';
-import type { MessageUpdatedEvent } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import { discordMessages, embeddings, inArray, sql, type Database } from '@share2brain/shared/db';
+import { assertEmbeddingDimensions } from '@share2brain/shared/providers';
+import type { MessageUpdatedEvent } from '@share2brain/shared/types/events';
 
 import type { Embedder } from '../indexer/types.js';
 import { buildEmbeddingText, type EnrichmentChatModel } from '../enrichment/enrich.js';
@@ -31,7 +31,7 @@ export interface ProcessUpdateDeps {
   stream: string;
   db: Database;
   embedder: Embedder;
-  config: HivlyConfig;
+  config: Share2BrainConfig;
   logger: Logger;
   /** The enrichment chat model — built once at boot, injected (AC-7, mirrors
    *  the Indexer's injection pattern; never constructed here). */

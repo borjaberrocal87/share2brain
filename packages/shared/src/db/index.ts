@@ -11,22 +11,22 @@ export { schema };
 
 // Re-exported so services can build raw queries (e.g. the `/health` probe
 // `db.execute(sql\`select 1\`)`) without importing drizzle-orm directly — they
-// depend only on @hivly/shared (AD-2).
+// depend only on @share2brain/shared (AD-2).
 export { sql } from 'drizzle-orm';
 
 // Re-exported for the RBAC expansion query (AD-12): `WHERE allowed_roles && :roles`
 // (Postgres array-overlap `&&`). Same rationale as `sql` — the backend depends
-// only on @hivly/shared and must not import drizzle-orm directly (AD-2).
+// only on @share2brain/shared and must not import drizzle-orm directly (AD-2).
 export { arrayOverlaps } from 'drizzle-orm';
 
 // Re-exported for the Indexer's dedup query (Story 3.3): `WHERE id IN (:ids)`
 // (`inArray`). Same rationale as `sql`/`arrayOverlaps` — workers depend only on
-// @hivly/shared and must not import drizzle-orm directly (AD-2). NOTE: `inArray`
+// @share2brain/shared and must not import drizzle-orm directly (AD-2). NOTE: `inArray`
 // throws on an empty array; guard the caller with `ids.length > 0`.
 export { inArray } from 'drizzle-orm';
 
 /**
- * The typed Drizzle database handle, bound to the full Hivly schema. `$client` is
+ * The typed Drizzle database handle, bound to the full Share2Brain schema. `$client` is
  * the underlying pg `Pool` — call `db.$client.end()` to close it (integration
  * tests, graceful shutdown). This mirrors exactly what `drizzle(pool)` returns.
  */

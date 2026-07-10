@@ -3,8 +3,8 @@
 // Discord client) without triggering main()'s import-time side effects. This is
 // where the DDD layers are wired: infrastructure adapters → application service →
 // presentation controller → routes.
-import { type Database } from '@hivly/shared/db';
-import type { Logger } from '@hivly/shared/logger';
+import { type Database } from '@share2brain/shared/db';
+import type { Logger } from '@share2brain/shared/logger';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
@@ -31,7 +31,7 @@ import { createFetchDiscordOAuthClient } from './infrastructure/discordOAuthClie
 import { createDrizzleRagRetriever } from './infrastructure/ragRetriever.drizzle.js';
 import { createDrizzleReadStatusRepository } from './infrastructure/readStatusRepository.drizzle.js';
 import { createDrizzleStatsRepository } from './infrastructure/statsRepository.drizzle.js';
-import type { RedisClient } from '@hivly/shared/redis';
+import type { RedisClient } from '@share2brain/shared/redis';
 import { createSessionMiddleware } from './infrastructure/sessionStore.js';
 import { createDrizzleUserRepository } from './infrastructure/userRepository.drizzle.js';
 import { createRbacMiddleware } from './middleware/rbac.js';

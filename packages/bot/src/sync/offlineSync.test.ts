@@ -2,9 +2,9 @@
 // per-channel sequencing, null-cursor/disabled-channel skips, per-channel error
 // isolation (no deletes on a failed re-fetch), abort at channel boundaries, the
 // per-channel info summary, the publish path shape, and never logging content.
-import type { HivlyConfig } from '@hivly/shared';
-import type { Database } from '@hivly/shared/db';
-import type { RedisClient } from '@hivly/shared/redis';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { Database } from '@share2brain/shared/db';
+import type { RedisClient } from '@share2brain/shared/redis';
 import type { Client } from 'discord.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -61,7 +61,7 @@ function fakeLogger(): Logger {
 
 function makeConfig(
   overrides: { channels?: Array<{ id: string; enabled: boolean }>; limit?: number } = {},
-): HivlyConfig {
+): Share2BrainConfig {
   return {
     discord: {
       guild_id: 'guild-1',
@@ -71,7 +71,7 @@ function makeConfig(
       })),
       backfill: { enabled: true, limit: overrides.limit ?? 1000, ignore_bots: true },
     },
-  } as unknown as HivlyConfig;
+  } as unknown as Share2BrainConfig;
 }
 
 function makeDb(rows: Array<Record<string, unknown>>): { db: Database; execute: ReturnType<typeof vi.fn> } {
@@ -80,7 +80,7 @@ function makeDb(rows: Array<Record<string, unknown>>): { db: Database; execute: 
 }
 
 function makeDeps(opts: {
-  config?: HivlyConfig;
+  config?: Share2BrainConfig;
   channels?: Record<string, FakeChannel | Error>;
   dbRows?: Array<Record<string, unknown>>;
   signal?: AbortSignal;

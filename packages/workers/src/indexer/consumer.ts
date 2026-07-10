@@ -5,10 +5,10 @@
 // One dedicated Redis client is enough: this loop is strictly sequential
 // (read → process → ack → read), so nothing ever queues behind the blocking read.
 // Do not share the injected client with a concurrent caller.
-import type { HivlyConfig } from '@hivly/shared';
-import type { Database } from '@hivly/shared/db';
-import type { RedisClient } from '@hivly/shared/redis';
-import { CONSUMER_GROUPS, STREAM_KEYS } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { Database } from '@share2brain/shared/db';
+import type { RedisClient } from '@share2brain/shared/redis';
+import { CONSUMER_GROUPS, STREAM_KEYS } from '@share2brain/shared/types/events';
 
 import type { EnrichmentChatModel } from '../enrichment/enrich.js';
 import type { GuardedDispatcher } from '../enrichment/ssrfGuard.js';
@@ -24,7 +24,7 @@ export interface RunIndexerDeps {
   redis: RedisClient;
   db: Database;
   embedder: Embedder;
-  config: HivlyConfig;
+  config: Share2BrainConfig;
   logger: Logger;
   /** Built once at boot alongside the embedder — never constructed here (AC-6). */
   enrichModel: EnrichmentChatModel;

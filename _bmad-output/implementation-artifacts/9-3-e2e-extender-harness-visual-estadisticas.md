@@ -180,7 +180,7 @@ AC7  Given degraded responses, Then (a) with page.route fulfilling GET /api/stat
      datos en tus canales todavía.', stats-top-users-empty 'Sin autores todavía.', donut center
      '0%', footer '0 documentos en total', total '0 recursos · últimos 14 días'.
 
-AC8  Gate (AGENT-run, §3.1/§3.4): npm run test:e2e -w @hivly/web → 23 chromium green
+AC8  Gate (AGENT-run, §3.1/§3.4): npm run test:e2e -w @share2brain/web → 23 chromium green
      (analytics 7 / chat 7 / docs 4 / interactions 2 / search 3), ordering invariants preserved
      (docs mark-all and chat streaming stay their files' terminal mutations); npm run lint → 0;
      npm run test (unit+web) → unchanged; npm run build → clean (5 pkgs). Integration suite NOT
@@ -197,7 +197,7 @@ AC8  Gate (AGENT-run, §3.1/§3.4): npm run test:e2e -w @hivly/web → 23 chromi
   - [x] `git switch -c feat/9-3-e2e-stats-harness` off `main` @ `23cdbe3`.
   - [x] Preconditions: `docker compose up -d postgres redis` (Homebrew Redis for local :6379 —
         two-Redis gotcha), OPS-2: app containers stopped, `npx drizzle-kit migrate` applied,
-        chromium installed. Baseline `npm run test:e2e -w @hivly/web` → **16 passed** pre-change.
+        chromium installed. Baseline `npm run test:e2e -w @share2brain/web` → **16 passed** pre-change.
 - [x] Task 1 — Seed extension (AC1)
   - [x] `MessageSpec` gains `authorName?: string`; the discord_messages INSERT (seed.ts:156-161)
         gains the `author_name` column (`${m.authorName ?? null}`). Set D2 names on r1/r2 only.
@@ -209,7 +209,7 @@ AC8  Gate (AGENT-run, §3.1/§3.4): npm run test:e2e -w @hivly/web → 23 chromi
   - [x] D4: derive `CONVERSATION_CREATED_AT/UPDATED_AT` from `SEED_NOW` (−5 days / −5 days +5s).
   - [x] Update the seed header comment (dataset description) for the 9.3 additions; keep every
         new id `e2e-`-prefixed (cleanup + the 4.2 broad-LIKE lesson).
-  - [x] Smoke per §3.3: boot `npm run e2e:server -w @hivly/backend`, acquire a member session with
+  - [x] Smoke per §3.3: boot `npm run e2e:server -w @share2brain/backend`, acquire a member session with
         a curl cookie jar directly against :3100 (`curl -c jar -sD- http://127.0.0.1:3100/api/auth/login`
         → extract `state` from the Location header → `curl -b jar -c jar
         '.../api/auth/callback?code=e2e-member&state=<state>'` → `curl -b jar .../api/stats`; the
@@ -390,7 +390,7 @@ channel row with `count===0`, single-part alphabetic initials).
 `packages/web/src/**` (StatsView/Sidebar/AppLayout/components.css/global.css) · the 4 existing
 spec files · `playwright.config.ts` · `helpers/session.ts` · `packages/shared/**` · production
 backend (`app.ts`, statsService/statsRepository) · integration suites and their fixtures ·
-migrations · `Hivly.config.yml` · `deferred-work.md` product entries (traceability notes only).
+migrations · `Share2Brain.config.yml` · `deferred-work.md` product entries (traceability notes only).
 If an assertion cannot pass without editing a non-seed, non-test file, STOP: wrong selector
 (fix the test) or a real 9.2 regression (record + surface it, don't patch product code here).
 
@@ -461,14 +461,14 @@ Claude Sonnet 5 (claude-sonnet-5).
 
 ### Debug Log References
 
-**Task 0 — baseline**: `npm run test:e2e -w @hivly/web` on `main @ 23cdbe3` →
+**Task 0 — baseline**: `npm run test:e2e -w @share2brain/web` on `main @ 23cdbe3` →
 **16 passed** (13.8s). Infra: Homebrew Redis confirmed running (`redis-cli
 PING` → `PONG`), no stale `:3100`/`:4173` processes, app containers
 (backend/bot/workers/nginx) stopped per OPS-2 (postgres/redis kept up),
 `npx drizzle-kit migrate` → up to date.
 
 **Task 1 — §3.3 seed smoke** (curl cookie-jar against a manually-booted
-`npm run e2e:server -w @hivly/backend` on :3100):
+`npm run e2e:server -w @share2brain/backend` on :3100):
 
 - `e2e-member` `GET /api/stats` returned, byte-for-byte, the exact JSON in Dev
   Notes §Expected responses: `kpis` 5/2/2/1 with the exact labels/subs,
@@ -494,7 +494,7 @@ Every other precomputed value (avatar hashes, KPI/channel/top-user/donut
 figures, gradients, fonts, sizes) matched on the first try with zero
 adjustment.
 
-**Task 5 — full gate**: `npm run test:e2e -w @hivly/web` → **23 passed**
+**Task 5 — full gate**: `npm run test:e2e -w @share2brain/web` → **23 passed**
 (17.2s) — analytics 7 / chat 7 / docs 4 / interactions 2 / search 3; ordering
 invariants held (docs "mark all read" and chat streaming stayed their files'
 terminal mutations). `git diff --stat` confirmed zero changes to the 4

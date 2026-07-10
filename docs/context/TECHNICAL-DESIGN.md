@@ -1,8 +1,8 @@
-# Diseño Técnico — Hivly Self-Hosted
+# Diseño Técnico — Share2Brain Self-Hosted
 
 | | |
 |---|---|
-| **Proyecto** | Hivly Self-Hosted |
+| **Proyecto** | Share2Brain Self-Hosted |
 | **Versión** | 1.0 |
 | **Fecha** | 30 de junio de 2026 |
 | **Estado** | Final |
@@ -40,7 +40,7 @@
 
 ## 1. Resumen ejecutivo
 
-Hivly es un agente de IA que indexa automáticamente el conocimiento de una comunidad de Discord y responde preguntas en lenguaje natural con fuentes verificables. Cada operador despliega una instancia independiente que sirve a un único servidor Discord (guild) con un solo comando: `docker compose up -d`.
+Share2Brain es un agente de IA que indexa automáticamente el conocimiento de una comunidad de Discord y responde preguntas en lenguaje natural con fuentes verificables. Cada operador despliega una instancia independiente que sirve a un único servidor Discord (guild) con un solo comando: `docker compose up -d`.
 
 Este documento describe la arquitectura técnica completa del sistema: cómo están organizados los servicios, cómo se comunican, qué datos almacenan y por qué se tomaron las decisiones clave. Es el documento de referencia para cualquier persona que construya, extienda o revise el sistema.
 
@@ -110,7 +110,7 @@ graph TD
     nginx -->|"GET /  → dist/"| nginx
     nginx -->|"POST /api/*\nproxy_pass"| backend
     Discord -->|"Gateway WebSocket"| bot
-    bot -->|"XADD hivly:discord:*"| redis
+    bot -->|"XADD share2brain:discord:*"| redis
     workers -->|"XREADGROUP"| redis
     workers -->|"INSERT / UPDATE embeddings"| pg
     bot -->|"INSERT discord_messages"| pg
@@ -136,9 +136,9 @@ graph TD
 ## 4. Estructura del monorepo
 
 ```
-hivly/
+share2brain/
 ├── packages/
-│   ├── shared/               # @hivly/shared — kernel de dominio
+│   ├── shared/               # @share2brain/shared — kernel de dominio
 │   │   └── src/
 │   │       ├── db/
 │   │       │   ├── schema.ts         # Drizzle: fuente de verdad de tablas
@@ -152,7 +152,7 @@ hivly/
 │   │       └── types/
 │   │           └── events.ts         # Tipos de eventos Redis Streams
 │   │
-│   ├── bot/                  # @hivly/bot — Discord Bot
+│   ├── bot/                  # @share2brain/bot — Discord Bot
 │   │   ├── src/
 │   │   │   ├── main.ts
 │   │   │   ├── listeners/            # messageCreate, messageUpdate, messageDelete
@@ -160,7 +160,7 @@ hivly/
 │   │   │   └── publisher/            # EventPublisher → Redis Streams
 │   │   └── Dockerfile
 │   │
-│   ├── backend/              # @hivly/backend — Express API + Agente
+│   ├── backend/              # @share2brain/backend — Express API + Agente
 │   │   ├── src/
 │   │   │   ├── main.ts
 │   │   │   ├── routes/               # REST endpoints + /api/chat SSE
@@ -168,14 +168,14 @@ hivly/
 │   │   │   └── middleware/           # Auth, rate-limit, RBAC filter
 │   │   └── Dockerfile
 │   │
-│   ├── workers/              # @hivly/workers — Indexer + Sync
+│   ├── workers/              # @share2brain/workers — Indexer + Sync
 │   │   ├── src/
 │   │   │   ├── main.ts
 │   │   │   ├── indexer/              # Consume created → embed → pgvector
 │   │   │   └── sync/                 # Consume updated/deleted → re-index/purge
 │   │   └── Dockerfile
 │   │
-│   └── web/                  # @hivly/web — Vite + React SPA
+│   └── web/                  # @share2brain/web — Vite + React SPA
 │       ├── src/
 │       │   ├── main.tsx
 │       │   ├── views/                # Search, Documents, Chat, ReadStatus
@@ -184,7 +184,7 @@ hivly/
 │       └── Dockerfile                # Multi-stage: build → dist/
 │
 ├── docker-compose.yml
-├── Hivly.config.yml          # Configuración de comportamiento
+├── Share2Brain.config.yml          # Configuración de comportamiento
 └── .env                      # Secretos (tokens, API keys)
 ```
 
@@ -192,13 +192,13 @@ hivly/
 
 ```typescript
 // ✅ Correcto — desde cualquier servicio
-import { discordMessages } from '@hivly/shared/db/schema'
-import { SearchResponseSchema } from '@hivly/shared/schemas'
-import { loadConfig } from '@hivly/shared/config'
+import { discordMessages } from '@share2brain/shared/db/schema'
+import { SearchResponseSchema } from '@share2brain/shared/schemas'
+import { loadConfig } from '@share2brain/shared/config'
 
 // ❌ Incorrecto — servicios no se importan entre sí
-import { something } from '@hivly/backend'  // PROHIBIDO desde bot, workers, web
-import { something } from '@hivly/bot'      // PROHIBIDO desde backend, workers, web
+import { something } from '@share2brain/backend'  // PROHIBIDO desde bot, workers, web
+import { something } from '@share2brain/bot'      // PROHIBIDO desde backend, workers, web
 ```
 
 ---
@@ -213,7 +213,7 @@ El paquete del que todos dependen y que no depende de nadie. Sus cuatro responsa
 
 **`src/schemas/`** — Zod schemas de API. El backend los usa para validar inputs en runtime con `schema.parse()`; el frontend los usa solo para inferencia de tipos con `z.infer<>`. El contrato entre frontend y backend es este directorio.
 
-**`src/config/index.ts`** — `loadConfig()`. Lee `Hivly.config.yml`, valida con un Zod schema y devuelve una configuración tipada. Si el YAML es inválido, lanza un error con un mensaje claro antes de que el servicio haga nada. Todos los servicios llaman a esto al arrancar.
+**`src/config/index.ts`** — `loadConfig()`. Lee `Share2Brain.config.yml`, valida con un Zod schema y devuelve una configuración tipada. Si el YAML es inválido, lanza un error con un mensaje claro antes de que el servicio haga nada. Todos los servicios llaman a esto al arrancar.
 
 **`src/types/events.ts`** — Tipos de eventos Redis Streams. El Bot los usa al hacer `XADD`; los Workers los usan al leer con `XREADGROUP`.
 
@@ -224,13 +224,13 @@ El paquete del que todos dependen y que no depende de nadie. Sus cuatro responsa
 **Flujo de arranque:**
 
 ```
-1. loadConfig()                    → valida Hivly.config.yml
+1. loadConfig()                    → valida Share2Brain.config.yml
 2. Inicializar cliente discord.js  → conectar al Gateway con permisos mínimos
 3. Inicializar node-redis          → conectar a Redis
 4. Registrar event listeners       → messageCreate, messageUpdate, messageDelete
 5. Ejecutar Backfiller             → fetch mensajes históricos por canal
-   └─ Para cada mensaje: XADD hivly:discord:messages
-6. Emitir discord.backfill.completed → hivly:knowledge:events
+   └─ Para cada mensaje: XADD share2brain:discord:messages
+6. Emitir discord.backfill.completed → share2brain:knowledge:events
 ```
 
 **Backfill reconciliado por snowflake:**
@@ -243,18 +243,18 @@ El Backfiller almacena el `last_seen_message_id` (Discord snowflake) por canal e
 |---|---|
 | Desconexión del Gateway | Reintento con exponential backoff (máx. 5 min); backfill desde `last_seen_message_id` al reconectar |
 | Rate limit Discord durante backfill | Respeta `Retry-After`; procesa canales de forma secuencial; delay mínimo 1s entre páginas |
-| Sin eventos en N minutos | Emite alerta al stream `hivly:knowledge:events` |
+| Sin eventos en N minutos | Emite alerta al stream `share2brain:knowledge:events` |
 | Token del bot expirado | Log crítico + alerta; no intenta auto-renovar |
 
 ### 5.3 packages/workers — Indexer + Sync
 
 **Responsabilidad:** Consumir eventos de Redis Streams y mantener el índice vectorial en PostgreSQL. Dos consumers en el mismo proceso, cada uno con su consumer group.
 
-**Indexer** — consume `hivly:discord:messages` (consumer group `hivly:indexer`); indexa solo
+**Indexer** — consume `share2brain:discord:messages` (consumer group `share2brain:indexer`); indexa solo
 mensajes con URL (FR5, Story 7.2):
 
 ```
-1. XREADGROUP GROUP hivly:indexer consumer-1 COUNT 10 STREAMS hivly:discord:messages >
+1. XREADGROUP GROUP share2brain:indexer consumer-1 COUNT 10 STREAMS share2brain:discord:messages >
 2. Para cada mensaje:
    a. urls = extractUrls(content, enrichment.fetch.allowed_schemes) — ordenado, deduplicado
    b. Si urls.length === 0: marcar indexed_at = now(), XACK, sin filas → siguiente mensaje
@@ -267,10 +267,10 @@ mensajes con URL (FR5, Story 7.2):
    d. Si quedó ≥1 fila: embedder.embedDocuments(['${title}\n\n${description}', ...]) → vector[dimensions]
    e. Una transacción: INSERT/UPSERT embeddings (chunk_key=`${messageId}:${urlIndex}`, title,
       description, link, embedding, channel_id, message_ids=[messageId]) + UPDATE indexed_at
-3. XACK hivly:discord:messages hivly:indexer <message-id> (gated por el RETURNING del UPDATE)
+3. XACK share2brain:discord:messages share2brain:indexer <message-id> (gated por el RETURNING del UPDATE)
 ```
 
-**Sync Worker** — consume `hivly:discord:messages:updated` y `hivly:discord:messages:deleted` (consumer group `hivly:sync`); reconcilia por diff de links, no re-chunkea (Story 7.3):
+**Sync Worker** — consume `share2brain:discord:messages:updated` y `share2brain:discord:messages:deleted` (consumer group `share2brain:sync`); reconcilia por diff de links, no re-chunkea (Story 7.3):
 
 ```
 Para messageUpdate:
@@ -340,7 +340,7 @@ const allowedChannelIds = await db
 req.allowedChannelIds = allowedChannelIds.map(r => r.channelId)
 ```
 
-**Por qué la expansión ocurre en cada request** (y no se cachea en la sesión): el operador puede cambiar los permisos en `Hivly.config.yml` y reiniciar el Backend. Si los `allowedChannelIds` estuvieran en la sesión, un miembro con sesión activa seguiría viendo canales de los que se le revocó acceso hasta que su sesión expire.
+**Por qué la expansión ocurre en cada request** (y no se cachea en la sesión): el operador puede cambiar los permisos en `Share2Brain.config.yml` y reiniciar el Backend. Si los `allowedChannelIds` estuvieran en la sesión, un miembro con sesión activa seguiría viendo canales de los que se le revocó acceso hasta que su sesión expire.
 
 ### 5.5 packages/web — Web App SPA
 
@@ -358,12 +358,12 @@ La Web App es una **SPA estática**. No tiene servidor Node. El build de Vite pr
 | **ReadStatus** | Gestión de lectura: badges, mark-all, conteo en sidebar |
 | **Statistics** | KPIs de conocimiento, actividad de indexado (14 días), volumen por canal, cobertura de lectura personal y Top 5 usuarios más activos; 5 secciones renderizadas 100% desde `StatsResponse` (RBAC-scoped server-side, AD-12), sin dependencia de librerías de gráficos (Historia 9.2) |
 
-**Contrato con el Backend:** todos los tipos de request y response se infieren de los Zod schemas de `@hivly/shared/schemas`. Si el Backend cambia el shape de un endpoint y actualiza el schema, el compilador TypeScript rompe el frontend antes de que llegue a producción.
+**Contrato con el Backend:** todos los tipos de request y response se infieren de los Zod schemas de `@share2brain/shared/schemas`. Si el Backend cambia el shape de un endpoint y actualiza el schema, el compilador TypeScript rompe el frontend antes de que llegue a producción.
 
 ```typescript
 // packages/web/src/api/search.ts
 import type { z } from 'zod'
-import { SearchResponseSchema } from '@hivly/shared/schemas'
+import { SearchResponseSchema } from '@share2brain/shared/schemas'
 
 type SearchResponse = z.infer<typeof SearchResponseSchema>
 
@@ -541,13 +541,13 @@ sequenceDiagram
     D->>Bot: messageCreate event
     Bot->>Bot: ¿Canal habilitado? ¿No es bot?
     Bot->>PG: INSERT discord_messages
-    Bot->>RS: XADD hivly:discord:messages {messageId, channelId, content, ...}
+    Bot->>RS: XADD share2brain:discord:messages {messageId, channelId, content, ...}
 
-    RS->>Idx: XREADGROUP hivly:indexer (at-least-once)
+    RS->>Idx: XREADGROUP share2brain:indexer (at-least-once)
     Idx->>Idx: extractUrls(content, allowed_schemes) — ordenado, deduplicado
     alt Sin URLs (o todas bloqueadas por SSRF)
         Idx->>PG: UPDATE discord_messages SET indexed_at = now() (0 filas)
-        Idx->>RS: XACK hivly:discord:messages hivly:indexer <id>
+        Idx->>RS: XACK share2brain:discord:messages share2brain:indexer <id>
     else Por cada URL (en orden)
         Idx->>Web: fetch(url) tras Layer A/B SSRF (redirect: 'manual')
         Web-->>Idx: body + content-type (o fallo: timeout/http_error/…)
@@ -557,7 +557,7 @@ sequenceDiagram
         EMB-->>Idx: vector[dimensions]
         Idx->>PG: INSERT embeddings (title, description, link, embedding, channel_id, message_ids)
         Idx->>PG: UPDATE discord_messages SET indexed_at = now()
-        Idx->>RS: XACK hivly:discord:messages hivly:indexer <id>
+        Idx->>RS: XACK share2brain:discord:messages share2brain:indexer <id>
     end
 ```
 
@@ -576,10 +576,10 @@ flowchart TD
     A[Bot arranca] --> B{¿last_seen_message_id\nen discord_messages?}
     B -->|Sí| C[Fetch mensajes desde snowflake\nhasta ahora]
     B -->|No| D[Fetch hasta backfill_limit\ndesde el canal]
-    C --> E[XADD cada mensaje\n→ hivly:discord:messages]
+    C --> E[XADD cada mensaje\n→ share2brain:discord:messages]
     D --> E
     E --> F[Actualizar last_seen_message_id\npor canal]
-    F --> G[XADD discord.backfill.completed\n→ hivly:knowledge:events]
+    F --> G[XADD discord.backfill.completed\n→ share2brain:knowledge:events]
 ```
 
 ---
@@ -590,10 +590,10 @@ flowchart TD
 
 | Stream key | Producer | Consumer group | Consumer | Propósito |
 |---|---|---|---|---|
-| `hivly:discord:messages` | bot | `hivly:indexer` *(consumer activo desde 3.3)* | workers/indexer | Indexar mensajes nuevos |
-| `hivly:discord:messages:updated` | bot | `hivly:sync` | workers/sync | Re-indexar mensajes editados |
-| `hivly:discord:messages:deleted` | bot | `hivly:sync` | workers/sync | Purgar mensajes borrados |
-| `hivly:knowledge:events` | bot (desde 3.2: `discord.backfill.completed`); workers *(Epic 6)* | `hivly:notifier` | notifier *(deferred — Epic 6)* | Notificaciones al operador |
+| `share2brain:discord:messages` | bot | `share2brain:indexer` *(consumer activo desde 3.3)* | workers/indexer | Indexar mensajes nuevos |
+| `share2brain:discord:messages:updated` | bot | `share2brain:sync` | workers/sync | Re-indexar mensajes editados |
+| `share2brain:discord:messages:deleted` | bot | `share2brain:sync` | workers/sync | Purgar mensajes borrados |
+| `share2brain:knowledge:events` | bot (desde 3.2: `discord.backfill.completed`); workers *(Epic 6)* | `share2brain:notifier` | notifier *(deferred — Epic 6)* | Notificaciones al operador |
 
 ### Schema mínimo de cada mensaje de stream
 
@@ -629,11 +629,11 @@ interface MessageDeletedEvent extends StreamEvent {
 Los Workers leen con `XREADGROUP` en modo **at-least-once**: si un mensaje se lee pero no se hace ACK antes de un timeout, Redis lo reasigna a otro consumer del mismo group. El Worker solo hace `XACK` después de completar el procesamiento con éxito.
 
 ```
-XREADGROUP GROUP hivly:indexer consumer-1 COUNT 10 BLOCK 5000 STREAMS hivly:discord:messages >
+XREADGROUP GROUP share2brain:indexer consumer-1 COUNT 10 BLOCK 5000 STREAMS share2brain:discord:messages >
 
 // Procesar...
 if (éxito) {
-  XACK hivly:discord:messages hivly:indexer <message-id>
+  XACK share2brain:discord:messages share2brain:indexer <message-id>
 }
 // Si falla: no ACK → Redis reintenta automáticamente
 ```
@@ -794,7 +794,7 @@ flowchart LR
     ACI -->|"WHERE channel_id = ANY(:)"| Query["pgvector query\n(filtrada)"]
 ```
 
-El operador define la política en `Hivly.config.yml`:
+El operador define la política en `Share2Brain.config.yml`:
 
 ```yaml
 access_control:
@@ -904,12 +904,12 @@ location /api/chat {
 
 El sistema usa dos ficheros:
 
-- **`Hivly.config.yml`** — comportamiento del sistema (canales, modelos, RBAC, etc.)
+- **`Share2Brain.config.yml`** — comportamiento del sistema (canales, modelos, RBAC, etc.)
 - **`.env`** — secretos (tokens de Discord, API keys del LLM, URLs de DB)
 
 La función `loadConfig()` de `packages/shared` lee y valida el YAML. Si una clave requerida falta o tiene tipo incorrecto, el servicio termina con un error descriptivo antes de hacer cualquier conexión de red.
 
-### Ejemplo de Hivly.config.yml
+### Ejemplo de Share2Brain.config.yml
 
 ```yaml
 version: "1.0"
@@ -958,7 +958,7 @@ enrichment:
     timeout_ms: 5000
     max_bytes: 2000000
     max_redirects: 3
-    user_agent: "HivlyBot/1.0"
+    user_agent: "Share2BrainBot/1.0"
     allowed_schemes: ["https"]
     block_private_ips: true  # mitigación SSRF (Historia 7.2)
 
@@ -999,8 +999,8 @@ security:
 ### Primer despliegue
 
 ```bash
-git clone https://github.com/Hivly/hivly.git
-cp Hivly.config.yml.example Hivly.config.yml
+git clone https://github.com/Share2Brain/share2brain.git
+cp Share2Brain.config.yml.example Share2Brain.config.yml
 cp .env.example .env
 # Editar ambos ficheros con los valores reales
 docker compose up -d
@@ -1013,7 +1013,7 @@ services:
   postgres:
     image: pgvector/pgvector:pg17   # pgvector 0.8.2 sobre PostgreSQL 17
     environment:
-      POSTGRES_DB: hivly
+      POSTGRES_DB: share2brain
       # ...
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -1035,7 +1035,7 @@ services:
       migrator: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
     volumes:
-      - ./Hivly.config.yml:/app/Hivly.config.yml:ro
+      - ./Share2Brain.config.yml:/app/Share2Brain.config.yml:ro
       - ./.env:/app/.env:ro
 
   workers:
@@ -1044,7 +1044,7 @@ services:
       migrator: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
     volumes:
-      - ./Hivly.config.yml:/app/Hivly.config.yml:ro
+      - ./Share2Brain.config.yml:/app/Share2Brain.config.yml:ro
       - ./.env:/app/.env:ro
 
   backend:
@@ -1053,7 +1053,7 @@ services:
       migrator: { condition: service_completed_successfully }
       redis: { condition: service_healthy }
     volumes:
-      - ./Hivly.config.yml:/app/Hivly.config.yml:ro
+      - ./Share2Brain.config.yml:/app/Share2Brain.config.yml:ro
       - ./.env:/app/.env:ro
 
   nginx:
@@ -1128,7 +1128,7 @@ Next.js requiere un servidor Node siempre activo. Para una herramienta self-host
 
 ### AD-4 — SSE, no WebSocket
 
-El chat de Hivly es unidireccional durante el stream: el servidor envía tokens, el cliente no envía nada. SSE es exactamente eso. WebSocket sería bidireccional (ninguna ventaja aquí) y requiere manejo especial de auth en el handshake — las cookies httpOnly no viajan igual. SSE funciona sobre HTTP normal, la cookie de sesión funciona sin configuración extra.
+El chat de Share2Brain es unidireccional durante el stream: el servidor envía tokens, el cliente no envía nada. SSE es exactamente eso. WebSocket sería bidireccional (ninguna ventaja aquí) y requiere manejo especial de auth en el handshake — las cookies httpOnly no viajan igual. SSE funciona sobre HTTP normal, la cookie de sesión funciona sin configuración extra.
 
 ### AD-10 — Sesiones en Redis, no en PostgreSQL
 
@@ -1154,7 +1154,7 @@ Estas decisiones están conscientemente pospuestas. No son olvidos — son área
 
 | Área | Qué está pendiente | Restricción |
 |---|---|---|
-| **Notificador (Telegram/Slack)** | ¿Vive en `workers` o en `backend`? | Debe consumir `hivly:knowledge:events` |
+| **Notificador (Telegram/Slack)** | ¿Vive en `workers` o en `backend`? | Debe consumir `share2brain:knowledge:events` |
 | **Retry y DLQ (Redis Streams)** | Max reintentos, MAXLEN, dead-letter | AD-13 fija ACK discipline; el resto es libre |
 | **CSS / UI framework** | Tailwind + shadcn/ui vs CSS Modules | Sin restricción |
 | **Frontend data fetching** | TanStack Query vs SWR | Debe respetar AD-6 (tipos de Zod) |

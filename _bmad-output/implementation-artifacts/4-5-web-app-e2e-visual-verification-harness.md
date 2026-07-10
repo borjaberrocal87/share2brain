@@ -14,11 +14,11 @@ As a developer of the project,
 I want an E2E harness that boots the authenticated SPA without real Discord and verifies the real visual/CSS acceptance criteria of the views,
 so that the verification gap left by Story 4.3 is closed, the Documentos view (4.4) is verified retroactively, and the Epic 5 chat UI (5.3/5.4) is unblocked.
 
-> Cross-cutting test-enablement story, formalized by `sprint-change-proposal-2026-07-07.md`. The mandatory gate (`bmad-story-mandatory-steps.md` §3.4) requires Playwright E2E whenever `@hivly/web` is touched, but no harness existed and the SPA gates everything behind a Discord OAuth session. **Playwright is NOT installed today** (verified: no `@playwright/test` in any package.json, no `node_modules/@playwright/`, no bin — the only lockfile hits are vitest's optional peer metadata). **Blocks Stories 5.3 and 5.4.**
+> Cross-cutting test-enablement story, formalized by `sprint-change-proposal-2026-07-07.md`. The mandatory gate (`bmad-story-mandatory-steps.md` §3.4) requires Playwright E2E whenever `@share2brain/web` is touched, but no harness existed and the SPA gates everything behind a Discord OAuth session. **Playwright is NOT installed today** (verified: no `@playwright/test` in any package.json, no `node_modules/@playwright/`, no bin — the only lockfile hits are vitest's optional peer metadata). **Blocks Stories 5.3 and 5.4.**
 
 ## Acceptance Criteria
 
-**AC1 — Tooling installed and wired.** `packages/web` declares `@playwright/test` (^1.61.1, current stable) as a devDependency; `packages/web/playwright.config.ts` exists; `npm run test:e2e -w @hivly/web` runs the E2E suite; the root `package.json` gains a `test:e2e` script delegating to the workspace. Playwright artifacts (`test-results/`, `playwright-report/`) are gitignored.
+**AC1 — Tooling installed and wired.** `packages/web` declares `@playwright/test` (^1.61.1, current stable) as a devDependency; `packages/web/playwright.config.ts` exists; `npm run test:e2e -w @share2brain/web` runs the E2E suite; the root `package.json` gains a `test:e2e` script delegating to the workspace. Playwright artifacts (`test-results/`, `playwright-report/`) are gitignored.
 
 **AC2 — Deterministic test backend.** The harness boots `createApp` with an injected fake `DiscordOAuthClient` (the `opts.oauth` pattern from `*.integration.test.ts`) and a deterministic fake `queryEmbedder`, over test Postgres+pgvector/Redis seeded with `channel_permissions` + `discord_messages` + `embeddings` (+ a pre-created user with `user_read_status` rows), so that `GET /api/search` returns fixed results and `GET /api/documents` returns a fixed read/unread mix. Seeding is idempotent (reset-then-seed on boot) and scoped to `e2e-`-prefixed ids so it coexists with the dev DB and the integration suites.
 
@@ -42,7 +42,7 @@ so that the verification gap left by Story 4.3 is closed, the Documentos view (4
 
 - [x] **Task 1 — E2E test-server entrypoint in `packages/backend`** (AC: 2, 3)
   - [x] Create `packages/backend/src/e2e/server.ts` (dev-only entrypoint, same package as `test-helpers.ts` so it can import it — see Dev Notes → AD-2). At the very top: `if (process.env.NODE_ENV === 'production') { console.error('[e2e] refusing to start in production'); process.exit(1); }`.
-  - [x] Boot: `openTestClients()` (from `../test-helpers.js`; honors `DATABASE_URL`/`REDIS_URL`, defaults `postgres://hivly:changeme@127.0.0.1:5432/hivly` / `redis://127.0.0.1:6379`) → reset-then-seed (Task 2) → `createApp(clients.db, clients.redis, buildTestAppOptions({ oauth: e2eOAuth(), queryEmbedder: e2eQueryEmbedder(), frontendUrl: E2E_WEB_ORIGIN, allowedOrigins: [E2E_WEB_ORIGIN] }))` → `app.listen(E2E_BACKEND_PORT, '127.0.0.1')`. `E2E_BACKEND_PORT` default **3100** (avoid the dev backend on 3000); `E2E_WEB_ORIGIN` default `http://localhost:4173` (vite preview).
+  - [x] Boot: `openTestClients()` (from `../test-helpers.js`; honors `DATABASE_URL`/`REDIS_URL`, defaults `postgres://share2brain:changeme@127.0.0.1:5432/share2brain` / `redis://127.0.0.1:6379`) → reset-then-seed (Task 2) → `createApp(clients.db, clients.redis, buildTestAppOptions({ oauth: e2eOAuth(), queryEmbedder: e2eQueryEmbedder(), frontendUrl: E2E_WEB_ORIGIN, allowedOrigins: [E2E_WEB_ORIGIN] }))` → `app.listen(E2E_BACKEND_PORT, '127.0.0.1')`. `E2E_BACKEND_PORT` default **3100** (avoid the dev backend on 3000); `E2E_WEB_ORIGIN` default `http://localhost:4173` (vite preview).
   - [x] **Fake OAuth with code→identity mapping** (makes the search empty state reachable, see Dev Notes → D3): `exchangeCode: async (code) => ({ accessToken: code })`; `getCurrentUser: async (tok) => tok === 'e2e-empty' ? { id: 'e2e-user-empty', username: 'e2e-empty', avatar: null } : { id: 'e2e-user-member', username: 'e2e-member', avatar: null }`; `getGuildMember: async (tok) => ({ roles: tok === 'e2e-empty' ? ['e2e-role-empty'] : ['e2e-role-member'] })`.
   - [x] **Deterministic queryEmbedder**: reuse the one-hot pattern (`TEST_EMBEDDING_DIMENSIONS = 1536`): always return one-hot at index 0 (`fakeQueryEmbedder()` from test-helpers is exactly this — reuse it).
   - [x] Graceful shutdown: on SIGTERM/SIGINT close the server and `clients.close()` (Playwright's webServer sends SIGTERM). Do **not** delete seed rows on shutdown — the boot-time reset makes runs idempotent and keeps post-run state inspectable.
@@ -60,15 +60,15 @@ so that the verification gap left by Story 4.3 is closed, the Documentos view (4
 ### Web — Playwright install + config (AC: 1, 4)
 
 - [x] **Task 3 — install and configure Playwright** (AC: 1)
-  - [x] `npm install -D -w @hivly/web @playwright/test@^1.61.1`, then `npx playwright install chromium` (chromium only — see Dev Notes → D4). If the browser download fails in this environment, STOP and apply the §3.4 fallback (flag + defer), do not fake it.
+  - [x] `npm install -D -w @share2brain/web @playwright/test@^1.61.1`, then `npx playwright install chromium` (chromium only — see Dev Notes → D4). If the browser download fails in this environment, STOP and apply the §3.4 fallback (flag + defer), do not fake it.
   - [x] Create `packages/web/playwright.config.ts`: `testDir: './tests'`; `fullyParallel: false`, `workers: 1` (specs share one seeded DB and one spec mutates read-status — see Dev Notes → ordering); `use: { baseURL: 'http://localhost:4173', screenshot: 'only-on-failure', trace: 'on-first-retry' }`; `projects: [{ name: 'chromium', use: devices['Desktop Chrome'] }]`; `reporter: [['html', { open: 'never' }], ['list']]`;
-    `webServer: [` backend: `{ command: 'npm run e2e:server -w @hivly/backend', url: 'http://127.0.0.1:3100/health', reuseExistingServer: !process.env.CI, timeout: 60_000 }`, web: `{ command: 'npm run build -w @hivly/web && npm run preview -w @hivly/web', url: 'http://localhost:4173', reuseExistingServer: !process.env.CI, timeout: 120_000, env: { HIVLY_API_PROXY_TARGET: 'http://127.0.0.1:3100' } }` `]`. (Multiple `webServer` entries are supported; the config `env` is passed to the spawned command.)
-  - [x] `packages/web/package.json`: add `"preview": "vite preview --strictPort"` and `"test:e2e": "playwright test"`. Root `package.json`: add `"test:e2e": "npm run test:e2e -w @hivly/web"`.
+    `webServer: [` backend: `{ command: 'npm run e2e:server -w @share2brain/backend', url: 'http://127.0.0.1:3100/health', reuseExistingServer: !process.env.CI, timeout: 60_000 }`, web: `{ command: 'npm run build -w @share2brain/web && npm run preview -w @share2brain/web', url: 'http://localhost:4173', reuseExistingServer: !process.env.CI, timeout: 120_000, env: { SHARE2BRAIN_API_PROXY_TARGET: 'http://127.0.0.1:3100' } }` `]`. (Multiple `webServer` entries are supported; the config `env` is passed to the spawned command.)
+  - [x] `packages/web/package.json`: add `"preview": "vite preview --strictPort"` and `"test:e2e": "playwright test"`. Root `package.json`: add `"test:e2e": "npm run test:e2e -w @share2brain/web"`.
   - [x] Root `.gitignore`: add `test-results/` and `playwright-report/`.
-  - [x] TypeScript/ESLint: add `"tests"` to `packages/web/tsconfig.json` `include` so `npm run typecheck -w @hivly/web` covers the specs. Run `npm run lint` early: if the Epic-1 browser-safe import guard on `packages/web/**` (no-restricted-imports) or an env assumption flags `packages/web/tests/**`, add a scoped ESLint override for `packages/web/tests/**` (Node context, `@playwright/test` import allowed) — do not weaken the guard for `src/**`.
+  - [x] TypeScript/ESLint: add `"tests"` to `packages/web/tsconfig.json` `include` so `npm run typecheck -w @share2brain/web` covers the specs. Run `npm run lint` early: if the Epic-1 browser-safe import guard on `packages/web/**` (no-restricted-imports) or an env assumption flags `packages/web/tests/**`, add a scoped ESLint override for `packages/web/tests/**` (Node context, `@playwright/test` import allowed) — do not weaken the guard for `src/**`.
 
 - [x] **Task 4 — vite preview proxy** (AC: 4)
-  - [x] In `packages/web/vite.config.ts`: extract `const apiTarget = process.env.HIVLY_API_PROXY_TARGET ?? 'http://localhost:3000';` and use it in the existing `server.proxy`; add a `preview` block with the **same** proxy (`'/api'` + `'/health'` → `apiTarget`, `changeOrigin: true`). 🔴 `vite preview` does NOT inherit `server.proxy` — without the `preview.proxy` block every `/api` call from the built SPA 404s and the harness dies at login. Keep the explanatory header comment accurate (same-origin `sid` cookie rationale).
+  - [x] In `packages/web/vite.config.ts`: extract `const apiTarget = process.env.SHARE2BRAIN_API_PROXY_TARGET ?? 'http://localhost:3000';` and use it in the existing `server.proxy`; add a `preview` block with the **same** proxy (`'/api'` + `'/health'` → `apiTarget`, `changeOrigin: true`). 🔴 `vite preview` does NOT inherit `server.proxy` — without the `preview.proxy` block every `/api` call from the built SPA 404s and the harness dies at login. Keep the explanatory header comment accurate (same-origin `sid` cookie rationale).
 
 ### Web — session bootstrap + specs (AC: 3, 5, 6, 7, 8)
 
@@ -76,7 +76,7 @@ so that the verification gap left by Story 4.3 is closed, the Documentos view (4
   - [x] Create `packages/web/tests/helpers/session.ts` with `loginAs(page, code: 'e2e-member' | 'e2e-empty' = 'e2e-member')`:
     1. `const res = await page.request.get('/api/auth/login', { maxRedirects: 0 });` → expect 302; `const state = new URL(res.headers()['location']).searchParams.get('state');` (the redirect points at discord.com — never follow it).
     2. `await page.request.get(`/api/auth/callback?code=${code}&state=${state}`, { maxRedirects: 0 });` → expect 302 to `frontendUrl`. `page.request` shares the browser context's cookie jar, so the regenerated `sid` cookie (httpOnly, SameSite=Lax, `cookieSecure:false`) lands in the browser automatically — requests go through the preview proxy, so the cookie is set on the SPA origin.
-    3. `await page.addInitScript(() => localStorage.setItem('hivly-theme', 'dark'));` **before** the first `goto` — force the dark theme so token assertions are deterministic (see Dev Notes → theme).
+    3. `await page.addInitScript(() => localStorage.setItem('share2brain-theme', 'dark'));` **before** the first `goto` — force the dark theme so token assertions are deterministic (see Dev Notes → theme).
     4. `await page.goto('/');` → the SPA calls `/api/auth/me`, resolves `authed`, renders `AppLayout`. Wait for the sidebar (`getByRole('button', { name: /Búsqueda/ })`).
 
 - [x] **Task 6 — spec: retroactive 4.3 Búsqueda** (AC: 5, 7, 8) — `packages/web/tests/search.spec.ts`
@@ -100,12 +100,12 @@ so that the verification gap left by Story 4.3 is closed, the Documentos view (4
 ### Docs + reusability (AC: 8)
 
 - [x] **Task 8 — document the harness**
-  - [x] Create `packages/web/tests/README.md`: prerequisites (`docker compose up -d postgres redis` + migrated DB + `npx playwright install chromium`; note the local Redis situation — see Dev Notes), how to run (`npm run test:e2e -w @hivly/web`), how the session bootstrap works, the seed identities (`e2e-member` / `e2e-empty`) and dataset, and **how 5.3/5.4 add a spec** (import `loginAs`, add `<view>.spec.ts`, extend `seed.ts` if new data is needed).
+  - [x] Create `packages/web/tests/README.md`: prerequisites (`docker compose up -d postgres redis` + migrated DB + `npx playwright install chromium`; note the local Redis situation — see Dev Notes), how to run (`npm run test:e2e -w @share2brain/web`), how the session bootstrap works, the seed identities (`e2e-member` / `e2e-empty`) and dataset, and **how 5.3/5.4 add a spec** (import `loginAs`, add `<view>.spec.ts`, extend `seed.ts` if new data is needed).
   - [x] `docs/development_guide.md` + `docs/frontend-standards.md` already describe the harness (amended by the correct-course — verify the command/prereqs you shipped match the text; fix only real mismatches, e.g. add the `npx playwright install chromium` prerequisite if absent). Do NOT rewrite §3.4 — it is already correct.
 
 ### Verification gate (AGENT runs it — mandatory)
 
-- [x] **Task 9** — Run and paste output of `npm run lint && npm run test && npm run build` (must stay green — this story must not break the unit gate; vitest globs `src/**` and the specs live in `tests/**`, so there must be zero collision). Then `npm run test:integration` (unchanged, needs `docker compose up -d postgres redis`). Then the new gate itself: **`npm run test:e2e -w @hivly/web`** — paste the Playwright run output and confirm the screenshots exist in the output dir. This story's whole point is that the visual ACs of 4.3/4.4 flip from "deferred" to **verified with evidence** — if any `getComputedStyle` assertion contradicts the 4.3/4.4 AC values, that is a real regression finding: report it, don't adjust the assertion to match the code.
+- [x] **Task 9** — Run and paste output of `npm run lint && npm run test && npm run build` (must stay green — this story must not break the unit gate; vitest globs `src/**` and the specs live in `tests/**`, so there must be zero collision). Then `npm run test:integration` (unchanged, needs `docker compose up -d postgres redis`). Then the new gate itself: **`npm run test:e2e -w @share2brain/web`** — paste the Playwright run output and confirm the screenshots exist in the output dir. This story's whole point is that the visual ACs of 4.3/4.4 flip from "deferred" to **verified with evidence** — if any `getComputedStyle` assertion contradicts the 4.3/4.4 AC values, that is a real regression finding: report it, don't adjust the assertion to match the code.
 
 ### Review Findings
 
@@ -124,11 +124,11 @@ so that the verification gap left by Story 4.3 is closed, the Documentos view (4
 
   $ npm run build
   > npm run build --workspaces --if-present
-  @hivly/backend  tsc --noEmit   (clean)
-  @hivly/bot      tsc --noEmit   (clean)
-  @hivly/shared   tsc --noEmit   (clean)
-  @hivly/web      vite build     ✓ built in 102ms
-  @hivly/workers  tsc --noEmit   (clean)
+  @share2brain/backend  tsc --noEmit   (clean)
+  @share2brain/bot      tsc --noEmit   (clean)
+  @share2brain/shared   tsc --noEmit   (clean)
+  @share2brain/web      vite build     ✓ built in 102ms
+  @share2brain/workers  tsc --noEmit   (clean)
 
   $ npm run test:integration
   > vitest run --project backend-integration --project bot-integration --project workers-integration
@@ -136,7 +136,7 @@ so that the verification gap left by Story 4.3 is closed, the Documentos view (4
         Tests  76 passed (76)
      Duration  3.18s
 
-  $ npm run test:e2e -w @hivly/web
+  $ npm run test:e2e -w @share2brain/web
   > playwright test
   Running 4 tests using 1 worker
     ✓ tests/docs.spec.ts:24:3 › ... grid, header cells, read/unread dots, row hover, and sidebar badge (4.4) (977ms)
@@ -154,7 +154,7 @@ so that the verification gap left by Story 4.3 is closed, the Documentos view (4
 - [x] [Review][Patch] `docs.spec.ts` uses fragile `.locator('span').first()/.nth(1)` and `.locator('div').first()` chains for the unread-dot/content and empty-state check-icon assertions, contradicting the harness's own README guidance to prefer `data-testid` in exactly this situation [packages/web/tests/docs.spec.ts:676,679,686,689,725] — **FIXED**: added `data-testid="doc-row-dot"`/`"doc-row-content"`/`"docs-empty-state-check"` in `DocsView.tsx`, spec updated to use them.
 - [x] [Review][Patch] `session.ts` interpolates `state`/`code` into the callback query string without `encodeURIComponent` — safe today only because `state` always happens to be a 32-char hex string [packages/web/tests/helpers/session.ts:775] — **FIXED**: both params now wrapped in `encodeURIComponent`.
 - [x] [Review][Patch] `search.spec.ts` asserts only `border-color` for the active chip, not the full `border` (width/style) that Task 6 specifies [packages/web/tests/search.spec.ts:860] — **FIXED**: added `border-width`/`border-style` assertions.
-- [x] [Review][Patch] `vite.config.ts`: `HIVLY_API_PROXY_TARGET` uses `??`, which doesn't catch an explicit empty-string override — the proxy target would silently become `''` [packages/web/vite.config.ts:201] — **FIXED**: switched to `||`.
+- [x] [Review][Patch] `vite.config.ts`: `SHARE2BRAIN_API_PROXY_TARGET` uses `??`, which doesn't catch an explicit empty-string override — the proxy target would silently become `''` [packages/web/vite.config.ts:201] — **FIXED**: switched to `||`.
 
 Gate re-run after patches — still green: lint 0 · 360 unit · build clean (4 pkgs) · 76 integration · test:e2e 4 passed (chromium).
 
@@ -172,7 +172,7 @@ Re-reviewed the diff including the 7 first-pass patches. Two independent reviewe
 - [x] [Review][Patch] `app.listen()` has no `'error'` handler — a port conflict throws an unhandled exception instead of failing fast with a clear message; Playwright would otherwise wait its full 60s timeout [packages/backend/src/e2e/server.ts] — **FIXED**: added `server.on('error', ...)`.
 - [x] [Review][Patch] `server.close()`'s optional `Error` callback argument was ignored [packages/backend/src/e2e/server.ts] — **FIXED**: now logged if present.
 - [x] [Review][Patch] `SeedSummary.channels` was a hardcoded literal `3` instead of derived from data, unlike `messages`/`embeddings` [packages/backend/src/e2e/seed.ts] — **FIXED**: extracted a `CHANNELS` array (mirroring `MESSAGES`/`EMBEDDINGS`), `channels: CHANNELS.length`.
-- [x] [Review][Patch] `E2E_BACKEND_PORT` used `??`, inconsistent with the `HIVLY_API_PROXY_TARGET` fix — same empty-string footgun (`Number('') === 0`, not `NaN`) [packages/backend/src/e2e/server.ts] — **FIXED**: switched to `||`.
+- [x] [Review][Patch] `E2E_BACKEND_PORT` used `??`, inconsistent with the `SHARE2BRAIN_API_PROXY_TARGET` fix — same empty-string footgun (`Number('') === 0`, not `NaN`) [packages/backend/src/e2e/server.ts] — **FIXED**: switched to `||`.
 - [x] [Review][Patch] `docs-empty-state` border assertion only checked `border-style`, unlike `search-empty-state`'s fuller check (width + style + color) — asymmetric rigor between the two near-identical empty states [packages/web/tests/docs.spec.ts] — **FIXED**: added `border-width`/`border-color` assertions.
 - [x] [Review][Patch] `NODE_ENV=production` guard comment overstated its guarantee — ES module imports are hoisted and evaluate before the check, so it doesn't literally gate "the whole entrypoint"; only `main()` (DB/Redis connections, the listener) is actually gated. No dangerous import-time side effects exist today, so this was a documentation-accuracy fix, not a behavior change [packages/backend/src/e2e/server.ts] — **FIXED**: reworded the comment.
 
@@ -182,16 +182,16 @@ Gate re-run after 2nd-pass patches — still green: lint 0 · 360 unit · web ty
 - [x] [Review][Defer] Mutating-test isolation (docs spec's mark-all-read running last) relies on Playwright's default alphabetical file discovery + `workers: 1`, not an explicit pinned order — a new spec (5.3/5.4) could silently change it [packages/web/playwright.config.ts] — deferred, document as an explicit invariant when the next spec is added
 - [x] [Review][Defer] `shutdown()`'s force-exit fallback exits `1` even for a merely-slow-but-clean shutdown, conflating "timed out" with "failed" [packages/backend/src/e2e/server.ts] — deferred, accepted (Playwright doesn't inspect the webServer's exit code)
 
-Dismissed as false positives / out of scope (verified): no CI wiring (repo has zero CI workflows for any suite, not a regression); tsconfig Node+DOM type conflict risk (verified empirically clean via `npm run typecheck -w @hivly/web`); seed.ts "self-healing" claim (duplicate of an already-deferred finding); Homebrew-Redis workaround in docs (explicit, already-made Dev Notes decision, not an oversight); 🔴 emoji in comments (established project convention, seen throughout this same story file and sprint-status); missing `retries`/`expect.timeout` config (speculative CI hardening, no CI exists to harden); stale empty-string `HIVLY_API_PROXY_TARGET` re-flag (Edge Hunter was looking at an already-fixed line).
+Dismissed as false positives / out of scope (verified): no CI wiring (repo has zero CI workflows for any suite, not a regression); tsconfig Node+DOM type conflict risk (verified empirically clean via `npm run typecheck -w @share2brain/web`); seed.ts "self-healing" claim (duplicate of an already-deferred finding); Homebrew-Redis workaround in docs (explicit, already-made Dev Notes decision, not an oversight); 🔴 emoji in comments (established project convention, seen throughout this same story file and sprint-status); missing `retries`/`expect.timeout` config (speculative CI hardening, no CI exists to harden); stale empty-string `SHARE2BRAIN_API_PROXY_TARGET` re-flag (Edge Hunter was looking at an already-fixed line).
 
 ## Dev Notes
 
 ### Decisions locked at creation (autonomous, per correct-course scope)
 
-- **D1 — the E2E backend lives in `packages/backend`, spawned as a process.** `buildTestAppOptions`/`fakeQueryEmbedder`/`openTestClients` live in `packages/backend/src/test-helpers.ts`. `packages/web` may **never** import `@hivly/backend` (AD-2) — so the harness does not import the backend, it **spawns** it: `packages/backend/src/e2e/server.ts` run via Playwright's `webServer[0]`. No cross-package import, AD-2 intact, and the non-prod guard lives in the entrypoint (no production surface at all — stronger than a guarded route).
+- **D1 — the E2E backend lives in `packages/backend`, spawned as a process.** `buildTestAppOptions`/`fakeQueryEmbedder`/`openTestClients` live in `packages/backend/src/test-helpers.ts`. `packages/web` may **never** import `@share2brain/backend` (AD-2) — so the harness does not import the backend, it **spawns** it: `packages/backend/src/e2e/server.ts` run via Playwright's `webServer[0]`. No cross-package import, AD-2 intact, and the non-prod guard lives in the entrypoint (no production surface at all — stronger than a guarded route).
 - **D2 — built SPA via `vite preview`** (AC4 wording from the proposal). Requires the new `preview.proxy` block (Task 4) — `vite preview` ignores `server.proxy`. The webServer command chains `build && preview`; slower per run than the dev server but tests what ships.
 - **D3 — fake OAuth maps `code` → identity.** The search endpoint has **no similarity threshold**: any query returns every in-scope chunk (LIMIT 5), so the 4.3-AC6 empty state is reachable only with an empty-embedding scope. `code=e2e-empty` logs in a user whose only channel (`e2e-ch-void`) has no embeddings. Same fake-OAuth interface (`exchangeCode`/`getCurrentUser`/`getGuildMember`, `packages/backend/src/domain/repositories/discordOAuthClient.ts:18-31`) as the integration tests — just parameterized by the code.
-- **D4 — chromium-only, `workers: 1`, dark theme forced.** One browser keeps install/CI cheap (add more later if wanted). One worker because all specs share one seeded Postgres and the docs spec mutates read-status (mark-all). Dark theme (`localStorage['hivly-theme'] = 'dark'` via `addInitScript`) because tokens differ per theme (`--accent-ink` is `#F5A623` dark but `#9A5B00` light — an unforced theme would flake on the host's OS preference).
+- **D4 — chromium-only, `workers: 1`, dark theme forced.** One browser keeps install/CI cheap (add more later if wanted). One worker because all specs share one seeded Postgres and the docs spec mutates read-status (mark-all). Dark theme (`localStorage['share2brain-theme'] = 'dark'` via `addInitScript`) because tokens differ per theme (`--accent-ink` is `#F5A623` dark but `#9A5B00` light — an unforced theme would flake on the host's OS preference).
 - **D5 — `@playwright/test` pinned `^1.61.1`** (current stable, July 2026). Note: the old sprint-status comment "Playwright 1.61.1 already installed" was **false** (nothing installed) — but 1.61.1 is coincidentally the right version to install now.
 
 ### 🔴 Computed-value ground truth (assert THESE, not the CSS-var names)
@@ -237,7 +237,7 @@ Exact rendered strings (locator targets): titles "Búsqueda de conocimiento" / "
 ### 🔴 Environment gotchas
 
 - **Two Redis instances on this Mac**: compose Redis publishes **no ports**; `redis://127.0.0.1:6379` (the test-helpers default) is the **Homebrew** Redis. Same recipe as the integration suites (`docker compose up -d postgres redis` + local Redis reachable on 6379) — the harness inherits it; don't "fix" it, document it in the README.
-- **Same `hivly` database as dev** — no separate test DB. The `e2e-` prefix + reset-then-seed keeps runs idempotent and coexistent. Never widen a cleanup beyond the `e2e-` prefix (the 4.2 broad-`LIKE` race lesson).
+- **Same `share2brain` database as dev** — no separate test DB. The `e2e-` prefix + reset-then-seed keeps runs idempotent and coexistent. Never widen a cleanup beyond the `e2e-` prefix (the 4.2 broad-`LIKE` race lesson).
 - **Fonts come from Google Fonts (network)** (`index.html:26-31`, `display=swap`): computed `font-family` returns the *specified* stack regardless of load — the AC assertions are network-independent. Screenshots may render fallback faces offline; acceptable, note it in the README.
 - **Debounce**: search fires 250ms after typing ≥2 chars — rely on Playwright auto-retrying `expect`s, never `waitForTimeout`.
 - **Playwright browser download**: `npx playwright install chromium` needs network. If it fails in the agent environment, apply §3.4's fallback honestly (build everything, flag the un-run suite) — do not claim a green run.
@@ -254,7 +254,7 @@ Exact rendered strings (locator targets): titles "Búsqueda de conocimiento" / "
 
 - **New**: `packages/backend/src/e2e/server.ts`, `packages/backend/src/e2e/seed.ts`; `packages/web/playwright.config.ts`, `packages/web/tests/helpers/session.ts`, `packages/web/tests/search.spec.ts`, `packages/web/tests/docs.spec.ts`, `packages/web/tests/README.md`.
 - **Modified**: `packages/web/package.json` (deps + `preview`/`test:e2e` scripts), `packages/backend/package.json` (`e2e:server` script), root `package.json` (`test:e2e`), `packages/web/vite.config.ts` (env-var target + `preview.proxy`), `packages/web/tsconfig.json` (include tests), root `.gitignore` (+2 lines), possibly the web ESLint override, possibly a few `data-testid`s in `SearchView.tsx`/`DocsView.tsx`/`Sidebar.tsx`, `docs/development_guide.md`/`docs/frontend-standards.md` only if the shipped commands mismatch the amended text.
-- **NOT touched**: `app.ts` (injection points already exist), any production route, the Drizzle schema (no migration), `@hivly/shared`. Playwright stays a **convention**, not an AD invariant (stakeholder decision in the correct-course).
+- **NOT touched**: `app.ts` (injection points already exist), any production route, the Drizzle schema (no migration), `@share2brain/shared`. Playwright stays a **convention**, not an AD invariant (stakeholder decision in the correct-course).
 - Naming: e2e specs `camelCase.spec.ts` under `tests/`; all code/comments English; UI strings asserted verbatim in Spanish.
 
 ### References
@@ -271,7 +271,7 @@ Exact rendered strings (locator targets): titles "Búsqueda de conocimiento" / "
 - [Source: packages/backend/src/infrastructure/embeddingSearchRepository.drizzle.ts:25,44,53,57-62] — anchor INNER JOIN (`message_ids[1]`), RBAC-in-query, similarity formula, no threshold.
 - [Source: packages/backend/src/infrastructure/sessionStore.ts:13-19,27,32 + presentation/controllers/authController.ts:34-55,63,73,145-164] — `sid` cookie, `sess:` prefix, state CSRF, session regeneration.
 - [Source: packages/web/vite.config.ts:17-22] — dev-only proxy (the `preview.proxy` gap); packages/web/package.json (no preview/test scripts today).
-- [Source: packages/web/index.html:12-22,26-31] — pre-paint theme script (`data-kh`, `localStorage 'hivly-theme'`), Google Fonts links.
+- [Source: packages/web/index.html:12-22,26-31] — pre-paint theme script (`data-kh`, `localStorage 'share2brain-theme'`), Google Fonts links.
 - [Source: packages/web/src/styles/global.css:19-30 + styles/components.css:64-93] — token values (both themes), all `:hover`/`:focus` rules.
 - [Source: packages/web/src/components/SearchView.tsx:22-23,92-138,187-231,251-267,284-379 + DocsView.tsx:26,161,166-181,206-350,405-489 + Sidebar.tsx:10,48-62,66-69,95-102 + App.tsx:25,45-64,91-93,109-132] — every inline style + string the specs assert.
 - [Source: _bmad-output/implementation-artifacts/4-3-web-app-vista-busqueda.md + 4-4-web-app-vista-documentos-read-tracking-ui-y-sidebar-badge.md] — the deferred visual ACs this story verifies; isolation lessons.
@@ -321,7 +321,7 @@ evidence** (screenshots as artifacts), no longer deferred.
 - **AC3** session via the fake-OAuth flow (`loginAs`), no real Discord, no auth-bypass
   route; the entrypoint refuses to start under `NODE_ENV=production`.
 - **AC4** built SPA via `vite build && vite preview`; new `preview.proxy` block
-  (`HIVLY_API_PROXY_TARGET`) — without it every `/api` call 404s.
+  (`SHARE2BRAIN_API_PROXY_TARGET`) — without it every `/api` call 404s.
 - **AC5/AC6** `search.spec.ts` + `docs.spec.ts` assert computed values (rgb/px) for the
   4.3 (title/search-bar/focus-ring/badge/similarity-bar/avatar/chips/empty) and 4.4
   (grid/header/read+unread dots/hover/sidebar badge/all-read empty) ACs.
@@ -371,4 +371,4 @@ reset by the next boot's reseed — confirmed across 3 consecutive green runs.
 |---|---|
 | 2026-07-07 | Story 4.5 implemented: Playwright E2E visual-verification harness (spawned deterministic backend + fake OAuth + vite preview proxy), retroactive 4.3/4.4 computed-style specs + screenshots. Fixed a real 4.3 focus-ring defect surfaced by the harness (inline border outranked `:focus`). Gate green (lint 0 / 360 unit / build clean / 76 integration / 4 e2e). Status → review. |
 | 2026-07-07 | Code review pass 1 (bmad-code-review): 1 decision-needed resolved (re-ran the full gate live, pasted real output), 7 patches applied (garbled sprint-status comment, shutdown() force-exit fallback, single-source-of-truth ports in playwright.config.ts, data-testid fixes for fragile docs.spec.ts locators, encodeURIComponent on the OAuth callback query, fuller chip border assertion, `\|\|` instead of `??` for the proxy target), 5 deferred, 10 dismissed as false positives/out of scope (verified against test-helpers.ts, schema.ts, and existing integration tests). Gate re-confirmed green after patches. Status → done. |
-| 2026-07-07 | Code review pass 2 (bmad-code-review, re-run at Borja's request): 7 more patches applied — completed the port-sync fix (`WEB_PORT` now actually passed to `vite preview` via `--port`, caught independently by 2 reviewers), `server.listen`/`server.close` error handling, `SeedSummary.channels` derived instead of hardcoded, `??`→`\|\|` consistency on `E2E_BACKEND_PORT`, symmetric border rigor on the docs empty-state, and a doc-accuracy fix on the `NODE_ENV=production` guard comment. 3 new deferrals, 8 dismissed as false positives/out of scope. Gate re-confirmed green (now also verified `npm run typecheck -w @hivly/web` clean). |
+| 2026-07-07 | Code review pass 2 (bmad-code-review, re-run at Borja's request): 7 more patches applied — completed the port-sync fix (`WEB_PORT` now actually passed to `vite preview` via `--port`, caught independently by 2 reviewers), `server.listen`/`server.close` error handling, `SeedSummary.channels` derived instead of hardcoded, `??`→`\|\|` consistency on `E2E_BACKEND_PORT`, symmetric border rigor on the docs empty-state, and a doc-accuracy fix on the `NODE_ENV=production` guard comment. 3 new deferrals, 8 dismissed as false positives/out of scope. Gate re-confirmed green (now also verified `npm run typecheck -w @share2brain/web` clean). |

@@ -1,4 +1,4 @@
-// Drizzle schema — the single source of truth for the Hivly data model (AD-5).
+// Drizzle schema — the single source of truth for the Share2Brain data model (AD-5).
 // No DDL exists anywhere else; migrations are generated from this file with
 // drizzle-kit as explicit SQL. DB column names are snake_case; TS property
 // names are camelCase (Drizzle maps between them).
@@ -20,7 +20,7 @@ import {
 import { readEmbeddingDimensions } from '../config/embeddingDimensions.js';
 
 // The embeddings vector width is parametrized from `embeddings.dimensions` in
-// Hivly.config.yml, read at generate-time by a minimal YAML reader (NOT the full
+// Share2Brain.config.yml, read at generate-time by a minimal YAML reader (NOT the full
 // loadConfig, which would abort generate on unset ${VAR}). schema.ts stays the
 // single DDL source of truth (AD-5); only the width is deploy-time configurable.
 // Default 1536 → identical DDL to before, so no migration diff for existing setups.

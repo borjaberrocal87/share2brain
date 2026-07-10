@@ -8,7 +8,7 @@ Status: done
 
 ## Story
 
-As a **community member using the Hivly web app**,
+As a **community member using the Share2Brain web app**,
 I want **a Statistics view reachable from a third sidebar nav entry, showing knowledge KPIs, 14-day indexing activity, per-channel volume, my read coverage, and the top 5 most active users**,
 so that **I can see the pulse of the community's knowledge — what gets indexed, who participates, and how much the agent is consulted — scoped to the channels I can access**.
 
@@ -18,7 +18,7 @@ Final render slice of the Épico 9 layered sequence **9.1 (contract+endpoint, do
 
 - Epic: `_bmad-output/planning-artifacts/epics.md` §Épico 9 (FR24/FR25; Historia 9.2 bullet incl. the Top-5 extension).
 - SCPs: `sprint-change-proposal-2026-07-10-stats.md` (§4.3 Historia 9.2 ACs) + `sprint-change-proposal-2026-07-10-topusers.md` (§4.3 extends 9.2 with the Top 5 section).
-- Design authority: `docs/context/design/KeepHive Web.dc.html` (`isStats` screen). All values extracted below — **do not re-parse the 467KB mock**.
+- Design authority: `docs/context/design/Share2Brain Web.dc.html` (`isStats` screen). All values extracted below — **do not re-parse the 467KB mock**.
 
 ## Acceptance Criteria
 
@@ -40,12 +40,12 @@ AC3  Given the topUsers block (≤5 rows, possibly empty), Then each row renders
      And a raw-snowflake authorName (pre-9.4 rows / non-OAuth authors) renders gracefully (D4).
 
 AC4  Given types, Then every shape comes from z.infer of StatsResponseSchema imported from
-     @hivly/shared/schemas, parsed client-side in a new src/api/stats.ts (.parse at the edge);
+     @share2brain/shared/schemas, parsed client-side in a new src/api/stats.ts (.parse at the edge);
      no stats shape is redefined in web (AD-6) and nothing imports the shared root barrel (AD-3).
 
 AC5  Given rendering, Then bars and donut are plain flex/grid + CSS gradients
      (linear-gradient bars, conic-gradient donut) — no new dependency of any kind
-     (packages/web/package.json deps unchanged: react, react-dom, @hivly/shared).
+     (packages/web/package.json deps unchanged: react, react-dom, @share2brain/shared).
 
 AC6  Given the theme toggle, Then the view is correct in dark AND light: every UI color uses the
      --text-*/--surface/--border/--track tokens (mock var names translated per Dev Notes map);
@@ -70,7 +70,7 @@ AC8  Gate: npm run lint + web unit tests + npm run build green (agent-run, outpu
 
 - [x] Task 1 — Branch + API module (AC4)
   - [x] `git switch -c feat/9-2-web-statsview` off `main` @ `10e071f`.
-  - [x] New `packages/web/src/api/stats.ts`: `fetchStats(signal?: AbortSignal): Promise<StatsResponse>` — same-origin `fetch('/api/stats', { credentials: 'include', signal })`, throw on `!res.ok`, `StatsResponseSchema.parse(await res.json())`. Header comment mirrors `api/search.ts` (browser-safe, `@hivly/shared/schemas` only, AD-3).
+  - [x] New `packages/web/src/api/stats.ts`: `fetchStats(signal?: AbortSignal): Promise<StatsResponse>` — same-origin `fetch('/api/stats', { credentials: 'include', signal })`, throw on `!res.ok`, `StatsResponseSchema.parse(await res.json())`. Header comment mirrors `api/search.ts` (browser-safe, `@share2brain/shared/schemas` only, AD-3).
 - [x] Task 2 — Nav plumbing (AC1)
   - [x] `icons.tsx`: add `StatsIcon` (line-chart glyph from the mock: `M3 3v18h18` + `M7 14l3-4 3 3 4-6`, viewBox 24, `strokeWidth={1.8}` per the nav-icon convention comment).
   - [x] `Sidebar.tsx:10`: `export type Screen = 'search' | 'docs' | 'stats';`
@@ -95,8 +95,8 @@ AC8  Gate: npm run lint + web unit tests + npm run build green (agent-run, outpu
   - [x] Update `App.test.tsx` only if it breaks (it mocks the api modules the shell touches; StatsView never mounts on the default 'search' screen so no new mock should be needed — verify, don't assume). No Sidebar test file exists; nav coverage rides App tests.
   - [x] Gate: `npm run lint` + `npx vitest run --project web` (then full `npm run test`) + `npm run build`. Paste outputs. Baseline: 882 passed +1 skipped; expect + your new StatsView tests, 0 regressions.
 - [x] Task 8 — E2E no-regression + manual verification (AC8)
-  - [x] Run the existing 16 Playwright specs (`npm run test:e2e -w @hivly/web` with test Postgres+Redis up, OPS-2: app containers stopped). All 16 must stay green with the 3rd nav item present. Do NOT add stats specs (9.3).
-  - [x] Manual smoke via the deterministic e2e backend (`npm run e2e:server -w @hivly/backend` + fake-OAuth + Vite preview proxy) — open the view in both themes, verify sections render with seeded data. If browser automation is unavailable, use the §3.4 fallback and flag every unverified visual AC in notes + PR.
+  - [x] Run the existing 16 Playwright specs (`npm run test:e2e -w @share2brain/web` with test Postgres+Redis up, OPS-2: app containers stopped). All 16 must stay green with the 3rd nav item present. Do NOT add stats specs (9.3).
+  - [x] Manual smoke via the deterministic e2e backend (`npm run e2e:server -w @share2brain/backend` + fake-OAuth + Vite preview proxy) — open the view in both themes, verify sections render with seeded data. If browser automation is unavailable, use the §3.4 fallback and flag every unverified visual AC in notes + PR.
 - [x] Task 9 — Docs sync (documentation-standards)
   - [x] `epics.md`: UX-DR5 "Solo 2 ítems de navegación" → 3 ítems (Búsqueda, Documentos, Estadísticas); UX-DR6 "Nav vertical: 2 botones" → 3 botones (+ stats icon); ADD new **UX-DR24** describing the Estadísticas view (condensed §Design spec incl. D1–D6 resolutions, tagged *(Historia 9.2)*). NOT UX-DR23 — that number is taken by "Animaciones del sistema" (epics.md:135; 9.1-D10 collision discipline).
   - [x] `docs/context/TECHNICAL-DESIGN.md` §5.5: "Cuatro vistas principales" table → cinco (add Statistics row: 5 secciones, RBAC-scoped server-side, zero chart deps, Historia 9.2).
@@ -122,7 +122,7 @@ AC8  Gate: npm run lint + web unit tests + npm run build green (agent-run, outpu
 
 ### Contract (shipped, main @ 10e071f) — `packages/shared/src/schemas/stats.ts`
 
-Import: `import { StatsResponseSchema, type StatsResponse, type StatsKpi, … } from '@hivly/shared/schemas'` (re-exported via `schemas/index.ts:14`; ESLint bans the root barrel/`db`/`config`/`providers` in web).
+Import: `import { StatsResponseSchema, type StatsResponse, type StatsKpi, … } from '@share2brain/shared/schemas'` (re-exported via `schemas/index.ts:14`; ESLint bans the root barrel/`db`/`config`/`providers` in web).
 
 Five REQUIRED top-level keys:
 - `kpis`: exactly 4, order pinned `resources·channels·authors·queries` (superRefine + exported `KPI_ORDER`; "consumers may index positionally"). Item `{ key: enum, label: min(1), value: int ≥0, sub: string }`.
@@ -170,7 +170,7 @@ Endpoint: `GET /api/stats`, no params/body. Errors: 401 `{ error, code: 'AUTH_RE
 
 - New files: `packages/web/src/api/stats.ts`, `packages/web/src/components/StatsView.tsx`, `packages/web/src/components/StatsView.test.tsx`.
 - Edited files: `packages/web/src/components/Sidebar.tsx` (Screen union + NAV_ITEMS), `packages/web/src/components/AppLayout.tsx` (3-way branch + import), `packages/web/src/components/icons.tsx` (StatsIcon), possibly `App.test.tsx` (only if it breaks). `components.css` expected UNTOUCHED (no hover states).
-- **Out of scope — stop if you find yourself editing**: anything under `packages/shared`, `packages/backend`, `packages/bot`, `packages/workers`; the Playwright specs/seed (`packages/web/tests/`, `packages/backend/src/e2e/`) beyond running them; `Hivly.config.yml`; any migration. The contract is done — if it seems wrong, flag it, don't patch it.
+- **Out of scope — stop if you find yourself editing**: anything under `packages/shared`, `packages/backend`, `packages/bot`, `packages/workers`; the Playwright specs/seed (`packages/web/tests/`, `packages/backend/src/e2e/`) beyond running them; `Share2Brain.config.yml`; any migration. The contract is done — if it seems wrong, flag it, don't patch it.
 
 ### References
 
@@ -182,7 +182,7 @@ Endpoint: `GET /api/stats`, no params/body. Errors: 401 `{ error, code: 'AUTH_RE
 - [Source: packages/web/src/components/Sidebar.tsx:10,66-69,88-110; AppLayout.tsx:74-78; App.tsx:37,125-139] — nav plumbing.
 - [Source: packages/web/src/api/search.ts; src/components/SearchView.tsx:20,25-26,71-76,157-180,316-335] — api/view/status/bar patterns.
 - [Source: packages/web/src/styles/global.css:10-12,19-30] — tokens + sanctioned literals; [components.css:64-68] cascade rule.
-- [Source: docs/context/design/KeepHive Web.dc.html (isStats)] — design authority, values extracted above.
+- [Source: docs/context/design/Share2Brain Web.dc.html (isStats)] — design authority, values extracted above.
 - [Source: docs/frontend-standards.md; docs/bmad-story-mandatory-steps.md §3.1/§3.4/§4] — gate + e2e/fallback + docs sync.
 - [Source: docs/context/TECHNICAL-DESIGN.md §5.5] — views table to sync.
 

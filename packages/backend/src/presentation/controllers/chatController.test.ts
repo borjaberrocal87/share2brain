@@ -5,7 +5,7 @@
 import type { Request, Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { SSEFrame } from '@hivly/shared/schemas';
+import type { SSEFrame } from '@share2brain/shared/schemas';
 
 import { ChatOwnershipError, type ChatService } from '../../application/services/chatService.js';
 import { createChatController } from './chatController.js';

@@ -20,7 +20,7 @@ so that I can confirm a correct deployment with a single command.
    - `bot`, `backend`, `workers` each declare `depends_on: { migrator: { condition: service_completed_successfully } }`.
    - `nginx` is the **only** service with host-exposed ports (80/443).
    - In development, `postgres` exposes its port bound to `127.0.0.1:5432` only.
-2. **Migrator runs on boot** — With valid `.env` and `Hivly.config.yml`, `docker compose up -d` makes `migrator` run `drizzle-kit migrate`, apply all migrations, and exit code 0. The other services start only after `migrator` completes successfully.
+2. **Migrator runs on boot** — With valid `.env` and `Share2Brain.config.yml`, `docker compose up -d` makes `migrator` run `drizzle-kit migrate`, apply all migrations, and exit code 0. The other services start only after `migrator` completes successfully.
 3. **Health — happy path** — With all services running, `GET /health` returns **HTTP 200** with JSON:
    `{ "status": "healthy", "components": { "database": "connected", "redis": "connected", "discord": "pending", "indexer": "pending" } }`.
 4. **Health — degraded** — When PostgreSQL is unreachable, `GET /health` returns **HTTP 503** with `{ "status": "degraded", "components": { "database": "disconnected", ... } }`.
@@ -30,10 +30,10 @@ so that I can confirm a correct deployment with a single command.
 
 - [x] **Task 1 — Backend: real Express server + `/health` endpoint (AC: 3, 4)**
   - [x] Add `HealthResponseSchema` to `packages/shared/src/schemas/` (AD-6: the response shape is a Zod schema in `shared`, **never defined locally in backend**). Export it from `packages/shared/src/schemas/index.ts`. Shape: `status: 'healthy' | 'degraded'`; `components: { database, redis: 'connected' | 'disconnected'; discord, indexer: 'connected' | 'disconnected' | 'pending' }`. Add a `ComponentStatus` enum + `HealthResponse = z.infer<>`.
-  - [x] Add deps to `packages/backend/package.json`: `express ^5.2`, `ioredis ^5`, `@hivly/shared: "*"`. (`pg`/Drizzle come transitively via `@hivly/shared/db`.) Add `@types/express` devDep.
+  - [x] Add deps to `packages/backend/package.json`: `express ^5.2`, `ioredis ^5`, `@share2brain/shared: "*"`. (`pg`/Drizzle come transitively via `@share2brain/shared/db`.) Add `@types/express` devDep.
   - [x] Rewrite `packages/backend/src/main.ts` (currently a `console.log` stub):
     1. `loadConfig()` first (AD-8) — abort the process before any connection if the YAML is invalid.
-    2. `createDatabase(process.env.DATABASE_URL)` (from `@hivly/shared/db`) — one pooled client at startup, reused per request (no per-request `Pool`).
+    2. `createDatabase(process.env.DATABASE_URL)` (from `@share2brain/shared/db`) — one pooled client at startup, reused per request (no per-request `Pool`).
     3. `new Redis(process.env.REDIS_URL)` (ioredis) — one client at startup.
     4. Express 5 app; register `GET /health` (top-level, **not** under `/api/` — it is auth-exempt per AD; auth/session middleware is NOT part of this story).
     5. Health handler: run **time-boxed** `SELECT 1` (Drizzle `db.execute(sql\`select 1\`)`) and `redis.ping()` concurrently, each wrapped so a hang/refusal resolves to `"disconnected"` within ~2s (`Promise.race` timeout + `try/catch`). `discord` and `indexer` are hard-coded `"pending"` (Bot/Workers don't report readiness until Epic 3).
@@ -47,13 +47,13 @@ so that I can confirm a correct deployment with a single command.
   - [x] Update `dev`/`start` scripts to `tsx` (same as backend). Do **not** add discord.js/ioredis consumer code — out of scope.
 
 - [x] **Task 3 — `tsx` runtime + Dockerfiles for Node services (AC: 1, 2)**
-  - [x] Add `tsx` as a root devDependency (do not rely on a transitive copy). It is the container runtime: `@hivly/shared` exports **raw `.ts`** (source-exports, Story 1.1) and Node 24 native type-stripping does **not** strip `.ts` under `node_modules` (workspace symlink), so `node src/main.ts` cannot resolve `@hivly/shared`. `tsx` handles the whole monorepo.
+  - [x] Add `tsx` as a root devDependency (do not rely on a transitive copy). It is the container runtime: `@share2brain/shared` exports **raw `.ts`** (source-exports, Story 1.1) and Node 24 native type-stripping does **not** strip `.ts` under `node_modules` (workspace symlink), so `node src/main.ts` cannot resolve `@share2brain/shared`. `tsx` handles the whole monorepo.
   - [x] Author Dockerfiles for `backend`, `bot`, `workers`, `migrator`. **Build context = repo root** for all (see Dev Notes — a `./packages/<svc>` context cannot see `packages/shared`, the root lockfile, or `drizzle.config.ts`). Base image `node:24-alpine` (pinned; fall back to `node:24-slim` if a native dep fails to build on musl). Pattern: copy root `package.json` + `package-lock.json` + every `packages/*/package.json`, run `npm ci`, copy sources, `CMD` runs the entry via `tsx` (migrator: `npx drizzle-kit migrate`).
   - [x] Add a root `.dockerignore` (`node_modules`, `**/dist`, `.git`, `_bmad`, `_bmad-output`, `docs`, `.claude`) so the root context stays small.
 
 - [x] **Task 4 — Minimal web build + Dockerfile so the stack comes up (AC: 1, 5)** *(scope note below)*
   - [x] `packages/web` currently has no `index.html`/`vite.config.ts` and `build` = `tsc --noEmit`, so no `dist/` is produced. Add a minimal `packages/web/index.html` (with `<div id="root">`) + `vite.config.ts`, and change `"build": "vite build"` so `vite build` emits a real `dist/`. This is a **placeholder SPA** — the full design system is Story 2.1.
-  - [x] Multi-stage `packages/web/Dockerfile` (root context): build stage runs `npm ci` + `npm run build -w @hivly/web`; final stage bakes `dist/` **plus `nginx.conf`** into `nginx:1.27-alpine`. **(Decision revised — see Completion Notes: the SPA is baked into the nginx image instead of a `webdist` named volume, so the stack keeps exactly 7 services with no separate `web` service. Borja approved 2026-07-04.)**
+  - [x] Multi-stage `packages/web/Dockerfile` (root context): build stage runs `npm ci` + `npm run build -w @share2brain/web`; final stage bakes `dist/` **plus `nginx.conf`** into `nginx:1.27-alpine`. **(Decision revised — see Completion Notes: the SPA is baked into the nginx image instead of a `webdist` named volume, so the stack keeps exactly 7 services with no separate `web` service. Borja approved 2026-07-04.)**
 
 - [x] **Task 5 — `nginx.conf` (AC: 5)**
   - [x] Create root `nginx.conf` with `events {}` + `http {}` (it fully replaces the default; baked into the nginx image at `/etc/nginx/nginx.conf`). One `server` block, `listen 80;`, with:
@@ -64,13 +64,13 @@ so that I can confirm a correct deployment with a single command.
 
 - [x] **Task 6 — `docker-compose.yml` (AC: 1, 2)**
   - [x] 7 services, all images pinned (`pgvector/pgvector:pg17`, `redis:8-alpine`, `nginx:1.27-alpine` — **never `:latest`**).
-  - [x] `postgres`: `POSTGRES_DB/USER=hivly`, `POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}`; `healthcheck` (`pg_isready -U hivly -d hivly`); volume `pgdata`; **dev port** `"127.0.0.1:5432:5432"` only.
+  - [x] `postgres`: `POSTGRES_DB/USER=share2brain`, `POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}`; `healthcheck` (`pg_isready -U share2brain -d share2brain`); volume `pgdata`; **dev port** `"127.0.0.1:5432:5432"` only.
   - [x] `redis`: `command: redis-server --appendonly yes`; `healthcheck` (`redis-cli ping`); no host port.
   - [x] `migrator`: `build` (root context, migrator Dockerfile); `command: npx drizzle-kit migrate`; `depends_on: { postgres: { condition: service_healthy } }`; `restart: "no"` (one-shot — never `unless-stopped`, AD-9).
   - [x] `bot`/`backend`/`workers`: `build` (root context); `depends_on: { migrator: { condition: service_completed_successfully }, redis: { condition: service_healthy }, postgres: { condition: service_healthy } }`; **no host ports**.
   - [x] `nginx`: `build` (root context, `packages/web/Dockerfile` — SPA + nginx.conf baked in); `ports: ["80:80","443:443"]` (only host-exposed service); `depends_on: [backend]`. **(Revised from `image: nginx:1.27-alpine` + `webdist` volume — see Completion Notes.)**
-  - [x] **Env wiring (critical):** every Node service uses `env_file: [.env]` (populates `process.env` so `loadConfig()`'s `${VAR}` interpolation and `DATABASE_URL`/`REDIS_URL` resolve) **plus** an `environment:` override for the in-container hostnames — `DATABASE_URL: postgres://hivly:${POSTGRES_PASSWORD}@postgres:5432/hivly` and `REDIS_URL: redis://redis:6379`. The `.env` file keeps `localhost` URLs for host-side `npm run dev`; do **not** point containers at `localhost`.
-  - [x] Mount `./Hivly.config.yml:/app/Hivly.config.yml:ro` on `backend`/`bot`/`workers` (they call `loadConfig()`, which reads the file at cwd `/app`). `migrator` does not need it.
+  - [x] **Env wiring (critical):** every Node service uses `env_file: [.env]` (populates `process.env` so `loadConfig()`'s `${VAR}` interpolation and `DATABASE_URL`/`REDIS_URL` resolve) **plus** an `environment:` override for the in-container hostnames — `DATABASE_URL: postgres://share2brain:${POSTGRES_PASSWORD}@postgres:5432/share2brain` and `REDIS_URL: redis://redis:6379`. The `.env` file keeps `localhost` URLs for host-side `npm run dev`; do **not** point containers at `localhost`.
+  - [x] Mount `./Share2Brain.config.yml:/app/Share2Brain.config.yml:ro` on `backend`/`bot`/`workers` (they call `loadConfig()`, which reads the file at cwd `/app`). `migrator` does not need it.
   - [x] `volumes: pgdata`. **(No `webdist` — the SPA is baked into the nginx image.)**
 
 - [x] **Task 7 — Verification gate (mandatory; the AGENT runs it, pastes evidence)**
@@ -86,9 +86,9 @@ Story 1.1 scaffolded the monorepo; Story 1.2 filled `packages/shared` (schema, `
 
 ### 🚨 Non-obvious gotchas — these cause the most failures
 
-1. **Docker build context MUST be the repo root, not `./packages/<svc>`.** The design snippet shows `build: ./packages/bot` — that is illustrative and **will not build** here. Because `@hivly/shared` is exported as raw source (`exports` → `./src/*.ts`, no prebuilt `dist`), every service image needs `packages/shared/src` at runtime, plus the **root** `package-lock.json` for `npm ci`, plus (for migrator) the **root** `drizzle.config.ts`. Use `build: { context: ., dockerfile: packages/<svc>/Dockerfile }`. [Source: 1-2 completion notes#source-exports; package.json exports]
+1. **Docker build context MUST be the repo root, not `./packages/<svc>`.** The design snippet shows `build: ./packages/bot` — that is illustrative and **will not build** here. Because `@share2brain/shared` is exported as raw source (`exports` → `./src/*.ts`, no prebuilt `dist`), every service image needs `packages/shared/src` at runtime, plus the **root** `package-lock.json` for `npm ci`, plus (for migrator) the **root** `drizzle.config.ts`. Use `build: { context: ., dockerfile: packages/<svc>/Dockerfile }`. [Source: 1-2 completion notes#source-exports; package.json exports]
 
-2. **`node src/main.ts` cannot run these services — use `tsx`.** Node 24 native type-stripping does not strip `.ts` files inside `node_modules`, and `@hivly/shared` resolves (via workspace symlink → `exports`) to `.ts`. The Story 1.1 dev scripts (`node --watch src/main.ts`) were a known-broken placeholder (see `deferred-work.md`). Add `tsx` and run entries with it.
+2. **`node src/main.ts` cannot run these services — use `tsx`.** Node 24 native type-stripping does not strip `.ts` files inside `node_modules`, and `@share2brain/shared` resolves (via workspace symlink → `exports`) to `.ts`. The Story 1.1 dev scripts (`node --watch src/main.ts`) were a known-broken placeholder (see `deferred-work.md`). Add `tsx` and run entries with it.
 
 3. **In-container DB/Redis hosts are `postgres` / `redis`, not `localhost`.** `.env.example` ships `DATABASE_URL=...@localhost:5432` for host-side dev. Inside Compose, override `DATABASE_URL`/`REDIS_URL` in each service's `environment:` to the Compose service names. Getting this wrong = every container fails to connect and `/health` never goes healthy.
 
@@ -103,9 +103,9 @@ Story 1.1 scaffolded the monorepo; Story 1.2 filled `packages/shared` (schema, `
 - **AD-8** — `backend` (and the `bot`/`workers` stubs) call `loadConfig()` in `main.ts`; invalid YAML aborts before any network I/O.
 - **AD-9** — `migrator` is one-shot (`restart: "no"`, never `unless-stopped`); `bot`/`backend`/`workers` gate on `migrator: service_completed_successfully`.
 - **AD-7** — nginx is the sole host-exposed service; backend listens only on the internal Docker network; `/api/chat` disables buffering (SSE). Backend does not serve SPA static files.
-- **AD-1/AD-2** — three separate Node processes; each gets its own `Dockerfile` + Compose entry; none imports another `@hivly/*` service (only `@hivly/shared`).
+- **AD-1/AD-2** — three separate Node processes; each gets its own `Dockerfile` + Compose entry; none imports another `@share2brain/*` service (only `@share2brain/shared`).
 - **Pin every image** — `pgvector/pgvector:pg17`, `redis:8-alpine`, `nginx:1.27-alpine`, `node:24-alpine`. Never `:latest`. [Source: project-context.md#Technology Stack — Constraints]
-- **Secrets vs behavior** — DB/Redis URLs, tokens, `POSTGRES_PASSWORD` live in `.env`; channels/models/RBAC live in `Hivly.config.yml`. Never mix.
+- **Secrets vs behavior** — DB/Redis URLs, tokens, `POSTGRES_PASSWORD` live in `.env`; channels/models/RBAC live in `Share2Brain.config.yml`. Never mix.
 
 ### Health response contract (target shape)
 ```jsonc
@@ -179,7 +179,7 @@ redis ─────┘   (one-shot)  ├──→ workers
 - [Source: docs/context/ARCHITECTURE-SPINE.md#AD-1, #AD-2, #AD-4, #AD-6, #AD-7, #AD-8, #AD-9; Auth table; Assumptions/Deferred]
 - [Source: docs/context/TECHNICAL-DESIGN.md#3 (7 servicios), #5.4 backend, #5.6 nginx, #11 API REST, #12 SSE, #13 Configuración, #14 Despliegue, #15 Stack]
 - [Source: _bmad-output/project-context.md — Technology Stack & Versions; Architecture boundaries; Backend framework rules; Contracts live only in shared]
-- [Source: packages/shared/src/config/index.ts (loadConfig, HivlyConfigSchema); packages/shared/src/db/index.ts (createDatabase); drizzle.config.ts; .env.example; Hivly.config.yml.example]
+- [Source: packages/shared/src/config/index.ts (loadConfig, Share2BrainConfigSchema); packages/shared/src/db/index.ts (createDatabase); drizzle.config.ts; .env.example; Share2Brain.config.yml.example]
 - [Source: _bmad-output/implementation-artifacts/1-2-*.md#Completion Notes, #File List; deferred-work.md]
 
 ### Decisions confirmed by Borja (2026-07-03) — these are firm, not open
@@ -202,12 +202,12 @@ Claude Opus 4.8 (1M context) — `claude-opus-4-8[1m]`
 
 - **All 5 ACs verified end-to-end against a live stack** (evidence in Debug Log). `docker compose config --services` = exactly 7 (`backend, bot, migrator, nginx, postgres, redis, workers`). Migrator applied both migrations → 8 tables present.
 - **Design revision (approved by Borja 2026-07-04): SPA baked into the nginx image, not a `webdist` volume.** AC1 mandates *exactly 7 services* (no `web`), but a named volume can only be populated by a container — a `webdist`-based approach would require an 8th one-shot `web` service. Resolution: `packages/web/Dockerfile` is multi-stage (`node:24-alpine` build → `vite build` → `FROM nginx:1.27-alpine` that `COPY`s `dist/` + `nginx.conf`). The compose `nginx` service uses `build:` this Dockerfile. No `web` service, no `webdist` volume, only `pgdata` remains. Satisfies AC1 (7 services) and AC5 (`/` serves dist) simultaneously.
-- **`sql` re-exported from `@hivly/shared/db`** so `backend` builds the `select 1` probe without importing `drizzle-orm` directly (AD-2: services depend only on `@hivly/shared`, not on hoisted transitive deps).
+- **`sql` re-exported from `@share2brain/shared/db`** so `backend` builds the `select 1` probe without importing `drizzle-orm` directly (AD-2: services depend only on `@share2brain/shared`, not on hoisted transitive deps).
 - **Health probes are time-boxed** (`withTimeout`, 2s, unref'd timer) and reuse the startup DB pool / Redis client — no per-request connections. Redis uses `lazyConnect` + a swallowed `error` listener so a Redis outage degrades `/health` instead of crashing startup.
-- **`tsx` is the container runtime** (`npx tsx packages/<svc>/src/main.ts`), run from WORKDIR `/app` so `loadConfig()` finds the mounted `/app/Hivly.config.yml`. `node:24-alpine` built cleanly for all images — no `node:24-slim` fallback needed.
-- **Fixed `Hivly.config.yml.example`** (scope-adjacent): `loadConfig()` interpolates `${...}` even inside YAML comments, and the shipped example had a literal `${ENV_VAR}` in a header comment → the example failed to load, breaking AC2 ("valid Hivly.config.yml → stack comes up"). Reworded the comment to `${...}` (no literal placeholder). *Follow-up candidate for a later story: harden `loadConfig()` to skip comments, so operator comments containing `${VAR}` can't break startup.*
-- **Follow-up (Story 2.1):** `packages/web/src/main.tsx` imports the full `@hivly/shared` root barrel, which re-exports the `db` module (`pg`), so Vite pulls `pg` + node built-ins into the browser bundle (~408 KB, harmless "externalized for browser" warnings). The real SPA should import from a browser-safe subpath or `shared` should expose a browser-safe entry. Left as-is here (placeholder scope).
-- **Local artifacts (gitignored, not committed):** `.env` and `Hivly.config.yml` (copied from the `.example` files with placeholder `changeme` secrets) and `packages/web/dist/`. Kept for convenient re-runs; excluded by `.gitignore` / `.dockerignore`.
+- **`tsx` is the container runtime** (`npx tsx packages/<svc>/src/main.ts`), run from WORKDIR `/app` so `loadConfig()` finds the mounted `/app/Share2Brain.config.yml`. `node:24-alpine` built cleanly for all images — no `node:24-slim` fallback needed.
+- **Fixed `Share2Brain.config.yml.example`** (scope-adjacent): `loadConfig()` interpolates `${...}` even inside YAML comments, and the shipped example had a literal `${ENV_VAR}` in a header comment → the example failed to load, breaking AC2 ("valid Share2Brain.config.yml → stack comes up"). Reworded the comment to `${...}` (no literal placeholder). *Follow-up candidate for a later story: harden `loadConfig()` to skip comments, so operator comments containing `${VAR}` can't break startup.*
+- **Follow-up (Story 2.1):** `packages/web/src/main.tsx` imports the full `@share2brain/shared` root barrel, which re-exports the `db` module (`pg`), so Vite pulls `pg` + node built-ins into the browser bundle (~408 KB, harmless "externalized for browser" warnings). The real SPA should import from a browser-safe subpath or `shared` should expose a browser-safe entry. Left as-is here (placeholder scope).
+- **Local artifacts (gitignored, not committed):** `.env` and `Share2Brain.config.yml` (copied from the `.example` files with placeholder `changeme` secrets) and `packages/web/dist/`. Kept for convenient re-runs; excluded by `.gitignore` / `.dockerignore`.
 - **Suggested commit slices** (not committed — awaiting review): `feat(shared): add health response schema and re-export sql`; `feat(backend): add express server with /health endpoint`; `feat(bot,workers): keep placeholder processes alive`; `build(repo): add dockerfiles, nginx.conf and docker-compose`; `fix(repo): stop loadConfig choking on ${...} in config comments`.
 
 ### File List
@@ -240,8 +240,8 @@ Claude Opus 4.8 (1M context) — `claude-opus-4-8[1m]`
 - `packages/web/package.json` — `build` → `vite build`
 - `package.json` — add `tsx` root devDependency
 - `package-lock.json` — dependency additions
-- `Hivly.config.yml.example` — reword header comment so `loadConfig()` doesn't try to interpolate it
-- `.gitignore` — ignore the operator's real `Hivly.config.yml` (only the `.example` is tracked)
+- `Share2Brain.config.yml.example` — reword header comment so `loadConfig()` doesn't try to interpolate it
+- `.gitignore` — ignore the operator's real `Share2Brain.config.yml` (only the `.example` is tracked)
 
 ### Change Log
 
@@ -254,7 +254,7 @@ Claude Opus 4.8 (1M context) — `claude-opus-4-8[1m]`
 - [x] [Review][Patch] PORT hardcoded, no env override [packages/backend/src/main.ts] — Changed to `Number(process.env.PORT) || 3000`.
 - [x] [Review][Patch] requireEnv doesn't trim whitespace [packages/backend/src/main.ts] — Added `.trim()` to the env value check.
 - [x] [Review][Defer] DB/Redis connections created before HTTP listens [packages/backend/src/main.ts] — deferred, pre-existing: lazy redis + pool pattern mitigate this; not a real issue in practice.
-- [x] [Review][Defer] Missing Hivly.config.yml crashes containers [docker-compose.yml] — deferred, pre-existing: standard Docker behavior for missing bind mounts; documented in Dev Notes.
+- [x] [Review][Defer] Missing Share2Brain.config.yml crashes containers [docker-compose.yml] — deferred, pre-existing: standard Docker behavior for missing bind mounts; documented in Dev Notes.
 - [x] [Review][Defer] No integration test for health handler [packages/backend/src/main.ts] — deferred, pre-existing: unit tests cover logic; HTTP-level tests can be added in a later story.
 - [x] [Review][Defer] redis maxRetriesPerRequest: 1 is aggressive [packages/backend/src/main.ts] — deferred, pre-existing: tuning parameter; 503 on transient Redis outage is acceptable.
 - [x] [Review][Defer] Timeout test not explicitly covered [packages/backend/src/health.ts] — deferred, pre-existing: promesa colgante no testeada explícitamente; ambas rutas caen en el mismo catch de probe().

@@ -2,7 +2,7 @@
 // caller's RBAC scope into a validated DocumentsResponse. Depends ONLY on the
 // domain port (DocumentRepository) — no Drizzle, no Express — so it is
 // unit-testable with plain fakes. Mirrors searchService.ts.
-import { DocumentsResponseSchema, type DocumentsResponse } from '@hivly/shared/schemas';
+import { DocumentsResponseSchema, type DocumentsResponse } from '@share2brain/shared/schemas';
 
 import type { DocumentRepository } from '../../domain/repositories/documentRepository.js';
 

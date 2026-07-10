@@ -33,7 +33,7 @@ export async function loginAs(page: Page, code: LoginCode = 'e2e-member'): Promi
   expect(callback.status()).toBe(302);
 
   // 3. Force the dark theme before the first paint (see index.html theme script).
-  await page.addInitScript(() => localStorage.setItem('hivly-theme', 'dark'));
+  await page.addInitScript(() => localStorage.setItem('share2brain-theme', 'dark'));
 
   // 4. Load the SPA: it calls /api/auth/me, resolves authed, renders AppLayout.
   await page.goto('/');

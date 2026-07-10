@@ -8,9 +8,9 @@
 //
 // Requires infra:  docker compose up -d postgres redis
 // Run:             npm run test:integration
-import type { HivlyConfig } from '@hivly/shared';
-import { sql } from '@hivly/shared/db';
-import { STREAM_KEYS } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import { sql } from '@share2brain/shared/db';
+import { STREAM_KEYS } from '@share2brain/shared/types/events';
 import type { Client } from 'discord.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -48,7 +48,7 @@ const config = {
     ],
     backfill: { enabled: true, limit: 1000, ignore_bots: true },
   },
-} as unknown as HivlyConfig;
+} as unknown as Share2BrainConfig;
 
 const silentLogger = {
   debug: () => undefined,
@@ -268,7 +268,7 @@ describe('offlineSync (integration)', () => {
         config: {
           ...config,
           discord: { ...config.discord, channels: [{ id: EMPTY_CHANNEL, name: 'itest-empty', enabled: true }] },
-        } as unknown as HivlyConfig,
+        } as unknown as Share2BrainConfig,
         db: clients.db,
         redis: clients.redis,
         logger: silentLogger,

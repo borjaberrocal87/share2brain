@@ -12,7 +12,7 @@ Status: done
 
 ## Story
 
-As a **community operator pivoting Hivly into an AI-curated resource index**,
+As a **community operator pivoting Share2Brain into an AI-curated resource index**,
 I want **the shared kernel (DB schema, Zod contracts, config schema) to model resources as
 `title + description + link` instead of raw `content`, with a new `enrichment` config block**,
 so that **Stories 7.2–7.5 can build the URL-extraction/fetch/AI-enrichment pipeline and its
@@ -57,14 +57,14 @@ work — no URL extraction, no fetching, no LLM calls, no UI redesign.
    - `CitationSchema` (citation.ts): `+ link` with the empty-or-URL refine; the bidirectional `satisfies` guards (citation.ts:24-25) still compile against the updated `Citation` interface.
    - SSE `citation` frame inherits `link` automatically via `CitationSchema.shape` (sse.ts:11) — verify with a new `sse.test.ts` case (citation frame with/without `link` → parse/reject).
    - `conversations.ts` untouched (already `z.array(CitationSchema)`).
-5. **Required `enrichment` config block** added to `HivlyConfigSchema` (`packages/shared/src/config/index.ts`), per proposal §4.3 + resolved item 4:
+5. **Required `enrichment` config block** added to `Share2BrainConfigSchema` (`packages/shared/src/config/index.ts`), per proposal §4.3 + resolved item 4:
    - `enrichment.language: z.string().min(1)` (AI output language, behavior → YAML, NOT `.env`).
    - `enrichment.llm: { provider: z.enum(['anthropic','openai','custom']), model: min(1), temperature: z.number(), base_url: <empty-or-URL refine>.optional(), api_key: min(1) }` — same shape/messages as the existing `agent` block; `superRefine` extended: `custom` provider requires non-empty `base_url` (mirror the existing agent/embeddings rule).
    - `enrichment.fetch: { timeout_ms: int positive, max_bytes: int positive, max_redirects: int nonnegative, user_agent: min(1), allowed_schemes: z.array(z.enum(['http','https'])).nonempty(), block_private_ips: z.boolean() }`.
-   - Export `type EnrichmentConfig = HivlyConfig['enrichment']`.
+   - Export `type EnrichmentConfig = Share2BrainConfig['enrichment']`.
    - `createChatModel` (providers/index.ts) parameter type widened to a structural `ChatModelConfig` = `{ provider, model, temperature, base_url?, api_key }` so BOTH `agent` and `enrichment.llm` are assignable (zero behavior change; unblocks 7.2 reuse). `agent`'s extra fields (`max_iterations`, `memory_window`) stay on the agent block only.
 6. **Config surfaces updated coherently** (6.4 learnings):
-   - `Hivly.config.yml.example` (tracked) AND the local gitignored `Hivly.config.yml` gain the `enrichment` block with `api_key: "${ENRICHMENT_LLM_API_KEY}"`.
+   - `Share2Brain.config.yml.example` (tracked) AND the local gitignored `Share2Brain.config.yml` gain the `enrichment` block with `api_key: "${ENRICHMENT_LLM_API_KEY}"`.
    - `.env.example` gains `ENRICHMENT_LLM_API_KEY` as a first-class (uncommented) secret with a one-line comment; local `.env` must set it before any service boots (interpolateEnv aborts on unset referenced vars — for local dev it may reuse the `LLM_API_KEY` value).
    - **interpolateEnv gotcha honored**: `${VAR}` must never appear inside YAML comments in either file.
    - Verify `ENRICHMENT_LLM_API_KEY` reaches the workers container in `docker-compose.yml` (if services consume the root `.env` via `env_file`, nothing to do; if they enumerate `environment:` keys, add it to `workers`).
@@ -77,14 +77,14 @@ work — no URL extraction, no fetching, no LLM calls, no UI redesign.
    - `docs/context/TECHNICAL-DESIGN.md`: §13 config example gains the `enrichment` block; §9/§12 citation wire shape gains `link`; add a short pointer in §7 that the grouping/chunking pipeline is superseded by Epic 7 (full rewrite in Story 7.2).
    - `_bmad-output/planning-artifacts/epics.md`: FR5 rewritten + FR6/FR11/FR12/FR16/FR17/FR13/FR21 adjusted + "Épico 7" section appended with its 6 historias (verbatim text in proposal §4.4/§4.5; keep the file's Spanish).
    - `docs/context/PRD.md`: product-scope statement updated to the curated resource index (non-link discussion no longer searchable).
-9. **Verification gate green and pasted as evidence** (agent-run): `npm run lint` && `npm run test` (unit+web) && `npm run build`; plus `npm run test:integration` (backend + workers suites against real Postgres/Redis, post-migration) and `npm run test:e2e -w @hivly/web` (13 specs — they assert testids/classes, not content strings, and must stay green with placeholder data). Stop compose app containers first (`assertNoCompetingWriter` guard, OPS-2).
+9. **Verification gate green and pasted as evidence** (agent-run): `npm run lint` && `npm run test` (unit+web) && `npm run build`; plus `npm run test:integration` (backend + workers suites against real Postgres/Redis, post-migration) and `npm run test:e2e -w @share2brain/web` (13 specs — they assert testids/classes, not content strings, and must stay green with placeholder data). Stop compose app containers first (`assertNoCompetingWriter` guard, OPS-2).
 
 ## Tasks / Subtasks
 
 - [x] Task 0 — Branch + preconditions (AC: all)
   - [x] `git branch --show-current` → if `main`, `git switch -c feat/7-1-shared-resource-index-contracts`.
   - [x] `docker compose up -d postgres redis`; STOP app containers (backend/bot/workers) if running (OPS-2 guard).
-  - [x] Confirm local `Hivly.config.yml` has `embeddings.dimensions: 1536` (schema generate-time reads it via `readEmbeddingDimensions()` — a wrong value produces a spurious vector-dimension diff in the migration).
+  - [x] Confirm local `Share2Brain.config.yml` has `embeddings.dimensions: 1536` (schema generate-time reads it via `readEmbeddingDimensions()` — a wrong value produces a spurious vector-dimension diff in the migration).
 - [x] Task 1 — Contracts first, tests-first where red is cheap (AC: 3, 4)
   - [x] Update `packages/shared/src/schemas/search.ts` + `search.test.ts` (write the new fixture/reject tests red, then swap the schema).
   - [x] Update `documents.ts` + `documents.test.ts` likewise.
@@ -96,9 +96,9 @@ work — no URL extraction, no fetching, no LLM calls, no UI redesign.
   - [x] Truncate local data per runbook order, `npx drizzle-kit migrate`, verify `\d embeddings`.
   - [x] Write the deploy runbook (AC-2) — truncate order, migrate, full fresh ingest.
 - [x] Task 3 — `enrichment` config block (AC: 5, 6)
-  - [x] Extend `HivlyConfigSchema` + `superRefine` + `EnrichmentConfig` type; widen `createChatModel` to `ChatModelConfig`.
+  - [x] Extend `Share2BrainConfigSchema` + `superRefine` + `EnrichmentConfig` type; widen `createChatModel` to `ChatModelConfig`.
   - [x] Update `config/index.test.ts` (fixture + the 6 new cases in AC-6).
-  - [x] Update `Hivly.config.yml.example`, local `Hivly.config.yml`, `.env.example`, local `.env`; check docker-compose env plumbing for workers.
+  - [x] Update `Share2Brain.config.yml.example`, local `Share2Brain.config.yml`, `.env.example`, local `.env`; check docker-compose env plumbing for workers.
 - [x] Task 4 — Mechanical ripples, workers (AC: 7)
   - [x] `indexBatch.ts` values/`onConflictDoUpdate` sets → placeholder mapping; `processUpdate.ts` same.
   - [x] Retarget `indexBatch.test.ts`, `processUpdate.test.ts`, `indexBatch.integration.test.ts`, `sync.integration.test.ts` assertions from `content` → `description`.
@@ -135,7 +135,7 @@ _Code review 2026-07-09 (bmad-code-review, 3 adversarial layers). Acceptance Aud
 - **AD-12 preserved**: `channelId` column and `idx_embeddings_channel` are untouched; RBAC stays inside the vector query. Do not touch any RBAC SQL.
 - **AD-13**: `chunk_key` unique index + UPSERT convergence is the idempotency mechanism; the new `"<messageId>:<urlIndex>"` semantics keep redelivery convergent even under non-deterministic AI output (7.2 concern; 7.1 just documents it).
 - **AD-8**: invalid YAML aborts every service pre-I/O — which is why the required `enrichment` block must land in BOTH yml files and the env var in `.env` before anything boots.
-- **AD-2**: no cross-service imports; `providers/` stays subpath-only (`@hivly/shared/providers`), never re-exported from the root barrel (keeps LangChain out of web/bot bundles).
+- **AD-2**: no cross-service imports; `providers/` stays subpath-only (`@share2brain/shared/providers`), never re-exported from the root barrel (keeps LangChain out of web/bot bundles).
 
 ### Current state (verbatim anchors — verified 2026-07-09)
 
@@ -149,9 +149,9 @@ _Code review 2026-07-09 (bmad-code-review, 3 adversarial layers). Acceptance Aud
 
 **`SearchFragmentSchema` (search.ts:32-42)**: `{ id: z.uuid(), content, channelId, channelName, authorId, authorName, createdAt, similarity: 0..1, messageId }`. **`DocumentFragmentSchema` (documents.ts:31-42)**: same minus `similarity`, plus `indexedAt`, `isRead`.
 
-**Config (`config/index.ts`)**: `HivlyConfigSchema` at :40; top-level blocks `version, discord, agent, embeddings, knowledge, sync, access_control, read_tracking, observability, security, notifications?, streams?`; `superRefine` at :139-194. The `agent` block (:55-65) is the shape template for `enrichment.llm` (provider enum, model min-1, temperature, empty-or-URL `base_url` refine at :61-63, api_key min-1). **No `.default()`s anywhere in the schema** — keep it that way; values live in YAML. `interpolateEnv` (:200-214) replaces `${VAR}` across the WHOLE raw file **including comments** before YAML parse and throws on unset vars. `loadConfig` (:237-264).
+**Config (`config/index.ts`)**: `Share2BrainConfigSchema` at :40; top-level blocks `version, discord, agent, embeddings, knowledge, sync, access_control, read_tracking, observability, security, notifications?, streams?`; `superRefine` at :139-194. The `agent` block (:55-65) is the shape template for `enrichment.llm` (provider enum, model min-1, temperature, empty-or-URL `base_url` refine at :61-63, api_key min-1). **No `.default()`s anywhere in the schema** — keep it that way; values live in YAML. `interpolateEnv` (:200-214) replaces `${VAR}` across the WHOLE raw file **including comments** before YAML parse and throws on unset vars. `loadConfig` (:237-264).
 
-**Providers (`providers/index.ts`)**: `createChatModel(agent: HivlyConfig['agent']): BaseChatModel` (:35) destructures exactly `{provider, api_key, model, temperature, base_url}`; `createEmbeddingsModel` (:70). Keys passed explicitly — never rely on LangChain's implicit env lookup. Subpath-only export.
+**Providers (`providers/index.ts`)**: `createChatModel(agent: Share2BrainConfig['agent']): BaseChatModel` (:35) destructures exactly `{provider, api_key, model, temperature, base_url}`; `createEmbeddingsModel` (:70). Keys passed explicitly — never rely on LangChain's implicit env lookup. Subpath-only export.
 
 **Migrations**: `packages/shared/src/db/migrations/` → `0000_enable_pgvector.sql` (hand-written), `0001_tough_skrulls.sql` (initial), `0002_lush_fabian_cortez.sql` (chunk_key, Story 3.3). `drizzle.config.ts` at repo root (`out: './packages/shared/src/db/migrations'`). Compose `migrator` one-shot service applies them (`npx drizzle-kit migrate`, journal-idempotent); app services `depends_on: service_completed_successfully`.
 
@@ -197,11 +197,11 @@ link:        ''            // extracted URL in 7.2; '' passes the empty-or-URL r
 - Tests: `SearchView.test.tsx:23,35,114-123`, `DocsView.test.tsx:27,40` + ~12 `findByText` cases, `ChatWidget.test.tsx:319,452`, `api/conversations.test.ts:81,88,112`.
 - Playwright specs (`tests/*.spec.ts`) assert testids/classes/channel text — safe as long as seed inserts succeed and `doc-row-content` stays non-empty (placeholder `description` = old sentences → OK). jsdom gotcha: repo has no jest-dom — use `.textContent`/`toContain`, not `toHaveTextContent`.
 
-**Shared's own tests**: `search.test.ts:65-94`, `documents.test.ts:103-132`, `citation.test.ts`, `sse.test.ts` (+new cases), `conversations.test.ts:71,90` (citation arrays gain `link`), `config/index.test.ts` (fixture is the FULL `VALID_YAML` string at :9-68 — the required `enrichment` block must be added there or ~28 tests fail). Other packages build config fixtures via `as unknown as HivlyConfig` — immune to the new block.
+**Shared's own tests**: `search.test.ts:65-94`, `documents.test.ts:103-132`, `citation.test.ts`, `sse.test.ts` (+new cases), `conversations.test.ts:71,90` (citation arrays gain `link`), `config/index.test.ts` (fixture is the FULL `VALID_YAML` string at :9-68 — the required `enrichment` block must be added there or ~28 tests fail). Other packages build config fixtures via `as unknown as Share2BrainConfig` — immune to the new block.
 
 ### Migration procedure + gotchas (Story 3.3 playbook, adapted)
 
-1. Verify `Hivly.config.yml` `embeddings.dimensions: 1536` (generate-time read).
+1. Verify `Share2Brain.config.yml` `embeddings.dimensions: 1536` (generate-time read).
 2. Edit schema.ts → `npx drizzle-kit generate`.
 3. **drizzle-kit WILL prompt interactively**: dropping `content` while adding `title/description/link` triggers the rename-or-new heuristic. Answer **"+ create column"** for all three — a rename would corrupt the snapshot semantics.
 4. Hand-review the SQL: expect exactly 1 DROP + 3 ADD `NOT NULL` on `embeddings`. `NOT NULL` without default is safe ONLY because the approved runbook truncates first (the 0002 precedent comment) — on any non-empty table the ALTER fails; that is by design, not a bug to work around.
@@ -216,16 +216,16 @@ link:        ''            // extracted URL in 7.2; '' passes the empty-or-URL r
 
 ### Previous story intelligence
 
-- **6.4 (config-block precedent)**: touched `config/index.ts` + `index.test.ts` + BOTH yml files + `.env.example`; initially missed the tracked `Hivly.config.yml.example` (git status doesn't surface the gitignored real file — don't repeat); the interpolateEnv-in-comments gotcha is 6.4's headline discovery.
+- **6.4 (config-block precedent)**: touched `config/index.ts` + `index.test.ts` + BOTH yml files + `.env.example`; initially missed the tracked `Share2Brain.config.yml.example` (git status doesn't surface the gitignored real file — don't repeat); the interpolateEnv-in-comments gotcha is 6.4's headline discovery.
 - **3.3 (migration precedent)**: shared schema change in its own `feat(shared)` commit including `meta/` files; hand-review + local apply + `\d` verification before committing.
-- **OPS-1/OPS-2**: `streams` optional-block precedent (not used here — enrichment is required); integration-test hygiene (salted ids, `assertNoCompetingWriter`, `HIVLY_TEST_ALLOW_SHARED_DB=1` escape hatch); the residual RBAC-adjacent session flake is documented in `deferred-work.md` — don't chase it.
+- **OPS-1/OPS-2**: `streams` optional-block precedent (not used here — enrichment is required); integration-test hygiene (salted ids, `assertNoCompetingWriter`, `SHARE2BRAIN_TEST_ALLOW_SHARED_DB=1` escape hatch); the residual RBAC-adjacent session flake is documented in `deferred-work.md` — don't chase it.
 - **Epic 4 AI#4 (web)**: base border/color values must live in CSS classes, not inline — irrelevant here unless you touch styles (you shouldn't).
 
 ### Git intelligence
 
 Recent pattern: one feature commit per meaningful slice + PR per story (`gh pr create`, base `main`, never auto-merge). Suggested slices (Conventional Commits, English, ≤72 chars):
 1. `feat(shared)!: replace embeddings.content with title/description/link` — schema + migration 0003 (+meta) + search/documents/citation/sse contracts + shared tests. Footer: `BREAKING CHANGE: embeddings and search/document/citation contracts expose title/description/link; consumers must re-index (full wipe runbook in story 7.1).`
-2. `feat(shared)!: add required enrichment config block` — config schema + tests + yml example + .env.example + `ChatModelConfig` widening. Footer: `BREAKING CHANGE: Hivly.config.yml requires an enrichment block; ENRICHMENT_LLM_API_KEY must be set.`
+2. `feat(shared)!: add required enrichment config block` — config schema + tests + yml example + .env.example + `ChatModelConfig` widening. Footer: `BREAKING CHANGE: Share2Brain.config.yml requires an enrichment block; ENRICHMENT_LLM_API_KEY must be set.`
 3. `refactor(repo): adapt workers/backend/web to resource-index contracts` — mechanical ripples + retargeted tests + e2e seed.
 4. `docs(repo): sync data-model, api-spec, spine, technical-design, epics for epic 7`.
 
@@ -278,12 +278,12 @@ Claude Sonnet 5 (claude-sonnet-5)
   `title/description/link` (empty-or-URL refine, D2); `CitationSchema` + the `Citation` interface
   both gain required `link` in the same edit (the bidirectional `satisfies` guards still compile);
   `sse.test.ts` covers the citation frame's `link` (empty/URL/reject/missing).
-- **AC-5/AC-6 (enrichment config):** `HivlyConfigSchema` gains a REQUIRED `enrichment` block
+- **AC-5/AC-6 (enrichment config):** `Share2BrainConfigSchema` gains a REQUIRED `enrichment` block
   (`language`, `llm{provider,model,temperature,base_url?,api_key}`, `fetch{timeout_ms,max_bytes,
   max_redirects,user_agent,allowed_schemes,block_private_ips}`); `superRefine` extended for
   `enrichment.llm.provider === 'custom'` → `base_url` required, mirroring `agent`/`embeddings`.
   `createChatModel` widened to a structural `ChatModelConfig` (zero behavior change). Both
-  `Hivly.config.yml{,.example}` + `.env.example` gained the block/secret; local `.env` reuses
+  `Share2Brain.config.yml{,.example}` + `.env.example` gained the block/secret; local `.env` reuses
   `LLM_API_KEY`'s value for `ENRICHMENT_LLM_API_KEY` (provider stays `anthropic` locally, so no
   `base_url` needed). `docker-compose.yml` workers `environment:` gained
   `ENRICHMENT_LLM_API_KEY`/`ENRICHMENT_LLM_BASE_URL` (mirrors the existing `EMBEDDINGS_*` pattern —
@@ -314,10 +314,10 @@ Claude Sonnet 5 (claude-sonnet-5)
     → clean.
   - `npm run test:integration` (backend + bot + workers) → **19 files / 110 tests passed** (one
     transient login-flow flake on the first parallel run, green on re-run — see Debug Log).
-  - `npm run test:e2e -w @hivly/web` → **13/13 Playwright specs passed** (Chromium; asserts
+  - `npm run test:e2e -w @share2brain/web` → **13/13 Playwright specs passed** (Chromium; asserts
     testids/classes, not content strings, so placeholder `title:''/link:''` data doesn't break
     them, as anticipated in the story's Dev Notes).
-- No new dependencies, no version bumps. Local gitignored `Hivly.config.yml`/`.env` were updated
+- No new dependencies, no version bumps. Local gitignored `Share2Brain.config.yml`/`.env` were updated
   (not tracked by git) alongside their tracked `.example` counterparts — 6.4's gotcha honored.
 
 ### File List
@@ -364,8 +364,8 @@ Claude Sonnet 5 (claude-sonnet-5)
 - `src/App.test.tsx`
 
 **Modified — config/infra (repo root):**
-- `Hivly.config.yml.example`, `.env.example`, `docker-compose.yml`
-- Local gitignored `Hivly.config.yml`, `.env` (not tracked by git — see Completion Notes)
+- `Share2Brain.config.yml.example`, `.env.example`, `docker-compose.yml`
+- Local gitignored `Share2Brain.config.yml`, `.env` (not tracked by git — see Completion Notes)
 
 **Modified — docs:**
 - `docs/data-model.md`, `docs/api-spec.yml`

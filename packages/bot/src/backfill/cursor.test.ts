@@ -1,7 +1,7 @@
 // Unit test for getChannelCursor — the derived per-channel backfill cursor.
 // The db is mocked; the real newest-by-created_at ordering (and the snowflake
 // length trap) is covered by the integration test.
-import type { Database } from '@hivly/shared/db';
+import type { Database } from '@share2brain/shared/db';
 import { describe, expect, it, vi } from 'vitest';
 
 import { getChannelCursor } from './cursor.js';

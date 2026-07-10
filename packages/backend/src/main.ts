@@ -1,11 +1,11 @@
-// @hivly/backend — Express API process (AD-1: standalone Node process).
+// @share2brain/backend — Express API process (AD-1: standalone Node process).
 // Boots the runtime: loadConfig() first (AD-8), one pooled DB client and one
 // node-redis client at startup, then the app (health + Discord OAuth2 auth).
-import { loadConfig } from '@hivly/shared';
-import { createDatabase, type Database } from '@hivly/shared/db';
-import { createLogger } from '@hivly/shared/logger';
-import { createNotifier } from '@hivly/shared/notifier';
-import { createRedisClient } from '@hivly/shared/redis';
+import { loadConfig } from '@share2brain/shared';
+import { createDatabase, type Database } from '@share2brain/shared/db';
+import { createLogger } from '@share2brain/shared/logger';
+import { createNotifier } from '@share2brain/shared/notifier';
+import { createRedisClient } from '@share2brain/shared/redis';
 
 import { createApp } from './app.js';
 import { createDrizzleChannelPermissionRepository } from './infrastructure/channelPermissionRepository.drizzle.js';

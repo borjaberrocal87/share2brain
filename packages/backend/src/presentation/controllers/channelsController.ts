@@ -1,7 +1,7 @@
 // Presentation: HTTP handler for GET /api/channels. Owns HTTP concerns and maps
 // errors to the unified ErrorSchema shape. Raw DB errors are never leaked to the
 // client. Mirrors searchController.ts.
-import { CHANNELS_ERROR } from '@hivly/shared/schemas';
+import { CHANNELS_ERROR } from '@share2brain/shared/schemas';
 import type { Request, Response } from 'express';
 
 import type { RbacService } from '../../application/services/rbacService.js';

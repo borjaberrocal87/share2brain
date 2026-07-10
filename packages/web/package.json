@@ -1,5 +1,5 @@
 {
-  "name": "@hivly/web",
+  "name": "@share2brain/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@hivly/shared": "*",
+    "@share2brain/shared": "*",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },

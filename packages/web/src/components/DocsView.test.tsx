@@ -6,7 +6,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { DocumentFragment, DocumentsResponse } from '@hivly/shared/schemas';
+import type { DocumentFragment, DocumentsResponse } from '@share2brain/shared/schemas';
 
 import * as channelsApi from '../api/channels';
 import * as documentsApi from '../api/documents';

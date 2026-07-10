@@ -14,7 +14,7 @@
 // suite or a stale row cannot perturb the result. NOTE: the member's effective
 // roles include the injected `@everyone` role, whose ID equals the guild id
 // (authService injects it — AD-12 / PR #32); the assertions expect it explicitly.
-import { sql } from '@hivly/shared/db';
+import { sql } from '@share2brain/shared/db';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

@@ -19,7 +19,7 @@ The `.env` currently holds placeholders. Fill these with real values first:
 
 **Discord Developer Portal setup for `gateway.ts`:**
 - Bot → enable the **Message Content Intent** (privileged). Without it `message.content` is empty — the spike detects and reports this explicitly.
-- Invite the bot to the guild with the `bot` scope and read permissions on the channels listed in `Hivly.config.yml → discord.channels` (`enabled: true`).
+- Invite the bot to the guild with the `bot` scope and read permissions on the channels listed in `Share2Brain.config.yml → discord.channels` (`enabled: true`).
 
 ## Run
 

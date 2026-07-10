@@ -11,7 +11,7 @@ Status: done
 ## Story
 
 As a community member,
-I want the Hivly interface to have a consistent visual identity with light/dark theme support,
+I want the Share2Brain interface to have a consistent visual identity with light/dark theme support,
 so that the experience is professional and adaptable to my preferences.
 
 ## Acceptance Criteria
@@ -20,7 +20,7 @@ so that the experience is professional and adaptable to my preferences.
 
 2. **Typography — 3 families from Google Fonts.** The app loads Space Grotesk (500/600/700), IBM Plex Sans (400/500/600), and IBM Plex Mono (400/500/600) from Google Fonts. The `body` `font-family` is `'IBM Plex Sans', system-ui, sans-serif`.
 
-3. **Hexagonal brand component.** A reusable React component renders the Hivly hexagon: `clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)` with `linear-gradient(150deg, #FFCB6B, #F5A623)`, in a **nested structure** (outer amber gradient → inner bg-color hexagon → amber dot hexagon). It supports at least the 3 size variants this epic needs: **74px** (login), **32px** (sidebar / chat header), **30px** (agent avatar in messages). See Dev Notes → Hexagon spec for exact inner dimensions per size.
+3. **Hexagonal brand component.** A reusable React component renders the Share2Brain hexagon: `clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)` with `linear-gradient(150deg, #FFCB6B, #F5A623)`, in a **nested structure** (outer amber gradient → inner bg-color hexagon → amber dot hexagon). It supports at least the 3 size variants this epic needs: **74px** (login), **32px** (sidebar / chat header), **30px** (agent avatar in messages). See Dev Notes → Hexagon spec for exact inner dimensions per size.
 
 4. **Six `@keyframes`.** The stylesheet defines all six animations: `kh-spin` (0.7s linear rotate), `kh-blink` (1s step-end opacity toggle), `kh-up` (translateY 10px fade-in), `kh-float` (translateY + rotate loop), `kh-pop` (translateY 6px + scale 0.98 entrance, 0.2s), `kh-pulse` (scale 0.85→1 + opacity 0.35→1, 1.4–1.6s). Copy the exact definitions from Dev Notes → Keyframes.
 
@@ -45,7 +45,7 @@ so that the experience is professional and adaptable to my preferences.
   - [x] Create `packages/web/src/components/Hexagon.tsx` (new; PascalCase per naming convention).
   - [x] Props: `size: number` (outer px); optional `innerBg?: 'bg' | 'bg-deep'` (default `'bg'`, controls the inner hexagon fill via the corresponding CSS var); optional `showDot?: boolean` (default `true`, the amber center dot); optional `children?` and `className?`/`style?` passthrough for the login/chat contexts that place an icon inside.
   - [x] Render three nested `<div>`s each carrying the shared clip-path polygon. Outer = `linear-gradient(150deg,#FFCB6B,#F5A623)`; middle = `var(--bg)` or `var(--bg-deep)`; inner dot = `#F5A623`. Use the size→dimension mapping in Dev Notes → Hexagon spec (74→42/14, 32→18/6, 30→15/—) and interpolate proportionally for other sizes.
-  - [x] Keep it presentational and dependency-free — no `@hivly/shared` import needed (and the web ESLint guard bans the root barrel / `/db` / `/config` anyway).
+  - [x] Keep it presentational and dependency-free — no `@share2brain/shared` import needed (and the web ESLint guard bans the root barrel / `/db` / `/config` anyway).
 
 - [x] **Task 5 — Wire global styles + default theme into the app entry (AC: 1, 5)**
   - [x] In `packages/web/src/main.tsx`: `import './styles/global.css';`.
@@ -63,7 +63,7 @@ so that the experience is professional and adaptable to my preferences.
 This story delivers **only** the design-system foundation: tokens, fonts, keyframes, and the Hexagon primitive. It does **NOT** build the login screen, sidebar, header, router, theme toggle, or `localStorage` persistence — all of that is **Story 2.2** (which consumes this foundation). Do not build layout or app chrome here. [Source: epics.md#Historia 2.2]
 
 ### Authoritative source of truth for all values
-The exact palette, fonts, keyframes, and hexagon structure below are extracted **verbatim** from the design prototype `docs/context/design/KeepHive Web.dc.html` (the "kh"/KeepHive prototype — origin of the `data-kh` attribute and `kh-*` animation names). When any doubt arises about a concrete value, that file is authoritative. The `_bmad-output` UX requirements UX-DR1–UX-DR4 and UX-DR23 describe the same system in prose. [Source: docs/context/design/KeepHive Web.dc.html; epics.md#Requisitos de Diseño UX (UX-DR1–DR4, DR23)]
+The exact palette, fonts, keyframes, and hexagon structure below are extracted **verbatim** from the design prototype `docs/context/design/Share2Brain Web.dc.html` (the "kh"/Share2Brain prototype — origin of the `data-kh` attribute and `kh-*` animation names). When any doubt arises about a concrete value, that file is authoritative. The `_bmad-output` UX requirements UX-DR1–UX-DR4 and UX-DR23 describe the same system in prose. [Source: docs/context/design/Share2Brain Web.dc.html; epics.md#Requisitos de Diseño UX (UX-DR1–DR4, DR23)]
 
 ### Token table — copy verbatim into `global.css`
 ```css
@@ -80,7 +80,7 @@ The exact palette, fonts, keyframes, and hexagon structure below are extracted *
   --hover:rgba(0,0,0,0.05); --on-accent:#0E1116; --accent-ink:#9A5B00;
 }
 ```
-**Fixed brand colors** (not theme-dependent, referenced directly by later stories): amber accent `#F5A623` / highlight `#FFCB6B`; Discord `#5865F2`; positive/active `#3BA55D`; error/danger `#ED4245`. [Source: KeepHive Web.dc.html:23-31; UX-DR1]
+**Fixed brand colors** (not theme-dependent, referenced directly by later stories): amber accent `#F5A623` / highlight `#FFCB6B`; Discord `#5865F2`; positive/active `#3BA55D`; error/danger `#ED4245`. [Source: Share2Brain Web.dc.html:23-31; UX-DR1]
 
 ### Base reset — copy into `global.css`
 ```css
@@ -93,7 +93,7 @@ body { background: var(--bg); color: var(--tx); font-family: 'IBM Plex Sans', sy
 *::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
 textarea, input, button { font-family: inherit; }
 ```
-[Source: KeepHive Web.dc.html:15-22]
+[Source: Share2Brain Web.dc.html:15-22]
 
 ### Fonts — add to `index.html` `<head>`
 ```html
@@ -101,7 +101,7 @@ textarea, input, button { font-family: inherit; }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 ```
-Role of each family (informs later stories, not a 2.1 deliverable): Space Grotesk → titles / brand wordmark / section headers; IBM Plex Sans → body + general UI; IBM Plex Mono → metadata, timestamps, counts, channel badges, status labels, OAuth scopes, versions. [Source: KeepHive Web.dc.html:11-13; UX-DR2]
+Role of each family (informs later stories, not a 2.1 deliverable): Space Grotesk → titles / brand wordmark / section headers; IBM Plex Sans → body + general UI; IBM Plex Mono → metadata, timestamps, counts, channel badges, status labels, OAuth scopes, versions. [Source: Share2Brain Web.dc.html:11-13; UX-DR2]
 
 ### Keyframes — copy verbatim into `global.css`
 ```css
@@ -112,7 +112,7 @@ Role of each family (informs later stories, not a 2.1 deliverable): Space Grotes
 @keyframes kh-pop   { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
 @keyframes kh-pulse { 0%,100% { opacity: 0.35; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1); } }
 ```
-[Source: KeepHive Web.dc.html:35-40; UX-DR23]
+[Source: Share2Brain Web.dc.html:35-40; UX-DR23]
 
 ### Hexagon spec — exact nested dimensions per size
 Shared polygon for every layer: `polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)`. Structure = 3 nested hexagons: **outer** `linear-gradient(150deg,#FFCB6B,#F5A623)` → **middle** background hexagon (`--bg` or `--bg-deep`) → **inner** amber dot `#F5A623`. Centered via `display:flex; align-items:center; justify-content:center`.
@@ -125,11 +125,11 @@ Shared polygon for every layer: `polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25%
 | 30px | 15px | — | `--bg` | Agent avatar in messages | line 356-357 |
 | 60px | 34px | — | `--bg` | Chat empty-state (Epic 5, "large" variant) | line 337-338 |
 
-Design the component so `size` drives dimensions (74/32/30 required now; 60 and the no-dot chat variants land with Epic 5). Because inner-fill differs (`--bg` vs `--bg-deep`) and the dot is sometimes absent, expose `innerBg` and `showDot` props rather than hardcoding. A reasonable proportional rule if you don't special-case each size: middle ≈ 0.55 × outer, dot ≈ 0.19 × outer — but prefer the exact table values for the three required sizes. [Source: KeepHive Web.dc.html:53-55,92-94,298-299,356-357; UX-DR3]
+Design the component so `size` drives dimensions (74/32/30 required now; 60 and the no-dot chat variants land with Epic 5). Because inner-fill differs (`--bg` vs `--bg-deep`) and the dot is sometimes absent, expose `innerBg` and `showDot` props rather than hardcoding. A reasonable proportional rule if you don't special-case each size: middle ≈ 0.55 × outer, dot ≈ 0.19 × outer — but prefer the exact table values for the three required sizes. [Source: Share2Brain Web.dc.html:53-55,92-94,298-299,356-357; UX-DR3]
 
 ### Architecture compliance (non-negotiable)
 - **AD-3 — static SPA only.** No Node server, no SSR. Vite builds to `dist/`, nginx serves it. Everything here is browser-side. [Source: project-context.md#Frontend rules; TECHNICAL-DESIGN.md §5.5]
-- **Web import guard (Epic 1 retro action item #3).** `packages/web/**` may import only browser-safe `@hivly/shared/schemas` / `@hivly/shared/types/events`. The root barrel `@hivly/shared` and `@hivly/shared/db` / `@hivly/shared/config` are banned by the `no-restricted-imports` rule in the root `eslint.config.js` (they pull in `pg` + Node built-ins and blew the bundle from 408 KB → 252 KB when removed). This story needs **no** shared import at all — keep it that way. [Source: eslint.config.js:32-47; epic-2-ac-verification-2026-07-04.md#Web/bundle prerequisite]
+- **Web import guard (Epic 1 retro action item #3).** `packages/web/**` may import only browser-safe `@share2brain/shared/schemas` / `@share2brain/shared/types/events`. The root barrel `@share2brain/shared` and `@share2brain/shared/db` / `@share2brain/shared/config` are banned by the `no-restricted-imports` rule in the root `eslint.config.js` (they pull in `pg` + Node built-ins and blew the bundle from 408 KB → 252 KB when removed). This story needs **no** shared import at all — keep it that way. [Source: eslint.config.js:32-47; epic-2-ac-verification-2026-07-04.md#Web/bundle prerequisite]
 - **English only** in all code, comments, tests, commits. The Spanish strings in the prototype are UI copy for later stories, not 2.1 deliverables. [Source: project-context.md#Code quality & naming]
 
 ### Naming & file locations
@@ -148,11 +148,11 @@ Design the component so `size` drives dimensions (74/32/30 required now; 60 and 
 - No conflicts with existing structure. `main.tsx`'s current `HealthResponseSchema` stub was a Story 1.3 scaffold proof and is safe to remove.
 
 ### References
-- [Source: docs/context/design/KeepHive Web.dc.html] — authoritative prototype (tokens L23-31, reset L15-22, fonts L11-13, keyframes L35-40, hexagons L53-55/92-94/298-299/337-338/356-357]
+- [Source: docs/context/design/Share2Brain Web.dc.html] — authoritative prototype (tokens L23-31, reset L15-22, fonts L11-13, keyframes L35-40, hexagons L53-55/92-94/298-299/337-338/356-357]
 - [Source: _bmad-output/planning-artifacts/epics.md#Historia 2.1] — story + acceptance criteria
 - [Source: _bmad-output/planning-artifacts/epics.md#Requisitos de Diseño UX] — UX-DR1 (tokens), UX-DR2 (fonts), UX-DR3 (hexagon), UX-DR4 (dual theme), UX-DR23 (animations)
 - [Source: _bmad-output/project-context.md#Frontend rules, #Testing rules, #Code quality & naming]
-- [Source: _bmad-output/planning-artifacts/architecture/architecture-hivly-2026-06-30/TECHNICAL-DESIGN.md §5.5] — packages/web SPA
+- [Source: _bmad-output/planning-artifacts/architecture/architecture-share2brain-2026-06-30/TECHNICAL-DESIGN.md §5.5] — packages/web SPA
 - [Source: eslint.config.js:32-47] — web browser-safe import guard
 - [Source: _bmad-output/implementation-artifacts/epic-2-ac-verification-2026-07-04.md] — Epic 2 AC consistency + bundle prerequisite
 
@@ -179,7 +179,7 @@ claude-opus-4-8[1m] (bmad-dev-story)
 
 ### Debug Log References
 
-- `npm run typecheck -w @hivly/web` initially failed after the new relative + CSS imports: `tsc` inherits `NodeNext` module resolution from `tsconfig.base.json`, which requires `.js` extensions on relative imports and has no ambient type for `import './styles/global.css'`. (`vite build` uses esbuild and did not catch this.) Fixed by overriding the web `tsconfig.json` to `module: ESNext` + `moduleResolution: Bundler` (Vite's recommended setting) and `types: ["vite/client"]`.
+- `npm run typecheck -w @share2brain/web` initially failed after the new relative + CSS imports: `tsc` inherits `NodeNext` module resolution from `tsconfig.base.json`, which requires `.js` extensions on relative imports and has no ambient type for `import './styles/global.css'`. (`vite build` uses esbuild and did not catch this.) Fixed by overriding the web `tsconfig.json` to `module: ESNext` + `moduleResolution: Bundler` (Vite's recommended setting) and `types: ["vite/client"]`.
 
 ### Completion Notes List
 
@@ -187,7 +187,7 @@ Implemented the design-system foundation only (tokens, fonts, keyframes, Hexagon
 
 - **AC1/AC5 (tokens + theme resolution):** `global.css` carries both token blocks verbatim (`:root, [data-kh="dark"]` and `[data-kh="light"]`). Verified in the compiled `dist` CSS: dark `--accent-ink:#f5a623` / `--on-accent:#0e1116`; light `--accent-ink:#9a5b00` / `--on-accent:#0e1116`; both `[data-kh=dark]`/`[data-kh=light]` selectors present (hex lowercased by Vite's minifier). Root defaults to `data-kh="dark"` via `main.tsx`.
 - **AC2 (fonts):** three `<link>`s (2 preconnect + 1 stylesheet) with Space Grotesk 500/600/700, IBM Plex Sans 400/500/600, IBM Plex Mono 400/500/600, `display=swap`; `body` font-family is `'IBM Plex Sans', system-ui, sans-serif`. Confirmed in built `index.html`.
-- **AC3 (Hexagon):** `Hexagon.tsx` renders three nested clip-path layers (amber gradient → `--bg`/`--bg-deep` → amber dot). `size` drives dimensions with exact prototype values for 74/32/30 and a proportional fallback (middle ≈0.55×, dot ≈0.19×) for others. Props: `size`, `innerBg`, `showDot`, `children`, `className`, `style`. Dependency-free (no `@hivly/shared` import — respects the web browser-safe import guard).
+- **AC3 (Hexagon):** `Hexagon.tsx` renders three nested clip-path layers (amber gradient → `--bg`/`--bg-deep` → amber dot). `size` drives dimensions with exact prototype values for 74/32/30 and a proportional fallback (middle ≈0.55×, dot ≈0.19×) for others. Props: `size`, `innerBg`, `showDot`, `children`, `className`, `style`. Dependency-free (no `@share2brain/shared` import — respects the web browser-safe import guard).
 - **AC4 (keyframes):** all six `kh-*` keyframes present verbatim; confirmed in `dist` CSS.
 - **Testing:** added a `web` Vitest project (jsdom + `@vitejs/plugin-react`) in `packages/web/vitest.config.ts`, registered in the root `test.projects`, and wired into `npm run test` (`--project unit --project web`). `Hexagon.test.tsx` asserts the 3-layer structure + clip-path polygon, and that `showDot={false}` drops the dot (2 layers).
 - **Honest verification limits:** jsdom does not apply external stylesheets or resolve CSS custom properties via `getComputedStyle`, so token/font/keyframe ACs are NOT asserted in unit tests. They were verified against the compiled `dist` artifacts (strong automated proxy). A final live `npm run dev` browser check (flip `data-kh` on `<html>`, watch fonts load in the Network tab, eyeball the Hexagon in both themes) is left for the reviewer.

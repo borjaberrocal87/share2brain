@@ -103,7 +103,7 @@ name is persisted anywhere (`users` holds only OAuth *app*-users, not message au
         `searchByEmbedding(queryVector: number[], allowedChannelIds: string[], limit: number): Promise<SearchFragmentRow[]>`
         where `SearchFragmentRow` is the raw row (pre-Zod) shape.
   - [x] `infrastructure/embeddingSearchRepository.drizzle.ts`: the ONLY file that knows the SQL.
-        Build the query with `@hivly/shared/db` re-exports (never import `drizzle-orm` directly, AD-2).
+        Build the query with `@share2brain/shared/db` re-exports (never import `drizzle-orm` directly, AD-2).
     - [x] **Short-circuit AC3:** `if (allowedChannelIds.length === 0) return [];` — MUST come first.
           `inArray`/`ANY([])` on an empty array is unsafe (the shared/db barrel explicitly warns
           `inArray` throws on empty arrays).
@@ -118,7 +118,7 @@ name is persisted anywhere (`users` holds only OAuth *app*-users, not message au
 - [x] **Task 3 — Query embedder port + adapter (AC1)**
   - [x] `domain/repositories/queryEmbedder.ts`: port `{ embedQuery(text: string): Promise<number[]> }`.
   - [x] `infrastructure/queryEmbedder.langchain.ts`: adapter wrapping `createEmbeddingsModel(config.embeddings)`
-        from `@hivly/shared/providers`; call `.embedQuery(text)`, then `assertEmbeddingDimensions(vector, config.embeddings.dimensions)`
+        from `@share2brain/shared/providers`; call `.embedQuery(text)`, then `assertEmbeddingDimensions(vector, config.embeddings.dimensions)`
         before returning (reuse the guard that already exists in `providers/index.ts`).
   - [x] Keep the LangChain import behind this adapter only (do not leak it into the service/controller).
 
@@ -259,7 +259,7 @@ The shared/db barrel explicitly documents that `inArray` throws on an empty arra
   (project-context.md language rules).
 
 ### Provider factory (query embedding)
-Use `createEmbeddingsModel(config.embeddings)` from `@hivly/shared/providers` and call `.embedQuery()`.
+Use `createEmbeddingsModel(config.embeddings)` from `@share2brain/shared/providers` and call `.embedQuery()`.
 This is the same factory Story 3.3 used for `.embedDocuments()`. It forces `encodingFormat: 'float'`
 to avoid the corrupt all-zero-vector bug found in Story 3.0 against the real LiteLLM proxy. After
 embedding, call `assertEmbeddingDimensions(vec, config.embeddings.dimensions)` (already exported) so a
@@ -396,7 +396,7 @@ when a backend consumer motivated it, per project-context.md). One commit per me
 Full rules: `_bmad-output/project-context.md` (read before coding). Authoritative sources:
 `docs/context/ARCHITECTURE-SPINE.md` (AD-1…AD-13), `docs/context/TECHNICAL-DESIGN.md`,
 `docs/*-standards.md`. Story-critical invariants: **AD-2** (no cross-service imports; no direct
-`drizzle-orm` — use `@hivly/shared/db` re-exports), **AD-6** (Zod contracts only in
+`drizzle-orm` — use `@share2brain/shared/db` re-exports), **AD-6** (Zod contracts only in
 `packages/shared/src/schemas`; validate at the edge with `.parse()`), **AD-12** (RBAC inside the
 vector query, never a post-filter). Verification gate (`npm run lint && npm run test && npm run build`)
 is mandatory and the **agent** runs it — paste evidence; never commit red.

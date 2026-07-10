@@ -2,7 +2,7 @@
 // codes) and maps errors to the unified ErrorSchema shape. Raw DB errors are
 // never leaked to the client. No input parsing (D8 — the endpoint takes no
 // query params). Mirrors documentController.ts.
-import { STATS_ERROR } from '@hivly/shared/schemas';
+import { STATS_ERROR } from '@share2brain/shared/schemas';
 import type { Request, Response } from 'express';
 
 import type { StatsService } from '../../application/services/statsService.js';

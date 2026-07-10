@@ -24,12 +24,12 @@ so that every service uses a single source of truth for data models, API contrac
 - **And** running `npx drizzle-kit generate` produces SQL migration files in `packages/shared/src/db/migrations/`
 
 **AC2 — `loadConfig()` returns a typed, validated config**
-- **Given** a valid `Hivly.config.yml`
+- **Given** a valid `Share2Brain.config.yml`
 - **When** `loadConfig()` is called
 - **Then** it returns a typed configuration object with every required field validated
 
 **AC3 — `loadConfig()` fails fast on invalid config**
-- **Given** a `Hivly.config.yml` with an invalid or missing field
+- **Given** a `Share2Brain.config.yml` with an invalid or missing field
 - **When** any service calls `loadConfig()` at startup
 - **Then** the process terminates with a descriptive error message **before** opening any network connection (AD-8)
 
@@ -45,7 +45,7 @@ so that every service uses a single source of truth for data models, API contrac
 
 ## Tasks / Subtasks
 
-- [x] **Task 1 — Dependencies + subpath exports for `@hivly/shared`** (AC: 1, 2, 4, 5)
+- [x] **Task 1 — Dependencies + subpath exports for `@share2brain/shared`** (AC: 1, 2, 4, 5)
   - [x] Add runtime deps to `packages/shared/package.json`: `drizzle-orm@^0.45`, `zod@^4.4`, and a YAML parser `yaml@^2` (used by `loadConfig`). Add dev deps: `drizzle-kit@^0.31`.
   - [x] Add the Postgres driver Drizzle uses for its client type — `pg@^8` + `@types/pg` (dev). The `db/index.ts` client is a type-level export at this stage; no connection is opened by `shared` itself.
   - [x] **Extend the `exports` map** in `packages/shared/package.json` to expose subpath entrypoints as raw source (same source-exports pattern Story 1.1 chose — `types`+`default` → the `.ts` file, avoids `composite: true`). Story 1.1 deferred this ("`exports` field blocks future subpath entrypoints — add wildcard when sub-exporters land"); this story is when they land. The design imports via subpaths, so they MUST resolve:
@@ -71,20 +71,20 @@ so that every service uses a single source of truth for data models, API contrac
 - [x] **Task 4 — Zod API schemas** (AC: 4)
   - [x] Create `packages/shared/src/schemas/errors.ts` exporting `ErrorSchema = z.object({ error: z.string(), code: z.string() })` and `type ErrorResponse = z.infer<typeof ErrorSchema>` (AD-6, unified error shape).
   - [x] Create `packages/shared/src/schemas/sse.ts` exporting `SSEFrameSchema` as a `z.discriminatedUnion('type', [...])` with exactly the four variants + `type SSEFrame = z.infer<...>`. Fields per variant are in Dev Notes.
-  - [x] Create `packages/shared/src/schemas/index.ts` barrel that re-exports `errors.ts` and `sse.ts` (so `@hivly/shared/schemas` resolves the whole contract surface, per `backend-standards.md` example import).
+  - [x] Create `packages/shared/src/schemas/index.ts` barrel that re-exports `errors.ts` and `sse.ts` (so `@share2brain/shared/schemas` resolves the whole contract surface, per `backend-standards.md` example import).
 - [x] **Task 5 — Redis Streams event types** (AC: 5)
   - [x] Create `packages/shared/src/types/events.ts` with a `StreamEvent` base (`messageId`, `channelId`, `guildId`, `timestamp`) and the three events discriminated by `type` (`'discord.message.created' | 'discord.message.updated' | 'discord.message.deleted'`). Exact shape in Dev Notes. Also export a `DiscordStreamEvent` union of the three.
   - [x] Export the fixed stream-key / consumer-group constants as `UPPER_SNAKE_CASE` (or a `const` object) so producers/consumers never hardcode strings (AD-13 invariants). See Dev Notes.
 - [x] **Task 6 — `loadConfig()` + config Zod schema** (AC: 2, 3)
-  - [x] Create `packages/shared/src/config/index.ts` exporting `loadConfig(path?)` and the inferred `HivlyConfig` type. Behavior:
-    1. Resolve the config path: arg → `process.env.HIVLY_CONFIG_PATH` → default `Hivly.config.yml` (cwd). In Compose it is mounted at `/app/Hivly.config.yml`.
+  - [x] Create `packages/shared/src/config/index.ts` exporting `loadConfig(path?)` and the inferred `Share2BrainConfig` type. Behavior:
+    1. Resolve the config path: arg → `process.env.SHARE2BRAIN_CONFIG_PATH` → default `Share2Brain.config.yml` (cwd). In Compose it is mounted at `/app/Share2Brain.config.yml`.
     2. Read the file; parse YAML with `yaml`.
     3. **Interpolate `${ENV_VAR}` placeholders from `process.env`** (the YAML references secrets like `guild_id: "${DISCORD_GUILD_ID}"`). A referenced env var that is unset is a validation failure with a clear message.
-    4. Validate the parsed object with a Zod schema mirroring `Hivly.config.yml.example` (all sections — see Dev Notes for the full shape).
+    4. Validate the parsed object with a Zod schema mirroring `Share2Brain.config.yml.example` (all sections — see Dev Notes for the full shape).
     5. On any failure (missing file, bad YAML, failed Zod parse, unset `${VAR}`), throw/exit with a descriptive message. **Must happen before any network I/O** — `loadConfig` itself must not open DB/Redis/Discord connections.
   - [x] Design the schema so failures are descriptive: prefer `.parse()` and format `ZodError.issues` into a readable message (path + message per issue).
 - [x] **Task 7 — Root barrel** (AC: 1, 2, 4, 5)
-  - [x] Update `packages/shared/src/index.ts` to re-export the public surface (`./config`, `./schemas`, `./db`, `./types/events`) so `@hivly/shared` root imports still work, while keeping the existing exported version constant (its test `index.test.ts` must keep passing). Do not break the Story 1.1 semver test.
+  - [x] Update `packages/shared/src/index.ts` to re-export the public surface (`./config`, `./schemas`, `./db`, `./types/events`) so `@share2brain/shared` root imports still work, while keeping the existing exported version constant (its test `index.test.ts` must keep passing). Do not break the Story 1.1 semver test.
 - [x] **Task 8 — Tests (tests-first for `loadConfig`)** (AC: 2, 3, 4, 5)
   - [x] `config/index.test.ts` (write red first — this is core/domain, AD-8): valid YAML fixture → returns typed object with expected values; missing required key → throws descriptive error; unset `${VAR}` → throws; malformed YAML → throws. Use temp fixture files or in-memory strings; mock `process.env` for interpolation cases. **No real network/DB.**
   - [x] `schemas/sse.test.ts`: each of the 4 `SSEFrame` variants parses; a bad `type` or missing field rejects.
@@ -93,7 +93,7 @@ so that every service uses a single source of truth for data models, API contrac
 - [x] **Task 9 — Verification gate** (AC: 1–5) — **the agent runs this, never the user**
   - [x] Run and paste output for: `npm install`, `npm run lint`, `npm run test`, `npm run build` (all green).
   - [x] Run `npx drizzle-kit generate` and confirm SQL migration files appear under `packages/shared/src/db/migrations/` (paste the file list). This does not require a running Postgres.
-  - [x] Confirm cross-package resolution: a throwaway `import { loadConfig } from '@hivly/shared/config'` (and `'@hivly/shared/db/schema'`) from, e.g., `packages/backend/src` typechecks clean; remove the throwaway after verifying.
+  - [x] Confirm cross-package resolution: a throwaway `import { loadConfig } from '@share2brain/shared/config'` (and `'@share2brain/shared/db/schema'`) from, e.g., `packages/backend/src` typechecks clean; remove the throwaway after verifying.
 
 ## Dev Notes
 
@@ -107,7 +107,7 @@ The epic AC lists **7** tables (omits `user_roles_cache`), but `data-model.md` a
 - Branch is `main` — **branch first** (`git switch -c feat/1-2-shared-kernel`); never commit on `main`. Last commit `55845f2` (merge of Story 1.1). [Source: base-standards.md#Development Workflow]
 - `packages/shared` currently has only `src/index.ts` (exports a `SHARED_VERSION` semver constant) + `src/index.test.ts` (semver-format test). `package.json` `exports` map has **only** `"."` → `./src/index.ts`. No deps declared yet. **You extend all of this.**
 - Root `package.json` devDeps: `@types/node`, `eslint@^9`, `typescript@^6.0.3`, `typescript-eslint@^8.62.1`, `vitest@^4.1.9`. No `drizzle-*`, `zod`, `yaml`, `pg` yet.
-- `Hivly.config.yml.example` and `.env.example` exist at repo root and are complete (Story 1.1). `.env.example` already lists `DATABASE_URL`, `POSTGRES_PASSWORD`, `REDIS_URL`, etc. — use it as the env contract; do not redefine.
+- `Share2Brain.config.yml.example` and `.env.example` exist at repo root and are complete (Story 1.1). `.env.example` already lists `DATABASE_URL`, `POSTGRES_PASSWORD`, `REDIS_URL`, etc. — use it as the env contract; do not redefine.
 - `build` and `typecheck` are both `tsc --noEmit` per package (scaffold decision from 1.1). Vitest runs via root `vitest run` (`--passWithNoTests` still on). Adding real deps is fine; keep `noEmit` (types resolve from source via the `exports` map).
 
 ### Non-negotiable architecture rules touched by this story
@@ -116,7 +116,7 @@ The epic AC lists **7** tables (omits `user_roles_cache`), but `data-model.md` a
 - **AD-8 — centralized config**: `loadConfig()` validates YAML and aborts on invalid config **before any network I/O**. [Source: ARCHITECTURE-SPINE.md#AD-8; backend-standards.md]
 - **AD-10 — sessions in Redis, no table**: never add a `sessions` table. [Source: data-model.md; TECHNICAL-DESIGN.md#6]
 - **AD-13 — stream keys/groups are fixed invariants**; events carry `messageId`, `channelId`, `guildId`, `timestamp`. Idempotency (UPSERT on existing `embedding.id`) is a *worker* concern (Epic 3) — this story only defines the types/keys. [Source: TECHNICAL-DESIGN.md#8; backend-standards.md#Redis Streams Patterns]
-- **AD-2 — shared imports nothing `@hivly/*`**: `shared` is the leaf; it must not import any sibling. [Source: project-context.md#Architecture boundaries]
+- **AD-2 — shared imports nothing `@share2brain/*`**: `shared` is the leaf; it must not import any sibling. [Source: project-context.md#Architecture boundaries]
 - **English only**, `camelCase.ts` module files, `PascalCase` types, `UPPER_SNAKE_CASE` constants; avoid `any` (use `unknown` / Zod-inferred types). [Source: project-context.md#Code quality & naming]
 
 ### `packages/shared` target layout
@@ -133,7 +133,7 @@ packages/shared/src/
 │   ├── sse.ts            # NEW — SSEFrame discriminated union
 │   └── index.ts          # NEW — barrel re-exporting errors + sse
 ├── config/
-│   ├── index.ts          # NEW — loadConfig() + HivlyConfig Zod schema + ${ENV} interpolation
+│   ├── index.ts          # NEW — loadConfig() + Share2BrainConfig Zod schema + ${ENV} interpolation
 │   └── index.test.ts     # NEW — tests-first
 └── types/
     └── events.ts         # NEW — StreamEvent + 3 message events + stream-key constants
@@ -201,14 +201,14 @@ export type DiscordStreamEvent =
 ```
 Fixed stream keys / consumer groups (AD-13 invariants) [Source: TECHNICAL-DESIGN.md#8; backend-standards.md#Redis Streams Patterns] — export as constants:
 ```
-hivly:discord:messages          → group hivly:indexer   (workers/indexer)
-hivly:discord:messages:updated  → group hivly:sync      (workers/sync)
-hivly:discord:messages:deleted  → group hivly:sync      (workers/sync)
-hivly:knowledge:events          → group hivly:notifier  (deferred, Epic 6)
+share2brain:discord:messages          → group share2brain:indexer   (workers/indexer)
+share2brain:discord:messages:updated  → group share2brain:sync      (workers/sync)
+share2brain:discord:messages:deleted  → group share2brain:sync      (workers/sync)
+share2brain:knowledge:events          → group share2brain:notifier  (deferred, Epic 6)
 ```
 Design defines events as TS interfaces (they are internal stream contracts, not HTTP API shapes — so they live in `types/`, not `schemas/`). Optionally back them with Zod for runtime validation at worker consume time — **not required by this story**; leave a hook, don't build it now.
 
-### `loadConfig()` — config schema shape (config/index.ts) [Source: Hivly.config.yml.example; TECHNICAL-DESIGN.md#13]
+### `loadConfig()` — config schema shape (config/index.ts) [Source: Share2Brain.config.yml.example; TECHNICAL-DESIGN.md#13]
 Mirror the example YAML section-for-section. Required top-level keys and notable fields:
 - `version` (string)
 - `discord`: `guild_id` (string), `channels[]` `{ id, name, enabled }`, `backfill { enabled, limit, ignore_bots }`
@@ -222,15 +222,15 @@ Mirror the example YAML section-for-section. Required top-level keys and notable
 
 Behavior requirements:
 - **`${ENV_VAR}` interpolation**: values like `"${DISCORD_GUILD_ID}"`, `"${SENTRY_DSN}"`, `"${FRONTEND_URL}"` are substituted from `process.env` before/at validation. An unset referenced var → descriptive failure. (Secrets stay in `.env`; behavior stays in YAML — never merge the two.)
-- Use `snake_case` keys in the schema to match the YAML exactly (YAML is authored by operators). Expose the inferred `HivlyConfig` type.
+- Use `snake_case` keys in the schema to match the YAML exactly (YAML is authored by operators). Expose the inferred `Share2BrainConfig` type.
 - Fail fast: missing file → clear error; bad YAML → clear error; Zod failure → format `error.issues` (path + message) into one readable string; **no connections opened**.
-- Path resolution: arg → `HIVLY_CONFIG_PATH` env → `Hivly.config.yml` in cwd (Compose mounts it at `/app/Hivly.config.yml`).
+- Path resolution: arg → `SHARE2BRAIN_CONFIG_PATH` env → `Share2Brain.config.yml` in cwd (Compose mounts it at `/app/Share2Brain.config.yml`).
 
 ### Stack / versions (pin per these) [Source: TECHNICAL-DESIGN.md#15; project-context.md]
 `drizzle-orm@0.45` + `drizzle-kit@0.31` · `zod@4.4` (v4 API — `z.discriminatedUnion`, `z.infer`, `error.issues`; differs from v3 in spots) · `yaml@2` for YAML parsing · `pg@8` driver (Drizzle node-postgres) · Node 24 · TS 6.0 strict. Never `:latest`. Zod-inferred types over hand-written duplicates.
 
 ### Previous story intelligence (Story 1.1) [Source: 1-1-*.md#Completion Notes]
-- **Source-exports resolution is the established pattern**: `@hivly/shared` exports raw `.ts` from `exports`/`types` (no `composite:true`, no prebuild). Extend the `exports` map for subpaths the same way — do NOT switch to project references or declaration emit.
+- **Source-exports resolution is the established pattern**: `@share2brain/shared` exports raw `.ts` from `exports`/`types` (no `composite:true`, no prebuild). Extend the `exports` map for subpaths the same way — do NOT switch to project references or declaration emit.
 - `build` == `typecheck` == `tsc --noEmit` at this stage — keep it; real build artifacts come later.
 - ESLint 9 flat config with the AD-2 cross-service ban is live; `shared` has no ban block (it imports no sibling) — keep it that way.
 - Root test script uses `--passWithNoTests`; deferred removal until real tests exist across all packages. This story adds real tests to `shared`, so `shared`'s suite will now be non-empty.
@@ -247,7 +247,7 @@ Recent commits: `55845f2` (merge Story 1.1 PR #1), `ff2e5f9` fix semver regex, `
 ### Project Structure Notes
 - Layout matches `backend-standards.md#Monorepo Structure` and `TECHNICAL-DESIGN.md#4` exactly. Only variance vs. the epic AC: **8 tables not 7** (documented above; `data-model.md` wins).
 - `drizzle.config.ts` at repo root (per `backend-standards.md` globs), pointing into `packages/shared`. Do not create a root `src/`. Do not add Dockerfiles / `docker-compose.yml` / the `migrator` service (Story 1.3).
-- Subpath `exports` must be added to `packages/shared/package.json` — this was explicitly deferred by Story 1.1 and is a prerequisite for the design's `@hivly/shared/config` etc. import style.
+- Subpath `exports` must be added to `packages/shared/package.json` — this was explicitly deferred by Story 1.1 and is a prerequisite for the design's `@share2brain/shared/config` etc. import style.
 
 ### References
 - [Source: _bmad-output/planning-artifacts/epics.md#Historia 1.2: Implementar packages/shared — el kernel de dominio]
@@ -255,7 +255,7 @@ Recent commits: `55845f2` (merge Story 1.1 PR #1), `ff2e5f9` fix semver regex, `
 - [Source: docs/context/TECHNICAL-DESIGN.md#5.1 packages/shared, #6 Modelo de datos, #8 Sistema de eventos, #12 Streaming SSE, #13 Configuración, #15 Stack]
 - [Source: docs/context/ARCHITECTURE-SPINE.md#AD-2, #AD-5, #AD-6, #AD-8, #AD-10, #AD-13]
 - [Source: docs/backend-standards.md#Monorepo Structure, #Database Patterns, #Redis Streams Patterns, #Testing]
-- [Source: Hivly.config.yml.example (full config surface); .env.example (secret contract)]
+- [Source: Share2Brain.config.yml.example (full config surface); .env.example (secret contract)]
 - [Source: _bmad-output/implementation-artifacts/1-1-inicializar-el-repositorio-y-la-estructura-del-monorepo.md#Completion Notes, #Deferred]
 - [Source: _bmad-output/project-context.md — Contracts live only in shared, Language/TypeScript, Testing rules, Code quality & naming]
 
@@ -271,12 +271,12 @@ claude-opus-4-8[1m] (Claude Opus 4.8, 1M context) — bmad-dev-story workflow.
 - `npx drizzle-kit generate --custom --name enable_pgvector` → `0000_enable_pgvector.sql` (wrote `CREATE EXTENSION IF NOT EXISTS vector;`).
 - `npx drizzle-kit generate` → `0001_tough_skrulls.sql` (8 tables, all indexes, FKs). Journal orders 0000 before 0001.
 - Verification gate (all green): `npm run lint` (clean), `npm run test` (4 files, 20 tests passed), `npm run build` (tsc --noEmit clean across all 5 workspaces).
-- Cross-package resolution: throwaway `import` of `@hivly/shared/{config,db/schema,schemas,types/events}` from `packages/backend/src` typechecked clean, then removed.
+- Cross-package resolution: throwaway `import` of `@share2brain/shared/{config,db/schema,schemas,types/events}` from `packages/backend/src` typechecked clean, then removed.
 
 ### Completion Notes List
 
 - **AC1** — `db/schema.ts` defines all **8** tables (`discord_messages`, `embeddings`, `users`, `user_roles_cache`, `channel_permissions`, `conversations`, `messages`, `user_read_status`). No `sessions` table (AD-10, comment added). `drizzle-kit generate` emits SQL under `packages/shared/src/db/migrations/`. Generated SQL confirmed correct: `vector(1536)`, HNSW `vector_cosine_ops` index, `idx_embeddings_channel` (RBAC filter), `discord_messages(channel_id, created_at DESC)`, both `user_read_status` indexes, unique `discord_id`, composite PK on `user_read_status(user_id, embedding_id)`, and all FKs.
-- **AC2/AC3** — `config/loadConfig()` reads YAML, interpolates `${ENV_VAR}` from `process.env`, validates with Zod (`HivlyConfigSchema` mirrors `Hivly.config.yml.example`, snake_case keys). Throws a descriptive `ConfigError` on missing file / bad YAML / unset `${VAR}` / Zod failure (issues formatted as `path: message`). No network I/O. Tests-first (red → green), 6 cases.
+- **AC2/AC3** — `config/loadConfig()` reads YAML, interpolates `${ENV_VAR}` from `process.env`, validates with Zod (`Share2BrainConfigSchema` mirrors `Share2Brain.config.yml.example`, snake_case keys). Throws a descriptive `ConfigError` on missing file / bad YAML / unset `${VAR}` / Zod failure (issues formatted as `path: message`). No network I/O. Tests-first (red → green), 6 cases.
 - **AC4** — `schemas/sse.ts` exports `SSEFrameSchema` as `z.discriminatedUnion('type', …)` with `token | citation | done | error` and `SSEFrame` type.
 - **AD-6** — `schemas/errors.ts` exports `ErrorSchema { error, code }` + `ErrorResponse`.
 - **AC5** — `types/events.ts` exports `StreamEvent` base + `MessageCreated/Updated/Deleted` events (each with `messageId`, `channelId`, `guildId`, `timestamp`), `DiscordStreamEvent` union, and fixed `STREAM_KEYS` / `CONSUMER_GROUPS` constants (AD-13).

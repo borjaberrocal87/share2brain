@@ -9,7 +9,7 @@
 // Refuses to start under NODE_ENV=production before `main()` ever opens a DB/Redis
 // connection or listens on a port — no production route or listener is reachable,
 // even though the `import`s below (all side-effect-free at module load) still
-// evaluate first, per normal ES module hoisting. Run: `npm run e2e:server -w @hivly/backend`.
+// evaluate first, per normal ES module hoisting. Run: `npm run e2e:server -w @share2brain/backend`.
 if (process.env.NODE_ENV === 'production') {
   console.error('[e2e] refusing to start in production');
   process.exit(1);

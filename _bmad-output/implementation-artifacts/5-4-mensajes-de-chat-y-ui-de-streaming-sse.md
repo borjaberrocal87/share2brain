@@ -18,7 +18,7 @@ so that **I get real-time, source-backed answers from my community's knowledge w
 > chat: the message **composer** (textarea + send button + privacy footer), **message-bubble**
 > rendering (user + agent), **SSE streaming** of `token` frames with the blinking cursor, **citation
 > chips**, wiring the empty-state **suggestions** to send, and **loading a conversation's messages**
-> when a history row is selected. It is **frontend-only** (package `@hivly/web`) — like Story 5.3.
+> when a history row is selected. It is **frontend-only** (package `@share2brain/web`) — like Story 5.3.
 >
 > **The "loop de ejecución" execution-trace panel (UX-DR20 — `tool_call`/`observation` steps) is
 > explicitly OUT OF SCOPE and DEFERRED** (decision **D1**). The backend `POST /api/chat` contract
@@ -26,14 +26,14 @@ so that **I get real-time, source-backed answers from my community's knowledge w
 > `tool_exec` node and no `tool_call`/`observation` frame anywhere in the codebase** (only a
 > future-extension comment at `agent/graph.ts:110`). The prototype's trace steps are **hardcoded
 > `setTimeout` fakes**, not real stream data. Building it for real is a substantial *backend+shared*
-> feature (LLM tool-use + configurable tools in `Hivly.config.yml` + a conditional `tool_exec` loop
+> feature (LLM tool-use + configurable tools in `Share2Brain.config.yml` + a conditional `tool_exec` loop
 > in the StateGraph + widening `SSEFrameSchema`) and belongs to its own future story. **Do NOT add
 > the trace panel, do NOT widen `SSEFrameSchema`, do NOT touch the agent graph in this story.**
 
 ## Acceptance Criteria
 
 Derived from epics.md §Historia 5.4, UX-DR15/19/21/22, and the pixel-exact prototype
-`docs/context/design/KeepHive Web.dc.html` (lines 350–426, 578–629). The prototype is the source of
+`docs/context/design/Share2Brain Web.dc.html` (lines 350–426, 578–629). The prototype is the source of
 truth for exact px/color values; **its `--tx*` token names are stale** — use the real names (Dev
 Notes §Token mapping, unchanged from 5.3). Amber text/borders use `var(--accent-ink)`; message
 bubble text/cursor and the send button hardcode `#F5A623` exactly where the prototype does.
@@ -49,7 +49,7 @@ bubble text/cursor and the send button hardcode `#F5A623` exactly where the prot
      120px, then scrolls;
    - **Enter** (without Shift) sends; **Shift+Enter** inserts a newline;
    - a **footer** (`margin-top:8px`, centered, `font-size:10.5px; color:var(--text-subtle)`) with a
-     lock icon + the text **"Respuestas con fuente verificable · tools de hivly.config.yml"**.
+     lock icon + the text **"Respuestas con fuente verificable · tools de share2brain.config.yml"**.
 
 2. **Send button reflects draft + sending state (UX-DR22 + epic AC)** — The 40×40px send button
    (`border-radius:11px`) is **disabled** (`background: var(--line)`; icon `color: var(--text-subtle)`;
@@ -64,7 +64,7 @@ bubble text/cursor and the send button hardcode `#F5A623` exactly where the prot
      margin-bottom:8px`), and the message text (`15px; line-height:1.7; color:var(--text-primary);
      white-space:pre-wrap`);
    - agent bubble: 30px **amber hexagon** avatar (`linear-gradient(150deg,#FFCB6B,#F5A623)` +
-     `clip-path` polygon, with a 15px `var(--bg)` inner hexagon), name label **"Hivly"**, and the
+     `clip-path` polygon, with a 15px `var(--bg)` inner hexagon), name label **"Share2Brain"**, and the
      answer text in the same 15px/1.7 style;
    - each `token` frame **appends** to the current agent bubble's text in real time;
    - while the agent bubble is streaming, an **amber blinking cursor** (`display:inline-block;
@@ -101,7 +101,7 @@ bubble text/cursor and the send button hardcode `#F5A623` exactly where the prot
    message state intact; the stream is aborted only on component unmount.
 
 8. **Execution-trace panel is DEFERRED (D1)** — The "loop de ejecución" panel (UX-DR20) is **not**
-   built. `SSEFrameSchema`, `agent/graph.ts`, and any `@hivly/shared`/`@hivly/backend` file are
+   built. `SSEFrameSchema`, `agent/graph.ts`, and any `@share2brain/shared`/`@share2brain/backend` file are
    **not** modified. A one-line deferred-work note records the follow-up backend story.
 
 9. **E2E harness coverage (Epic 4 retro AI#6 — critical path)** — `packages/web/tests/chat.spec.ts`
@@ -109,7 +109,7 @@ bubble text/cursor and the send button hardcode `#F5A623` exactly where the prot
    conversation) to verify via `getComputedStyle`/`toHaveCSS`, real DOM, and screenshots:
    - **composer**: send button disabled look when empty → enabled amber look after typing (AC2);
      footer text present (AC1);
-   - **streaming**: type a message + send → the agent bubble accumulates to **"Hola desde Hivly."**
+   - **streaming**: type a message + send → the agent bubble accumulates to **"Hola desde Share2Brain."**
      (the harness `fakeChatModel`'s fixed tokens), ≥1 citation chip renders under it, and the
      blinking cursor is gone after `done` (AC3, AC4);
    - **history load**: click the seeded history row → a user bubble shows the seeded title and an
@@ -118,7 +118,7 @@ bubble text/cursor and the send button hardcode `#F5A623` exactly where the prot
    file and 5.4 tests **avoid exact-conversation-count assertions** (Dev Notes §D9).
 
 10. **Verification gate green** — `npm run lint && npm run test && npm run build` all clean, plus
-    `npm run test:e2e -w @hivly/web` passing on chromium; output pasted in the Dev Agent Record. No
+    `npm run test:e2e -w @share2brain/web` passing on chromium; output pasted in the Dev Agent Record. No
     secrets/behavior mixing; English-only code/identifiers; Spanish UI copy verbatim.
 
 ## Tasks / Subtasks
@@ -135,7 +135,7 @@ bubble text/cursor and the send button hardcode `#F5A623` exactly where the prot
   - [x] On a **pre-stream non-OK** response (the endpoint returns `{ error, code }` JSON for
         400/404/500 before the stream starts), throw a typed error carrying the `code` — do NOT try
         to read it as a stream.
-  - [x] Import types **only** from `@hivly/shared/schemas` (`SSEFrameSchema`, `ChatRequest`) — never
+  - [x] Import types **only** from `@share2brain/shared/schemas` (`SSEFrameSchema`, `ChatRequest`) — never
         the root barrel or `/db` (AD-3 ESLint ban).
   - [x] Create `packages/web/src/api/chat.test.ts`: mock `fetch` returning a `ReadableStream` of
         `data: <json>\n\n` chunks (incl. a frame split across two chunks); assert the yielded frame
@@ -147,7 +147,7 @@ bubble text/cursor and the send button hardcode `#F5A623` exactly where the prot
         `fetchConversation(id: string, signal?: AbortSignal): Promise<ConversationDetail>` modeled on
         the existing `fetchConversations` (`credentials:'include'`, `!res.ok` throw,
         `ConversationDetailSchema.parse(...)`). Import `ConversationDetailSchema`/`ConversationDetail`
-        from `@hivly/shared/schemas` (already exists — Story 5.2; do **not** add a shared schema).
+        from `@share2brain/shared/schemas` (already exists — Story 5.2; do **not** add a shared schema).
   - [x] Extend `packages/web/src/api/conversations.test.ts` with cases for `fetchConversation`
         (URL `/api/conversations/:id`, parse, throw-on-!ok).
 
@@ -236,7 +236,7 @@ bubble text/cursor and the send button hardcode `#F5A623` exactly where the prot
 - [x] **Task 11 — Extend E2E spec `chat.spec.ts`** (AC: 9)
   - [x] Add a `Story 5.4` describe block after the existing `Story 5.3` block. Reuse `gotoChat`.
         Tests: composer button states + footer; streaming (type "…" + send → agent bubble text ==
-        "Hola desde Hivly.", ≥1 `chat-citation`, `chat-cursor` count 0 after done); history load
+        "Hola desde Share2Brain.", ≥1 `chat-citation`, `chat-cursor` count 0 after done); history load
         (click the seeded row → `chat-msg-user` contains the seeded title,
         `chat-msg-agent` contains the seeded answer, a `#general` citation chip). End each with a
         `fullPage` screenshot.
@@ -256,7 +256,7 @@ bubble text/cursor and the send button hardcode `#F5A623` exactly where the prot
 
 - [x] **Task 13 — Verification gate** (AC: 10)
   - [x] Run and paste: `npm run lint && npm run test && npm run build`, then
-        `npm run test:e2e -w @hivly/web` (chromium; `npx playwright install chromium` if needed).
+        `npm run test:e2e -w @share2brain/web` (chromium; `npx playwright install chromium` if needed).
         For the streaming path, also do a manual `curl -N` sanity check against a dev/e2e backend if
         convenient (optional — the E2E spec is the gate).
 
@@ -289,7 +289,7 @@ The epic AC 5.4 and UX-DR20 describe a "loop de ejecución" panel with `tool_cal
 - The prototype's trace steps are **hardcoded `setTimeout` fakes** in its `send()` (lines 597-604),
   not real stream data.
 
-Building it for real = LLM tool-use + tools defined in `Hivly.config.yml` + a conditional
+Building it for real = LLM tool-use + tools defined in `Share2Brain.config.yml` + a conditional
 `tool_exec` loop in the graph + widening `SSEFrameSchema` — a *backend+shared* feature spanning 3
 packages, its own story. **This story is frontend-only and does not touch that surface.** Recorded so
 review does not flag the missing panel as an omission (mirrors 5.3's D3 reconciliation).
@@ -311,7 +311,7 @@ cursor is driven by the bubble's `streaming` flag, which flips false on `done` (
 The user-bubble avatar (UX-DR19) needs the user's initials/name, which live in `App.tsx`
 (`user.username` + `initialsFromUsername`). Add a `user: { name; initials }` prop — a small,
 justified break of 5.3's "no props" design (5.3 explicitly said the launcher dot + composer are
-5.4's triggers). Agent label is **"Hivly"**; the user label is **"Vos"** (prototype convention,
+5.4's triggers). Agent label is **"Share2Brain"**; the user label is **"Vos"** (prototype convention,
 line 716) with the avatar initials from the real username.
 
 ### D5 — Message state model
@@ -320,7 +320,7 @@ interface ChatMessage {
   id: string;                 // client-generated (crypto.randomUUID()) for React keys
   role: 'user' | 'assistant';
   content: string;
-  citations: CitationType[];  // from @hivly/shared/schemas (CitationSchema): {channel, author, date}
+  citations: CitationType[];  // from @share2brain/shared/schemas (CitationSchema): {channel, author, date}
   streaming?: boolean;        // assistant only, true while tokens arrive
   errored?: boolean;          // assistant only, set on an error frame / pre-stream throw
 }
@@ -361,7 +361,7 @@ shows whatever is in `messages` (empty for a new session).
 
 ### D9 — E2E determinism + spec ordering
 The harness backend injects a **deterministic** `fakeChatModel` (`test-helpers.ts:36`) that streams
-`['Hola',' desde',' Hivly','.']` → the agent bubble ends at **"Hola desde Hivly."**. `retrieve` uses
+`['Hola',' desde',' Share2Brain','.']` → the agent bubble ends at **"Hola desde Share2Brain."**. `retrieve` uses
 the `fakeQueryEmbedder` + the seeded embeddings scoped to the member's channels (general+random,
 `RETRIEVE_TOP_K=5`), so ≥1 `citation` frame is emitted — the streaming test can assert citation chips
 deterministically. **The streaming test PERSISTS a new conversation** (mutating): it must be the
@@ -371,7 +371,7 @@ rows don't touch the `documents`/`user_read_status` tables `docs.spec.ts` assert
 reseeds on each backend boot (`resetAndSeed` at `e2e/server.ts` boot) so runs stay idempotent. The
 **already-seeded** conversation (no seed change needed):
 - title (derived from first user msg) = **"¿Cómo configuro las notificaciones externas?"**
-- assistant answer = **"Las notificaciones externas se configuran en Hivly.config.yml bajo la
+- assistant answer = **"Las notificaciones externas se configuran en Share2Brain.config.yml bajo la
   sección notifications."**
 - one citation: channel **`general`**, author `e2e-author-ada`.
 
@@ -385,7 +385,7 @@ visible trap boundary — no change needed there. The panel's existing Escape/Ta
 
 ### SSE client template (`api/chat.ts`)
 ```ts
-import { SSEFrameSchema, type SSEFrame, type ChatRequest } from '@hivly/shared/schemas';
+import { SSEFrameSchema, type SSEFrame, type ChatRequest } from '@share2brain/shared/schemas';
 
 export async function* streamChat(
   body: ChatRequest,
@@ -426,7 +426,7 @@ export async function* streamChat(
 trailing partial frame in `buffer`; the backend always ends with a `done`/`error` frame + `res.end()`.)
 
 ### Bubbles, cursor, citations, composer — prototype geometry (authoritative)
-Source: `KeepHive Web.dc.html` lines 350–426 (markup) + 578–629 (JS). Verbatim values:
+Source: `Share2Brain Web.dc.html` lines 350–426 (markup) + 578–629 (JS). Verbatim values:
 - **Row/list:** message row `display:flex; gap:14px`; list gap between messages `22px`.
 - **User avatar:** `30×30; border-radius:50%; background:#5865F2; color:#fff; font-size:11px; 600`.
 - **Agent avatar:** `30×30` amber hexagon (`linear-gradient(150deg,#FFCB6B,#F5A623)` +
@@ -461,10 +461,10 @@ choice in a code comment; a richer link needs a message-id on the citation (out 
 
 ### Suggested Spanish copy
 - Composer placeholder: **"Preguntá al agente…"** · footer: **"Respuestas con fuente verificable ·
-  tools de hivly.config.yml"** (verbatim from the prototype).
+  tools de share2brain.config.yml"** (verbatim from the prototype).
 - Inline error note (AC7): a short line in `var(--text-tertiary)`, e.g. **"No se pudo completar la
   respuesta. Intentá de nuevo."** (dev discretion, Spanish).
-- User bubble name label: **"Vos"** (prototype); agent name: **"Hivly"**.
+- User bubble name label: **"Vos"** (prototype); agent name: **"Share2Brain"**.
 
 ### Testing standards
 - Vitest + Testing Library (jsdom); AAA + behavior-driven names. Mock `./api/chat` and
@@ -483,11 +483,11 @@ choice in a code comment; a richer link needs a message-id on the citation (out 
   components.css` (3 new class rules); `packages/web/tests/chat.spec.ts` (5.4 describe block);
   `packages/web/tests/README.md` (chat spec now mutates — ordering note);
   `_bmad-output/implementation-artifacts/deferred-work.md` (trace-panel deferral).
-- **NOT touched:** any `@hivly/shared` or `@hivly/backend` file, `SSEFrameSchema`, `agent/graph.ts`,
+- **NOT touched:** any `@share2brain/shared` or `@share2brain/backend` file, `SSEFrameSchema`, `agent/graph.ts`,
   `e2e/seed.ts` (the seeded conversation already suffices), DB schema/migrations, the router
   (in-app state; the widget is not a screen). No new npm deps.
 - Naming: `kh-` class prefix; `PascalCase.tsx` components; Spanish UI copy, English identifiers.
-- AD-3: `web` imports only `@hivly/shared/schemas` (browser-safe), never the root barrel or `/db`.
+- AD-3: `web` imports only `@share2brain/shared/schemas` (browser-safe), never the root barrel or `/db`.
 - AD-4: chat streams over `fetch`/SSE, never `EventSource`/WebSocket.
 
 ### References
@@ -495,7 +495,7 @@ choice in a code comment; a richer link needs a message-id on the citation (out 
 - [Source: _bmad-output/planning-artifacts/epics.md#Requisitos de Diseño UX] — UX-DR15 (launcher
   dot), UX-DR19 (bubbles), UX-DR20 (**trace panel — DEFERRED, D1**), UX-DR21 (citations), UX-DR22
   (composer), UX-DR23 (kh-blink/kh-spin/kh-pulse).
-- [Source: docs/context/design/KeepHive Web.dc.html:350-426,578-629] — pixel-exact bubbles/trace/
+- [Source: docs/context/design/Share2Brain Web.dc.html:350-426,578-629] — pixel-exact bubbles/trace/
   citations/composer markup + streaming JS (stale `--tx*`; map per §D7).
 - [Source: _bmad-output/implementation-artifacts/5-3-widget-flotante-fab-panel-base.md] — the shell
   this story extends (state handlers, cascade rule, focus-trap history, token table, harness notes).
@@ -534,7 +534,7 @@ claude-opus-4-8 (bmad-dev-story, 2026-07-08).
   `chat.test.ts`, `conversations.test.ts` detail cases, and the 5.4 `ChatWidget`
   behavior tests).
 - `npm run build` → clean (5 packages); web bundle 313.27 kB / 91.29 kB gzip.
-- `npm run test:e2e -w @hivly/web` → 13 passed (chromium), incl. the 3 new 5.4 tests
+- `npm run test:e2e -w @share2brain/web` → 13 passed (chromium), incl. the 3 new 5.4 tests
   (composer AC1/AC2, history-load AC6, streaming AC3/AC4). Infra: OrbStack started,
   `docker compose up -d postgres redis`, `drizzle-kit migrate` applied.
 - Unit-test matcher note: this repo does NOT wire `@testing-library/jest-dom`, so
@@ -548,7 +548,7 @@ claude-opus-4-8 (bmad-dev-story, 2026-07-08).
   that survives chunk-boundary splits, validates each with `SSEFrameSchema.parse`, and
   throws a typed `ChatStreamError(code, status)` on a pre-stream non-OK response.
   Ignores non-`data:` lines (SSE keep-alive comments). Imports only from
-  `@hivly/shared/schemas` (AD-3).
+  `@share2brain/shared/schemas` (AD-3).
 - **Task 2 — `fetchConversation`:** added to `api/conversations.ts` mirroring
   `fetchConversations` (`credentials:'include'`, `!res.ok` throw,
   `ConversationDetailSchema.parse`). No shared-schema change (5.2 already exports it).
@@ -606,7 +606,7 @@ claude-opus-4-8 (bmad-dev-story, 2026-07-08).
 - `_bmad-output/implementation-artifacts/deferred-work.md` (trace-panel deferral)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (5-4 → in-progress → review)
 
-**NOT touched** (as scoped): any `@hivly/shared`/`@hivly/backend` file, `SSEFrameSchema`,
+**NOT touched** (as scoped): any `@share2brain/shared`/`@share2brain/backend` file, `SSEFrameSchema`,
 `agent/graph.ts`, `e2e/seed.ts`, DB schema/migrations, the router. No new npm deps.
 
 ## Change Log

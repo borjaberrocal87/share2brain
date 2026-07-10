@@ -1,5 +1,5 @@
-import type { HivlyConfig } from '@hivly/shared';
-import type { Database } from '@hivly/shared/db';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { Database } from '@share2brain/shared/db';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { enrich } from '../enrichment/enrich.js';
@@ -26,12 +26,12 @@ const config = {
       timeout_ms: 5000,
       max_bytes: 2_000_000,
       max_redirects: 3,
-      user_agent: 'HivlyTest/1.0',
+      user_agent: 'Share2BrainTest/1.0',
       allowed_schemes: ['https'],
       block_private_ips: true,
     },
   },
-} as unknown as HivlyConfig;
+} as unknown as Share2BrainConfig;
 
 const enrichModel = {} as unknown as import('../enrichment/enrich.js').EnrichmentChatModel;
 const guard = {} as unknown as GuardedDispatcher;

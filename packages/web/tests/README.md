@@ -24,12 +24,12 @@ npx playwright install chromium        # one-time browser download (chromium onl
 ## Run
 
 ```bash
-npm run test:e2e -w @hivly/web        # or: npm run test:e2e (root)
+npm run test:e2e -w @share2brain/web        # or: npm run test:e2e (root)
 ```
 
 Playwright spawns two `webServer`s and tears them down at the end:
 
-1. **Test backend** — `npm run e2e:server -w @hivly/backend`
+1. **Test backend** — `npm run e2e:server -w @share2brain/backend`
    (`packages/backend/src/e2e/server.ts`) on `127.0.0.1:3100`. It **reset-then-seeds**
    the `e2e-`-scoped dataset on boot (idempotent, coexists with the dev DB), and
    wires `createApp` with a **fake `DiscordOAuthClient`** + a deterministic
@@ -37,7 +37,7 @@ Playwright spawns two `webServer`s and tears them down at the end:
    route — it refuses to start under `NODE_ENV=production`.
 2. **Built SPA** — `vite build && vite preview` on `localhost:4173`, with its
    `preview.proxy` pointing `/api` + `/health` at the test backend
-   (`HIVLY_API_PROXY_TARGET=http://127.0.0.1:3100`). `vite preview` does **not**
+   (`SHARE2BRAIN_API_PROXY_TARGET=http://127.0.0.1:3100`). `vite preview` does **not**
    inherit `server.proxy`, hence the dedicated `preview` block in `vite.config.ts`.
 
 `workers: 1`, chromium only, dark theme forced (tokens differ per theme). HTML
@@ -54,7 +54,7 @@ login is impossible — `loginAs` (`tests/helpers/session.ts`) drives the
 `GET /api/auth/callback?code=<identity>&state=<state>` (→ 302, sets the regenerated
 `sid` cookie). `page.request` shares the browser context's cookie jar, so the
 cookie lands in the browser automatically; requests go through the preview proxy,
-so it's scoped to the SPA origin. `loginAs` also forces `localStorage['hivly-theme']
+so it's scoped to the SPA origin. `loginAs` also forces `localStorage['share2brain-theme']
 = 'dark'` before the first navigation.
 
 ## Seed identities & dataset

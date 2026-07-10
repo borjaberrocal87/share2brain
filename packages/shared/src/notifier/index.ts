@@ -3,7 +3,7 @@
 // at construction, degrades rather than crashes on failure, and is imported by
 // all three services (AD-2) — none of them imports another service.
 //
-// DELIBERATELY NOT the reserved `hivly:knowledge:events` stream / `hivly:notifier`
+// DELIBERATELY NOT the reserved `share2brain:knowledge:events` stream / `share2brain:notifier`
 // consumer group (types/events.ts) — a process-fatal error usually means the
 // process is dying (uncaughtException → exit(1)) or Redis itself is the outage,
 // and an XADD can't be relied on to flush in either case. This sends the alert

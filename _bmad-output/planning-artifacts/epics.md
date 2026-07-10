@@ -2,16 +2,16 @@
 stepsCompleted: ["step-01", "step-02", "step-03", "step-04"]
 inputDocuments:
   - "docs/PRD.md"
-  - "_bmad-output/planning-artifacts/architecture/architecture-hivly-2026-06-30/ARCHITECTURE-SPINE.md"
-  - "_bmad-output/planning-artifacts/architecture/architecture-hivly-2026-06-30/TECHNICAL-DESIGN.md"
-  - "docs/design/KeepHive Web.dc.html"
+  - "_bmad-output/planning-artifacts/architecture/architecture-share2brain-2026-06-30/ARCHITECTURE-SPINE.md"
+  - "_bmad-output/planning-artifacts/architecture/architecture-share2brain-2026-06-30/TECHNICAL-DESIGN.md"
+  - "docs/design/Share2Brain Web.dc.html"
 ---
 
-# Hivly Self-Hosted - Epic Breakdown
+# Share2Brain Self-Hosted - Epic Breakdown
 
 ## Visión general
 
-Este documento contiene el desglose completo de épicos e historias para Hivly Self-Hosted, descomponiendo los requisitos del PRD y la Arquitectura en historias implementables.
+Este documento contiene el desglose completo de épicos e historias para Share2Brain Self-Hosted, descomponiendo los requisitos del PRD y la Arquitectura en historias implementables.
 
 ## Inventario de Requisitos
 
@@ -21,12 +21,12 @@ FR1: El bot de Discord debe conectar al Gateway y escuchar eventos `messageCreat
 FR2: El bot debe realizar backfill de mensajes históricos al iniciar, partiendo del `last_seen_message_id` por canal (snowflake) o desde `backfill_limit` si es el primer arranque. Cada canal se procesa secuencialmente.
 FR3: El bot debe detectar ediciones de mensajes (`messageUpdate`) en canales habilitados y publicar el evento `discord.message.updated` a Redis Streams para re-indexación.
 FR4: El bot debe detectar borrados de mensajes (`messageDelete`) en canales habilitados y publicar el evento `discord.message.deleted` a Redis Streams para purgado (soft o hard según `delete_policy`).
-FR5: El Worker Indexer consume `hivly:discord:messages`, extrae las URLs del texto del mensaje y descarta el mensaje si no contiene ninguna. Por cada URL: hace fetch del recurso (con guarda SSRF, timeout y tope de tamaño), genera título y descripción con el LLM de `enrichment.llm` a partir del texto del mensaje + el contenido del recurso (con fallback a solo-texto si el fetch falla) en el idioma de `enrichment.language`, calcula el embedding de `title+description` y almacena una fila por URL en pgvector (`chunk_key = messageId:urlIndex`). Sin agrupación ni chunking.
+FR5: El Worker Indexer consume `share2brain:discord:messages`, extrae las URLs del texto del mensaje y descarta el mensaje si no contiene ninguna. Por cada URL: hace fetch del recurso (con guarda SSRF, timeout y tope de tamaño), genera título y descripción con el LLM de `enrichment.llm` a partir del texto del mensaje + el contenido del recurso (con fallback a solo-texto si el fetch falla) en el idioma de `enrichment.language`, calcula el embedding de `title+description` y almacena una fila por URL en pgvector (`chunk_key = messageId:urlIndex`). Sin agrupación ni chunking.
 FR6: El Worker Sync debe consumir eventos `discord.message.updated`: re-extraer las URLs del contenido editado y reconciliar por diff de links (upsert de links nuevos/cambiados, purgado de los removidos).
 FR7: El Worker Sync debe consumir eventos `discord.message.deleted`: aplicar soft delete (`deleted_at`) o hard delete del embedding según `delete_policy`.
 FR8: El sistema debe ejecutar un sync al iniciar para detectar ediciones y borrados ocurridos mientras el bot estuvo offline (comparar Discord vs. indexados).
 FR9: El Backend debe implementar autenticación Discord OAuth2 (scopes: `identify`, `guilds.members.read`), verificar membresía en el guild y crear sesión en Redis.
-FR10: El Backend debe implementar RBAC: en cada request autenticado, expandir `discordRoles → allowedChannelIds` uniendo la sesión contra `channel_permissions`. La tabla `channel_permissions` se carga via upsert desde `Hivly.config.yml` al arrancar.
+FR10: El Backend debe implementar RBAC: en cada request autenticado, expandir `discordRoles → allowedChannelIds` uniendo la sesión contra `channel_permissions`. La tabla `channel_permissions` se carga via upsert desde `Share2Brain.config.yml` al arrancar.
 FR11: El Backend debe proporcionar búsqueda semántica (`GET /api/search`) con filtro RBAC obligatorio en la query pgvector (`WHERE channel_id = ANY(:allowed_channel_ids)`), devolviendo `title`, `description` y `link` por resultado.
 FR12: El Backend debe proporcionar un listado paginado de recursos indexados (`GET /api/documents`) con metadatos (`title`, `description`, `link`, canal, autor, fecha), filtrado por canales accesibles del usuario.
 FR13: El Backend debe implementar el agente RAG como LangGraph StateGraph (nodos: `retrieve → reason → respond`) con streaming SSE en `POST /api/chat`. El agente responde ÚNICAMENTE con información indexada, citando canal, autor, fecha y el link del recurso. Si no hay información, lo indica explícitamente.
@@ -38,7 +38,7 @@ FR18: La Web App debe implementar la vista de chat: envío de mensajes, streamin
 FR19: La Web App debe implementar la gestión de estado de lectura en sidebar: conteo de no leídos por canal, botón "marcar canal como leído".
 FR20: El sistema debe exponer `GET /health` con estado de cada componente (database, redis, discord, indexer); retorna 503 si algún componente está degradado.
 FR21: El sistema debe emitir notificaciones al operador (Telegram/Slack) para: backfill completado, recurso enriquecido indexado, errores críticos, sync completado, mensajes editados/borrados.
-FR22: El sistema debe ser configurable íntegramente mediante `Hivly.config.yml` (comportamiento) y `.env` (secretos), validados por `loadConfig()` al arrancar cada servicio.
+FR22: El sistema debe ser configurable íntegramente mediante `Share2Brain.config.yml` (comportamiento) y `.env` (secretos), validados por `loadConfig()` al arrancar cada servicio.
 FR23: El sistema debe desplegarse con `docker compose up -d`, incluyendo el servicio `migrator` one-shot que aplica migraciones Drizzle antes de que arranquen bot, workers y backend.
 FR24: La Web App debe presentar una vista de Estadísticas con KPIs de conocimiento, actividad de indexado en el tiempo, volumen por canal y cobertura de lectura personal.
 FR25: Toda estadística debe limitarse a los canales accesibles del usuario (AD-12); ninguna métrica expone datos de canales que el usuario no puede leer.
@@ -70,18 +70,18 @@ NFR22: Sesiones con TTL configurable (default 7 días via `SESSION_TTL_DAYS`); l
 
 ### Requisitos Adicionales (Arquitectura)
 
-- **AR1 — Monorepo npm workspaces:** El proyecto se estructura como monorepo con `packages/{bot,backend,workers,web,shared}`. Los servicios importan solo de `@hivly/shared`; nunca entre sí. ESLint enforza esta regla.
+- **AR1 — Monorepo npm workspaces:** El proyecto se estructura como monorepo con `packages/{bot,backend,workers,web,shared}`. Los servicios importan solo de `@share2brain/shared`; nunca entre sí. ESLint enforza esta regla.
 - **AR2 — Proyecto greenfield:** No existe código previo. El primer épico debe inicializar la estructura del monorepo, configuración TypeScript, Docker Compose y `packages/shared` (schema Drizzle + Zod schemas + loadConfig).
 - **AR3 — Drizzle ORM + drizzle-kit:** Toda la DDL vive en `packages/shared/src/db/schema.ts`. Las migraciones se generan como SQL explícito con `drizzle-kit generate` y se aplican via el servicio `migrator`.
 - **AR4 — Servicio migrator one-shot:** El `docker-compose.yml` incluye el servicio `migrator` que ejecuta `drizzle-kit migrate` y termina. Bot, Backend y Workers declaran `depends_on: { migrator: { condition: service_completed_successfully } }`.
 - **AR5 — SSE (Server-Sent Events) para chat:** El endpoint `POST /api/chat` retorna `Content-Type: text/event-stream`. Wire format definido en `packages/shared/src/schemas/sse.ts`: frames de tipo `token`, `citation`, `done`, `error`. La config nginx para `/api/chat` DEBE incluir `proxy_buffering off; proxy_cache off; proxy_read_timeout 300s`.
 - **AR6 — LangGraph StateGraph (no LangChain legacy):** El agente RAG usa `@langchain/langgraph` 1.4. ESLint rule `no-restricted-imports` en `packages/backend` prohíbe importar de `langchain/chains`, `langchain/memory` y módulos deprecated.
 - **AR7 — nginx como único punto de entrada HTTP:** nginx sirve el `dist/` de la SPA y hace proxy de `/api/*` al Backend. Es el único servicio con puerto expuesto. Backend escucha solo en red interna Docker.
-- **AR8 — Redis Streams con keys y consumer groups fijos:** Stream keys: `hivly:discord:messages`, `hivly:discord:messages:updated`, `hivly:discord:messages:deleted`, `hivly:knowledge:events`. Consumer groups: `hivly:indexer`, `hivly:sync`, `hivly:notifier`. Campos mínimos en cada evento: `messageId`, `channelId`, `guildId`, `timestamp`. Definidos en `packages/shared/src/types/events.ts`.
+- **AR8 — Redis Streams con keys y consumer groups fijos:** Stream keys: `share2brain:discord:messages`, `share2brain:discord:messages:updated`, `share2brain:discord:messages:deleted`, `share2brain:knowledge:events`. Consumer groups: `share2brain:indexer`, `share2brain:sync`, `share2brain:notifier`. Campos mínimos en cada evento: `messageId`, `channelId`, `guildId`, `timestamp`. Definidos en `packages/shared/src/types/events.ts`.
 - **AR9 — Sesiones en Redis (express-session + connect-redis):** No existe tabla `sessions` en PostgreSQL. Las sesiones almacenan `{ userId, discordRoles }` con TTL. Revocación inmediata borrando la key Redis.
-- **AR10 — RBAC calculado en cada request:** `allowedChannelIds` NO se cachean en sesión. Se calculan uniendo `session.discordRoles` contra `channel_permissions` en cada request a `/api/*` (excepto auth y health). `channel_permissions` se materializa desde `Hivly.config.yml` via upsert al arrancar el Backend.
+- **AR10 — RBAC calculado en cada request:** `allowedChannelIds` NO se cachean en sesión. Se calculan uniendo `session.discordRoles` contra `channel_permissions` en cada request a `/api/*` (excepto auth y health). `channel_permissions` se materializa desde `Share2Brain.config.yml` via upsert al arrancar el Backend.
 - **AR11 — Zod schemas como contrato de API en shared:** Todos los shapes de request/response definidos en `packages/shared/src/schemas/`. Backend valida con `schema.parse()`; frontend infiere tipos con `z.infer<typeof schema>`.
-- **AR12 — loadConfig() falla rápido:** Si `Hivly.config.yml` es inválido (campo faltante o tipo incorrecto), el proceso termina con error descriptivo antes de hacer cualquier conexión. Ningún servicio parsea YAML localmente.
+- **AR12 — loadConfig() falla rápido:** Si `Share2Brain.config.yml` es inválido (campo faltante o tipo incorrecto), el proceso termina con error descriptivo antes de hacer cualquier conexión. Ningún servicio parsea YAML localmente.
 - **AR13 — Workers idempotentes:** Los Workers usan UPSERT (no INSERT simple) porque Redis Streams entrega at-least-once. Un mensaje procesado dos veces no debe causar duplicados en `embeddings`.
 - **AR14 — Stack fijado:** Node.js 24 LTS, TypeScript 6.0, React 19.2, Vite 8.1, Express 5.2, LangGraph 1.4, Drizzle 0.45, discord.js 14.26, Zod 4.4, PostgreSQL 17 + pgvector 0.8.2, Redis 8, nginx 1.27-alpine.
 - **AR15 — PostgreSQL expuesto solo en localhost (desarrollo):** En desarrollo, el puerto de postgres se expone en `127.0.0.1:5432`, nunca en `0.0.0.0`.
@@ -92,19 +92,19 @@ UX-DR1: **Tokens de diseño (CSS custom properties)** — Implementar sistema co
 
 UX-DR2: **Sistema tipográfico de 3 familias** — Space Grotesk (500/600/700) para títulos, nombres de marca y encabezados de sección. IBM Plex Sans (400/500/600) para cuerpo de texto y UI general. IBM Plex Mono (400/500/600) para: metadata, timestamps, conteos, badges de canal, etiquetas de estado, scopes OAuth, versiones, y toda información técnica. Las 3 fuentes se cargan desde Google Fonts.
 
-UX-DR3: **Forma hexagonal de marca (clip-path)** — El logotipo y avatares de Hivly usan `clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)` con gradiente amber (#FFCB6B → #F5A623). Se implementa en 3 variantes de tamaño: grande (74px login, 60px chat empty state), mediano (32px sidebar/chat header), pequeño (30px avatar agente en mensajes). La estructura interna es hexágono anidado: exterior amber → interior bg-color → punto amber.
+UX-DR3: **Forma hexagonal de marca (clip-path)** — El logotipo y avatares de Share2Brain usan `clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)` con gradiente amber (#FFCB6B → #F5A623). Se implementa en 3 variantes de tamaño: grande (74px login, 60px chat empty state), mediano (32px sidebar/chat header), pequeño (30px avatar agente en mensajes). La estructura interna es hexágono anidado: exterior amber → interior bg-color → punto amber.
 
-UX-DR4: **Tema dual dark/light con toggle persistente** — El atributo `data-kh="dark|light"` en el elemento raíz controla el tema via CSS variables. Toggle en el header con icono sol (modo dark activo) / luna (modo light activo). Persistencia en `localStorage('hivly-theme')`. El tema dark es el default. Todos los colores de UI deben usar variables, nunca hardcoded.
+UX-DR4: **Tema dual dark/light con toggle persistente** — El atributo `data-kh="dark|light"` en el elemento raíz controla el tema via CSS variables. Toggle en el header con icono sol (modo dark activo) / luna (modo light activo). Persistencia en `localStorage('share2brain-theme')`. El tema dark es el default. Todos los colores de UI deben usar variables, nunca hardcoded.
 
 UX-DR5: **Layout de aplicación: sidebar + contenido + chat floating** — Estructura `display:flex; height:100vh` con: sidebar fija 236px (izquierda, bg-deep, border-right) + área de contenido (flex:1, overflow hidden). El Chat NO tiene sección en la navegación — es un floating widget sobre el layout. 3 ítems de navegación: Búsqueda, Documentos y Estadísticas *(Historia 9.2)*.
 
-UX-DR6: **Sidebar — estructura y contenido** — Logo Hivly hexagonal (32px) + wordmark "Hivly" (Space Grotesk 700 17px). Nav vertical: 3 botones (Búsqueda con lupa, Documentos con grid, Estadísticas con ícono de gráfico de líneas *(Historia 9.2)*). El ítem activo tiene `background: rgba(245,166,35,0.12); color: var(--accent-ink)`. El ítem Documentos muestra badge ámbar circular (IBM Plex Mono 10.5px) con el conteo de no leídos cuando > 0. Al fondo: panel de estado del sistema + footer "self-hosted · open source" (mono 10px, --tx5).
+UX-DR6: **Sidebar — estructura y contenido** — Logo Share2Brain hexagonal (32px) + wordmark "Share2Brain" (Space Grotesk 700 17px). Nav vertical: 3 botones (Búsqueda con lupa, Documentos con grid, Estadísticas con ícono de gráfico de líneas *(Historia 9.2)*). El ítem activo tiene `background: rgba(245,166,35,0.12); color: var(--accent-ink)`. El ítem Documentos muestra badge ámbar circular (IBM Plex Mono 10.5px) con el conteo de no leídos cuando > 0. Al fondo: panel de estado del sistema + footer "self-hosted · open source" (mono 10px, --tx5).
 
-UX-DR7: **Panel de estado del sistema (sidebar footer)** — Widget con borde y border-radius 12px, fondo --surface. Fila superior: dot verde (#3BA55D) + "hivly.config.yml" (mono 11px). Tres filas de status: "indexer / running", "redis stream / ok", "pgvector / ok" — labels en --tx4, valores en #3BA55D. Todas las filas con `justify-content: space-between`.
+UX-DR7: **Panel de estado del sistema (sidebar footer)** — Widget con borde y border-radius 12px, fondo --surface. Fila superior: dot verde (#3BA55D) + "share2brain.config.yml" (mono 11px). Tres filas de status: "indexer / running", "redis stream / ok", "pgvector / ok" — labels en --tx4, valores en #3BA55D. Todas las filas con `justify-content: space-between`.
 
 UX-DR8: **Header — estructura fija 62px** — Lado izquierdo: [ícono Discord #5865F2 (17px) + nombre comunidad (600 15px) | separador vertical 1px | statsLine (mono 11.5px, --tx4)]. Lado derecho: [badge "indexando en vivo" con dot amber pulsante (kh-pulse) | avatar circular usuario Discord (30px, #5865F2) + nombre | toggle tema (30px) | botón logout (30px, hover color #ED4245)]. Borde inferior --line.
 
-UX-DR9: **Pantalla de Login** — Full screen con fondo: radial gradients amber y Discord purple + hexágonos decorativos flotantes animados (kh-float, 4 piezas). Card 430px (max-width 92vw): padding 48px 44px 36px, border-radius 20px, box-shadow profundo. Contenido centrado: hexágono grande → h1 "Hivly" (Space Grotesk 700 30px) → subtítulo mono uppercase → párrafo descriptivo → botón "Continuar con Discord" (height 52px, #5865F2, radius 12px, shadow) con estado loading (spinner + "Conectando con Discord…") → nota seguridad (ícono candado + texto) → footer separado con scopes + versión (mono 10.5px).
+UX-DR9: **Pantalla de Login** — Full screen con fondo: radial gradients amber y Discord purple + hexágonos decorativos flotantes animados (kh-float, 4 piezas). Card 430px (max-width 92vw): padding 48px 44px 36px, border-radius 20px, box-shadow profundo. Contenido centrado: hexágono grande → h1 "Share2Brain" (Space Grotesk 700 30px) → subtítulo mono uppercase → párrafo descriptivo → botón "Continuar con Discord" (height 52px, #5865F2, radius 12px, shadow) con estado loading (spinner + "Conectando con Discord…") → nota seguridad (ícono candado + texto) → footer separado con scopes + versión (mono 10.5px).
 
 UX-DR10: **Vista Búsqueda — layout y componentes** — Padding 34px 40px, max-width 860px centrado. Título + descripción. Barra búsqueda 54px (ícono lupa left 17px; focus: amber border + amber shadow ring 3px). Filter chips scrollables (IBM Plex Mono; activo: amber tint border + amber text; inactivo: --surface + --border). Row de resultados: count label (mono 12px, --tx4) + "ordenado por similitud" (mono 11px, --tx5). Cards de resultado con hover border. Empty state: dashed border card con 2 líneas de texto.
 
@@ -118,7 +118,7 @@ UX-DR14: **Empty state de documentos (todo leído)** — Ícono check en círcul
 
 UX-DR15: **Chat floating widget — FAB** — Botón hexagonal amber 60px en posición fixed bottom:24px right:24px, z-index 60. Ícono chat oscuro (--on-accent). Shadow amber `0 14px 34px -10px rgba(245,166,35,0.65)`. Hover: translateY(-2px). Dot verde pulsante (13px, border 2px solid --bg) en top-right cuando `launcherActive` (enviando mensaje con chat cerrado).
 
-UX-DR16: **Chat floating widget — panel** — 404x642px, max-width calc(100vw - 32px), max-height calc(100vh - 48px). Fixed bottom-right, z-index 60, border-radius 18px, border --border-strong, shadow profundo. Animación kh-pop al abrir. Header (bg-deep): logo mini + nombre "Hivly" + status "Agente de conocimiento" (punto verde + texto --tx4 11px) + 3 botones icon (historial, nueva conv, cerrar). Botones 32px, border --border, radius 9px, hover amber para historial/nueva, hover #ED4245 para cerrar.
+UX-DR16: **Chat floating widget — panel** — 404x642px, max-width calc(100vw - 32px), max-height calc(100vh - 48px). Fixed bottom-right, z-index 60, border-radius 18px, border --border-strong, shadow profundo. Animación kh-pop al abrir. Header (bg-deep): logo mini + nombre "Share2Brain" + status "Agente de conocimiento" (punto verde + texto --tx4 11px) + 3 botones icon (historial, nueva conv, cerrar). Botones 32px, border --border, radius 9px, hover amber para historial/nueva, hover #ED4245 para cerrar.
 
 UX-DR17: **Chat — historial de conversaciones** — Panel overlay absoluto (inset:0, z-index 5, bg --bg). Label "Historial de conversaciones" (mono uppercase 10px --tx5). Lista de conversaciones: botones full-width, icon chat + título truncado + timestamp. Item activo: amber tint. Hover: --hover bg.
 
@@ -130,7 +130,7 @@ UX-DR20: **Chat — "execution loop" trace panel** — Panel colapsible con bord
 
 UX-DR21: **Chat — citas/fuentes** — Sección "Fuentes" (mono uppercase 10px --tx5). Chips en flex-wrap gap:8px. Cada chip: avatar 20px + badge canal mono amber + **título del recurso** (11.5px --tx, max-width 180px, ellipsis 1 línea) + nombre autor + ícono externo. Hover border #5865F2. `href` = link del recurso curado; links abren en `_blank`. *(Story 7.5 — antes el chip no mostraba el título y el href era un placeholder `discord.com/channels` genérico.)*
 
-UX-DR22: **Chat — input de mensaje** — Contenedor con `style-focus-within` amber border. Textarea auto-resize (rows=1, max-height 120px), sin borde, bg transparente. Botón send 40x40px, radius 11px: amber (#F5A623) con ícono --on-accent cuando hay texto; --line con ícono --tx5 + cursor not-allowed cuando vacío. Enter sin Shift para enviar. Footer: lock icon + "Respuestas con fuente verificable · tools de hivly.config.yml" (10.5px --tx5).
+UX-DR22: **Chat — input de mensaje** — Contenedor con `style-focus-within` amber border. Textarea auto-resize (rows=1, max-height 120px), sin borde, bg transparente. Botón send 40x40px, radius 11px: amber (#F5A623) con ícono --on-accent cuando hay texto; --line con ícono --tx5 + cursor not-allowed cuando vacío. Enter sin Shift para enviar. Footer: lock icon + "Respuestas con fuente verificable · tools de share2brain.config.yml" (10.5px --tx5).
 
 UX-DR23: **Animaciones del sistema** — Definir como @keyframes: kh-spin (spinner 0.7s linear), kh-blink (cursor SSE, 1s step-end, 50% opacity toggle), kh-up (entrada con translateY 10px, para notificaciones/toasts), kh-float (hexágonos decorativos, 9-13s ease-in-out, translateY + rotate), kh-pop (entrada del chat widget, translateY 6px + scale 0.98, 0.2s ease), kh-pulse (dot de actividad, scale 0.85→1 + opacity 0.35→1, 1.4-1.6s).
 
@@ -218,12 +218,12 @@ para que todos los servicios compartan el entorno de desarrollo y la prohibició
 **Entonces** npm resuelve los 5 workspaces `packages/{shared,bot,backend,workers,web}` e instala todas las dependencias
 **Y** `tsc --noEmit` pasa con cero errores en todos los paquetes
 
-**Dado** un archivo en `packages/bot` que intenta importar de `@hivly/backend`
+**Dado** un archivo en `packages/bot` que intenta importar de `@share2brain/backend`
 **Cuando** ESLint ejecuta sobre ese archivo
 **Entonces** la rule `no-restricted-imports` reporta un error señalando el import cruzado prohibido
-**Y** un import de `@hivly/shared` en el mismo archivo no genera ningún error
+**Y** un import de `@share2brain/shared` en el mismo archivo no genera ningún error
 
-**Dado** los archivos `Hivly.config.yml.example` y `.env.example`
+**Dado** los archivos `Share2Brain.config.yml.example` y `.env.example`
 **Cuando** el desarrollador los revisa
 **Entonces** contienen todos los campos documentados en el PRD con valores de ejemplo claros
 
@@ -243,11 +243,11 @@ para que todos los servicios usen una única fuente de verdad para modelos de da
 **Y** la tabla `sessions` NO está definida (las sesiones viven en Redis)
 **Y** ejecutar `npx drizzle-kit generate` produce archivos SQL de migración en `src/db/migrations/`
 
-**Dado** un `Hivly.config.yml` válido
+**Dado** un `Share2Brain.config.yml` válido
 **Cuando** `loadConfig()` es llamado
 **Entonces** retorna un objeto de configuración tipado con todos los campos requeridos validados
 
-**Dado** un `Hivly.config.yml` con un campo inválido o ausente
+**Dado** un `Share2Brain.config.yml` con un campo inválido o ausente
 **Cuando** cualquier servicio llama a `loadConfig()` al arrancar
 **Entonces** el proceso termina con un mensaje de error descriptivo antes de establecer cualquier conexión de red
 
@@ -276,7 +276,7 @@ para confirmar que el despliegue es correcto con un solo comando.
 **Y** `nginx` es el único servicio con puertos expuestos al host (80/443)
 **Y** en desarrollo, `postgres` expone el puerto solo en `127.0.0.1:5432`
 
-**Dado** un entorno con `.env` y `Hivly.config.yml` válidos
+**Dado** un entorno con `.env` y `Share2Brain.config.yml` válidos
 **Cuando** el Operador ejecuta `docker compose up -d`
 **Entonces** el servicio `migrator` ejecuta `drizzle-kit migrate`, aplica todas las migraciones y termina con código 0
 **Y** los demás servicios arrancan tras la finalización exitosa del `migrator`
@@ -304,7 +304,7 @@ Un miembro del guild de Discord puede autenticarse via OAuth2 y ver la interfaz 
 ### Historia 2.1: Sistema de diseño en packages/web
 
 Como miembro de la comunidad,
-quiero que la interfaz de Hivly tenga una identidad visual consistente con soporte de tema claro/oscuro,
+quiero que la interfaz de Share2Brain tenga una identidad visual consistente con soporte de tema claro/oscuro,
 para que la experiencia sea profesional y adaptable a mis preferencias.
 
 **Criterios de Aceptación:**
@@ -318,7 +318,7 @@ para que la experiencia sea profesional y adaptable a mis preferencias.
 **Entonces** importan Space Grotesk (500/600/700), IBM Plex Sans (400/500/600) e IBM Plex Mono (400/500/600) desde Google Fonts
 **Y** `font-family` del body es `'IBM Plex Sans', system-ui, sans-serif`
 
-**Dado** el componente hexagonal de Hivly
+**Dado** el componente hexagonal de Share2Brain
 **Cuando** es renderizado
 **Entonces** aplica `clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)` con gradiente `linear-gradient(150deg, #FFCB6B, #F5A623)` con estructura anidada (exterior amber → interior bg-color → punto amber)
 **Y** existe en 3 variantes de tamaño: 74px (login), 32px (sidebar/chat header), 30px (avatar agente en mensajes)
@@ -338,14 +338,14 @@ para que la experiencia sea profesional y adaptable a mis preferencias.
 ### Historia 2.2: Layout principal, sidebar y pantalla de login
 
 Como miembro de la comunidad,
-quiero ver la pantalla de login de Hivly y, una vez autenticado, la interfaz principal con sidebar y header,
+quiero ver la pantalla de login de Share2Brain y, una vez autenticado, la interfaz principal con sidebar y header,
 para poder navegar entre las secciones de la aplicación.
 
 **Criterios de Aceptación:**
 
 **Dado** que el usuario no está autenticado
 **Cuando** accede a la web app
-**Entonces** ve la pantalla de login con: fondo de radial gradients amber y Discord purple + 4 hexágonos decorativos animados con `kh-float`, card centrada (430px max-width, border-radius 20px), logo hexagonal 74px, título "Hivly" (Space Grotesk 700 30px), subtítulo mono uppercase, párrafo descriptivo, botón "Continuar con Discord" (#5865F2, height 52px), nota de seguridad con ícono candado, y footer con scopes OAuth2 + versión
+**Entonces** ve la pantalla de login con: fondo de radial gradients amber y Discord purple + 4 hexágonos decorativos animados con `kh-float`, card centrada (430px max-width, border-radius 20px), logo hexagonal 74px, título "Share2Brain" (Space Grotesk 700 30px), subtítulo mono uppercase, párrafo descriptivo, botón "Continuar con Discord" (#5865F2, height 52px), nota de seguridad con ícono candado, y footer con scopes OAuth2 + versión
 
 **Dado** que el usuario está autenticado
 **Cuando** accede a la web app
@@ -353,7 +353,7 @@ para poder navegar entre las secciones de la aplicación.
 
 **Dado** el sidebar renderizado
 **Cuando** es inspeccionado
-**Entonces** muestra: logo hexagonal 32px + wordmark "Hivly" (Space Grotesk 700 17px), 2 nav items (Búsqueda con ícono lupa, Documentos con ícono grid), espacio flexible, panel de estado del sistema (indexer/redis stream/pgvector con dots verdes y valores "running"/"ok"), y footer "self-hosted · open source" (mono 10px, `--tx5`)
+**Entonces** muestra: logo hexagonal 32px + wordmark "Share2Brain" (Space Grotesk 700 17px), 2 nav items (Búsqueda con ícono lupa, Documentos con ícono grid), espacio flexible, panel de estado del sistema (indexer/redis stream/pgvector con dots verdes y valores "running"/"ok"), y footer "self-hosted · open source" (mono 10px, `--tx5`)
 
 **Dado** el header renderizado (height 62px)
 **Cuando** es inspeccionado
@@ -367,7 +367,7 @@ para poder navegar entre las secciones de la aplicación.
 **Dado** el botón toggle de tema en el header
 **Cuando** el usuario hace clic
 **Entonces** el `data-kh` del elemento raíz alterna entre `"dark"` y `"light"`
-**Y** la preferencia se persiste en `localStorage('hivly-theme')`
+**Y** la preferencia se persiste en `localStorage('share2brain-theme')`
 **Y** al recargar la página, el tema guardado se aplica antes del primer render visible
 
 ---
@@ -460,7 +460,7 @@ El conocimiento de los canales de Discord configurados fluye automáticamente al
 Como Operador,
 quiero elegir de forma independiente el proveedor de LLM (Anthropic, OpenAI o custom
 OpenAI-compatible) y el de embeddings (OpenAI o custom), con sus claves y endpoints,
-para adaptar Hivly a mi stack sin tocar código.
+para adaptar Share2Brain a mi stack sin tocar código.
 
 **Criterios de Aceptación:**
 
@@ -471,7 +471,7 @@ para adaptar Hivly a mi stack sin tocar código.
 **Y** `knowledge` ya NO contiene `embedding_model` (movido a `embeddings`)
 **Y** un `.superRefine` exige `base_url` no vacío cuando `provider === 'custom'` (agent y embeddings)
 
-**Dado** un `Hivly.config.yml` con `embeddings.provider: "anthropic"`
+**Dado** un `Share2Brain.config.yml` con `embeddings.provider: "anthropic"`
 **Cuando** `loadConfig()` valida
 **Entonces** falla con error descriptivo (Anthropic no ofrece API de embeddings)
 
@@ -493,7 +493,7 @@ para adaptar Hivly a mi stack sin tocar código.
 **Cuando** obtiene un vector del proveedor
 **Entonces** un guard verifica `vector.length === embeddings.dimensions` y aborta/loguea error si no coincide (protege AD-13)
 
-**Dado** `Hivly.config.yml.example` y `.env.example`
+**Dado** `Share2Brain.config.yml.example` y `.env.example`
 **Cuando** son revisados
 **Entonces** reflejan los bloques `agent`/`embeddings` y las keys `LLM_API_KEY`, `LLM_BASE_URL`, `EMBEDDINGS_API_KEY`, `EMBEDDINGS_BASE_URL`
 
@@ -513,7 +513,7 @@ para que el conocimiento de la comunidad se capture en tiempo real sin intervenc
 
 **Criterios de Aceptación:**
 
-**Dado** el servicio `bot` arrancando con `Hivly.config.yml` válido
+**Dado** el servicio `bot` arrancando con `Share2Brain.config.yml` válido
 **Cuando** `loadConfig()` parsea la configuración
 **Entonces** el cliente `discord.js` se conecta al Discord Gateway con los permisos: `Read Message History`, `Read Channels`, `View Channel`
 **Y** los event listeners `messageCreate`, `messageUpdate`, `messageDelete` son registrados
@@ -522,7 +522,7 @@ para que el conocimiento de la comunidad se capture en tiempo real sin intervenc
 **Cuando** el evento `messageCreate` es recibido por el bot
 **Entonces** el bot verifica que el canal está habilitado y que el autor no es un bot (cuando `ignore_bots: true`)
 **Y** hace INSERT del mensaje en la tabla `discord_messages` (message_id, channel_id, channel_name, author_id, author_name, content, created_at)
-**Y** hace `XADD hivly:discord:messages` con los campos obligatorios: `messageId`, `channelId`, `guildId`, `timestamp`, `content`, `authorId`
+**Y** hace `XADD share2brain:discord:messages` con los campos obligatorios: `messageId`, `channelId`, `guildId`, `timestamp`, `content`, `authorId`
 
 **Dado** un mensaje en un canal con `enabled: false`
 **Cuando** el evento `messageCreate` es recibido
@@ -539,7 +539,7 @@ para que el conocimiento de la comunidad se capture en tiempo real sin intervenc
 
 Como Operador,
 quiero que el bot indexe el historial de mensajes de Discord al arrancar,
-para que el conocimiento previo a la instalación de Hivly sea consultable desde el primer día.
+para que el conocimiento previo a la instalación de Share2Brain sea consultable desde el primer día.
 
 **Criterios de Aceptación:**
 
@@ -551,14 +551,14 @@ para que el conocimiento previo a la instalación de Hivly sea consultable desde
 
 **Dado** el Backfiller procesando mensajes históricos
 **Cuando** itera por cada mensaje
-**Entonces** publica cada mensaje como evento en `hivly:discord:messages`
+**Entonces** publica cada mensaje como evento en `share2brain:discord:messages`
 **Y** respeta el rate limit de Discord API: delay mínimo de 1s entre páginas de resultados
 **Y** honra el header `Retry-After` si Discord retorna rate limit
 **Y** procesa los canales de forma secuencial (no paralela)
 
 **Dado** que el Backfiller completa para todos los canales
 **Cuando** finaliza
-**Entonces** publica un evento `discord.backfill.completed` al stream `hivly:knowledge:events`
+**Entonces** publica un evento `discord.backfill.completed` al stream `share2brain:knowledge:events`
 **Y** actualiza el `last_seen_message_id` por canal
 
 **Dado** que el bot se reinicia tras haber estado offline
@@ -578,8 +578,8 @@ para poder encontrar conocimiento relevante con búsquedas en lenguaje natural.
 
 **Dado** el Worker Indexer arrancando
 **Cuando** se inicializa
-**Entonces** crea el consumer group `hivly:indexer` en el stream `hivly:discord:messages` si no existe
-**Y** comienza a leer con `XREADGROUP GROUP hivly:indexer consumer-1 COUNT 10 BLOCK 5000`
+**Entonces** crea el consumer group `share2brain:indexer` en el stream `share2brain:discord:messages` si no existe
+**Y** comienza a leer con `XREADGROUP GROUP share2brain:indexer consumer-1 COUNT 10 BLOCK 5000`
 
 **Dado** un lote de mensajes leídos del stream
 **Cuando** el Indexer los procesa
@@ -595,7 +595,7 @@ para poder encontrar conocimiento relevante con búsquedas en lenguaje natural.
 
 **Dado** que el procesamiento de un mensaje fue exitoso
 **Cuando** el Indexer hace ACK
-**Entonces** ejecuta `XACK hivly:discord:messages hivly:indexer <message-id>`
+**Entonces** ejecuta `XACK share2brain:discord:messages share2brain:indexer <message-id>`
 **Y** si el procesamiento falla, NO hace XACK para que Redis reintente automáticamente
 
 **Dado** que el mismo mensaje llega dos veces al stream (at-least-once delivery)
@@ -766,7 +766,7 @@ para cerrar el gap de verificación que dejó la Story 4.3 y desbloquear la veri
 
 **Dado** el monorepo sin tooling E2E
 **Cuando** se instala y configura el harness
-**Entonces** `@hivly/web` declara `@playwright/test`, existe `playwright.config.ts` en `packages/web`, y el script `npm run test:e2e -w @hivly/web` ejecuta la suite E2E (con el wiring en la raíz)
+**Entonces** `@share2brain/web` declara `@playwright/test`, existe `playwright.config.ts` en `packages/web`, y el script `npm run test:e2e -w @share2brain/web` ejecuta la suite E2E (con el wiring en la raíz)
 
 **Dado** que el harness necesita un backend determinista
 **Cuando** arranca
@@ -918,12 +918,12 @@ para que el worker de sync mantenga el índice vectorial consistente con Discord
 
 **Dado** que ocurre un evento `messageUpdate` en un canal habilitado
 **Cuando** el bot lo recibe
-**Entonces** publica a la stream `hivly:discord:messages:updated` con `{ messageId, channelId, newContent, editedAt }`
+**Entonces** publica a la stream `share2brain:discord:messages:updated` con `{ messageId, channelId, newContent, editedAt }`
 **Y** ignora actualizaciones en canales no habilitados o mensajes de bots
 
 **Dado** que ocurre un evento `messageDelete` en un canal habilitado
 **Cuando** el bot lo recibe
-**Entonces** publica a la stream `hivly:discord:messages:deleted` con `{ messageId, channelId, deletedAt }`
+**Entonces** publica a la stream `share2brain:discord:messages:deleted` con `{ messageId, channelId, deletedAt }`
 **Y** el evento se publica aunque el bot no haya visto el mensaje original (Discord no garantiza la caché)
 
 ---
@@ -936,7 +936,7 @@ para mantener los embeddings sincronizados sin duplicados ni corrupción de dato
 
 **Criterios de Aceptación:**
 
-**Dado** que el Worker Sync consume un evento `discord.message.updated` del consumer group `hivly:sync`
+**Dado** que el Worker Sync consume un evento `discord.message.updated` del consumer group `share2brain:sync`
 **Cuando** procesa el mensaje
 **Entonces** elimina el embedding anterior del mensaje en pgvector
 **Y** genera nuevo embedding con el contenido actualizado y lo inserta (UPSERT por `message_id`)
@@ -978,7 +978,7 @@ para garantizar la observabilidad, seguridad y fiabilidad operacional.
 
 **Dado** que ocurre un error crítico en cualquier servicio (bot, backend, workers)
 **Cuando** el error supera el umbral configurado
-**Entonces** el sistema envía una notificación al canal Telegram o Slack configurado en `Hivly.config.yml` (FR21)
+**Entonces** el sistema envía una notificación al canal Telegram o Slack configurado en `Share2Brain.config.yml` (FR21)
 **Y** la notificación incluye el nombre del servicio, mensaje de error y timestamp
 
 **Dado** que el backend recibe cualquier request HTTP
@@ -1029,7 +1029,7 @@ schema ni backend. Frontend-only (AD-3 intacto).
 ### Historia 8.1: web — DocsView: rediseño de estados leído/no-leído y layout de columnas
 
 **Disparador:** las filas leídas se leían como "deshabilitadas" (punto gris + título atenuado a
-`--text-muted`). El diseño actualizado (`docs/context/design/KeepHive Web.dc.html`) mueve el énfasis
+`--text-muted`). El diseño actualizado (`docs/context/design/Share2Brain Web.dc.html`) mueve el énfasis
 a *destacar lo no leído* en vez de *apagar lo leído*.
 
 - **AC1 · Layout 6 columnas:** título · descripción · link · canal · autor · indexado; fila con
@@ -1047,7 +1047,7 @@ a *destacar lo no leído* en vez de *apagar lo leído*.
 
 ## Épico 9: Estadísticas del Conocimiento (Analytics)
 
-**Goal:** Añadir la vista Estadísticas (3ª entrada de nav) del diseño `KeepHive Web.dc.html`
+**Goal:** Añadir la vista Estadísticas (3ª entrada de nav) del diseño `Share2Brain Web.dc.html`
 (`isStats`): KPIs de conocimiento, actividad de indexado (14 días), volumen por canal y cobertura
 de lectura personal. Sin ingesta nueva (agrega sobre datos existentes); sin tabla nueva.
 

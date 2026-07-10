@@ -80,7 +80,7 @@ so that I can quickly find the information I need — scoped to the channels I'm
 ### Frontend — API clients (browser-safe)
 
 - [x] **Task 8 — search + channels API clients** (AC: 3, 7)
-  - [x] Create `packages/web/src/api/search.ts` mirroring `api/auth.ts`: `search(q: string, signal?: AbortSignal): Promise<SearchResponse>` → `fetch('/api/search?q=' + encodeURIComponent(q), { credentials: 'include', signal })`; on `!res.ok` throw; `return SearchResponseSchema.parse(await res.json())`. Import **only** from `@hivly/shared/schemas`.
+  - [x] Create `packages/web/src/api/search.ts` mirroring `api/auth.ts`: `search(q: string, signal?: AbortSignal): Promise<SearchResponse>` → `fetch('/api/search?q=' + encodeURIComponent(q), { credentials: 'include', signal })`; on `!res.ok` throw; `return SearchResponseSchema.parse(await res.json())`. Import **only** from `@share2brain/shared/schemas`.
   - [x] Create `packages/web/src/api/channels.ts`: `fetchChannels(): Promise<Channel[]>` → `fetch('/api/channels', { credentials: 'include' })`; `return ChannelsResponseSchema.parse(await res.json()).channels`.
 
 ### Frontend — Search view (AC1–AC6)
@@ -134,11 +134,11 @@ This is a **thin full-stack story**: the bulk is the frontend Búsqueda view, pl
 - **`GET /api/channels`** — the filter chips need "all accessible channels" on load, and no channel-list endpoint exists (there is no `channelId` filter on `/api/search` either, so chip filtering is **client-side** over the returned results). Decision: add the endpoint (shared schema + repo method + controller + route + tests). Chips still filter client-side.
 - **`guildId` on `/api/auth/me`** — the "ver en Discord" deep link needs `https://discord.com/channels/{guildId}/{channelId}/{messageId}`; the fragment carries `channelId` + `messageId` but not `guildId` (it's deployment config `discord.guild_id`, never exposed to the SPA). Decision: add one `guildId` field to the existing `/me` response (least wiring — the SPA already fetches `/me` on load). This closes the Epic 3 retro action item "Fix the view-in-Discord link convention for grouped chunks … Before Story 4.3": the linked message is the **anchor** `message_ids[0]`, already exposed as `SearchFragment.messageId` (Story 4.1 decision D2).
 
-Both additions live in the correct owners: contracts in `@hivly/shared/schemas` (AD-6), backend read paths through the existing `rbacService` (AD-12 array-overlap inside the query).
+Both additions live in the correct owners: contracts in `@share2brain/shared/schemas` (AD-6), backend read paths through the existing `rbacService` (AD-12 array-overlap inside the query).
 
 ### 🔴 CRITICAL: design tokens were renamed — translate the mockup names
 
-The epic ACs and the design mockup `docs/context/design/KeepHive Web.dc.html` use token names `--tx`, `--tx2`…`--tx5`. Story 2.1 **renamed** these when it built the real design system in `packages/web/src/styles/global.css`. The values are identical; **only the names changed.** Use the implemented names:
+The epic ACs and the design mockup `docs/context/design/Share2Brain Web.dc.html` use token names `--tx`, `--tx2`…`--tx5`. Story 2.1 **renamed** these when it built the real design system in `packages/web/src/styles/global.css`. The values are identical; **only the names changed.** Use the implemented names:
 
 | Mockup name | Implemented token | Dark value | Light value |
 |---|---|---|---|
@@ -155,12 +155,12 @@ All other tokens the ACs reference already exist unchanged: `--accent-ink`, `--t
 - **No router** (UX-DR5): navigation is in-app state. The `search` screen is already the default (`useState<Screen>('search')` in `App.tsx:35`) and already has a placeholder in `AppLayout.tsx:48-57`. You **replace the `search` placeholder branch**, not add a route. `Screen = 'search' | 'docs'` is defined in `Sidebar.tsx:10`; the "Búsqueda" nav item already exists (`Sidebar.tsx:67`).
 - **No data library** (no react-query/SWR — not in `package.json`). Use `useState` + `useEffect` + `fetch`, mirroring the session load in `App.tsx:39-58` (note the `active` unmount guard). For search, also use an `AbortController` to cancel superseded in-flight requests.
 - **API client pattern** (`packages/web/src/api/auth.ts`): native `fetch` to same-origin `/api/*`, **`credentials: 'include'`** on every call (session cookie), validate the response with the shared Zod schema (`Schema.parse(await res.json())`), throw on unexpected status. New files `api/search.ts` + `api/channels.ts` mirror it.
-- **Import boundary (AD-3, ESLint `no-restricted-imports`)**: from `packages/web` import contracts **only** from `@hivly/shared/schemas`. The root barrel `@hivly/shared` and `/db`, `/config`, `/providers` are banned (pull `pg`/Node into the browser bundle). `@hivly/shared/schemas` already re-exports `search`, `auth`, `documents`, `readStatus`; add `channels` there (Task 2).
+- **Import boundary (AD-3, ESLint `no-restricted-imports`)**: from `packages/web` import contracts **only** from `@share2brain/shared/schemas`. The root barrel `@share2brain/shared` and `/db`, `/config`, `/providers` are banned (pull `pg`/Node into the browser bundle). `@share2brain/shared/schemas` already re-exports `search`, `auth`, `documents`, `readStatus`; add `channels` there (Task 2).
 - **Hover/focus** cannot be inline styles → add `kh-*` classes to `styles/components.css` (Task 12), following the existing `.kh-nav-item`/`.kh-icon-btn` pattern. Static layout stays inline.
 - **Reuse**: `initialsFromUsername` (`lib/initials.ts`) for avatar initials; `SearchIcon` (`icons.tsx`) for the magnifier; the avatar-circle and pill/chip container patterns from `Header.tsx`. Do **not** add an icon library.
 - **UI copy is Spanish verbatim** (from the mockup); all identifiers/comments/logs English (project rule).
 
-### Exact search-view spec (source: `KeepHive Web.dc.html` lines 156-216)
+### Exact search-view spec (source: `Share2Brain Web.dc.html` lines 156-216)
 
 - Container: `padding:34px 40px 60px`, inner wrapper `max-width:860px; margin:0 auto`.
 - Title `h2`: Space Grotesk 600, 25px, `letter-spacing:-0.02em`. Description `p`: 14px `--text-tertiary`, `margin:7px 0 0`.
@@ -178,7 +178,7 @@ All other tokens the ACs reference already exist unchanged: `--accent-ink`, `--t
 - `SearchQuerySchema` (`packages/shared/src/schemas/search.ts`): `q` (trimmed, min 1, max 1000), `limit` (coerced int, 1–50, default 5). `SearchResponseSchema = { results: SearchFragment[] }`. `SearchFragmentSchema`: `id`(uuid), `content`, `channelId`, `channelName`, `authorId`, `authorName`, `createdAt`(ISO string), `similarity`(0–1), `messageId`. `SEARCH_ERROR = { VALIDATION_ERROR, INTERNAL }`.
 - Backend `GET /api/search` accepts **only** `q` and `limit` (no `channelId`). 200 `{ results }`; 400 `{ error: <Spanish msg>, code: 'VALIDATION_ERROR' }`; 500 `{ error:'Internal error', code:'INTERNAL' }`; 401 from the `/api` gate. Empty RBAC scope short-circuits to `{ results: [] }`. The frontend gate (q ≥ 2 chars) means the backend's own min(1)/400 path is not normally hit from this UI.
 - `AuthMeResponseSchema` (`packages/shared/src/schemas/auth.ts`) currently `{ id, discordId, username, avatar }` → add `guildId`. `authService.getMe` (authService.ts:55-67) builds & `.parse()`s it; `guildId` already available in `createAuthService` deps.
-- `channel_permissions` (`packages/shared/src/db/schema.ts:103-109`): PK `channel_id`; `name notNull`; `allowed_roles text[] notNull`; `category_id` nullable. **One row per channel** → no DISTINCT needed. RBAC filter is `arrayOverlaps(allowedRoles, discordRoles)` (re-exported by `@hivly/shared/db`; backend never imports `drizzle-orm` directly).
+- `channel_permissions` (`packages/shared/src/db/schema.ts:103-109`): PK `channel_id`; `name notNull`; `allowed_roles text[] notNull`; `category_id` nullable. **One row per channel** → no DISTINCT needed. RBAC filter is `arrayOverlaps(allowedRoles, discordRoles)` (re-exported by `@share2brain/shared/db`; backend never imports `drizzle-orm` directly).
 - Repo mirror target — `channelPermissionRepository.drizzle.ts:41-53` `findAllowedChannelIds` (short-circuit on empty roles, `arrayOverlaps` where). Service mirror target — `rbacService.ts` `getRolesResponse` (validates with `AuthRolesResponseSchema.parse`). Controller/router mirror target — `searchController.ts` + `searchRoutes.ts`. Composition root — `createApp` in `app.ts` (repos→services→controllers→routers inline; `rbacService` at ~line 77, mounts after the `/api` gate at line 95).
 
 ### Author display (deferred state)
@@ -207,7 +207,7 @@ Integration suites share one real Postgres. Two traps found in 4.2:
 ### References
 
 - [Source: _bmad-output/planning-artifacts/epics.md#Historia 4.3] — the seven ACs and the epic goal.
-- [Source: docs/context/design/KeepHive Web.dc.html lines 156-216, 503, 640-745] — the pixel-exact Búsqueda mockup, `this.channels` filter list, `chipStyle`, client-side channel filter.
+- [Source: docs/context/design/Share2Brain Web.dc.html lines 156-216, 503, 640-745] — the pixel-exact Búsqueda mockup, `this.channels` filter list, `chipStyle`, client-side channel filter.
 - [Source: packages/shared/src/schemas/search.ts] — `SearchQuerySchema`, `SearchFragmentSchema`, `SearchResponseSchema`, `SEARCH_ERROR`.
 - [Source: packages/shared/src/schemas/auth.ts] — `AuthMeResponseSchema` (+ `guildId` to add).
 - [Source: packages/shared/src/db/schema.ts:103-109] — `channel_permissions` (PK `channel_id`, `allowed_roles text[]`).
@@ -239,7 +239,7 @@ Claude Sonnet 5 (bmad-dev-story, 2026-07-07)
   - `GET /api/channels` (member scoped to a seeded role) → `200 { channels: [{ id, name }] }`, correctly RBAC-scoped.
   - `GET /api/channels` without a session → `401 { error, code: 'AUTH_REQUIRED' }`.
   - The scratch script was deleted after the smoke; not part of the File List.
-- **Gap — not verified**: real-browser visual verification of the SearchView (AC1 fonts/spacing, AC2 focus `box-shadow`, exact token colors on AC4/AC5) was **not performed** — this environment has no browser-automation tool and no real Discord OAuth credentials to complete a full login through the actual SPA. jsdom (used by the component tests) does not apply external CSS, so these visual details are unverified by any test in this story. Recommend Borja do a quick manual pass in the browser (`npm run dev -w @hivly/backend` + `npm run dev -w @hivly/web`, login via real Discord) before merging, per the project's own testing-rules note that CSS/token application must be checked manually.
+- **Gap — not verified**: real-browser visual verification of the SearchView (AC1 fonts/spacing, AC2 focus `box-shadow`, exact token colors on AC4/AC5) was **not performed** — this environment has no browser-automation tool and no real Discord OAuth credentials to complete a full login through the actual SPA. jsdom (used by the component tests) does not apply external CSS, so these visual details are unverified by any test in this story. Recommend Borja do a quick manual pass in the browser (`npm run dev -w @share2brain/backend` + `npm run dev -w @share2brain/web`, login via real Discord) before merging, per the project's own testing-rules note that CSS/token application must be checked manually.
 
 ### Completion Notes List
 

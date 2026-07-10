@@ -13,9 +13,9 @@ Status: done
 
 As an **Operator**,
 I want the bot to index the Discord message history when it starts,
-so that the knowledge that existed before Hivly was installed is queryable from day one — and any gap accumulated while the bot was offline is covered exactly, with no duplicates and no losses.
+so that the knowledge that existed before Share2Brain was installed is queryable from day one — and any gap accumulated while the bot was offline is covered exactly, with no duplicates and no losses.
 
-This is the **third story of Epic 3** (Knowledge Indexing Pipeline), after Story 3.1 (Gateway + `messageCreate`, `done`). It reuses 3.1's ingestion path (`persistMessage`) and **feeds Story 3.3** (Indexer worker) through the same `hivly:discord:messages` stream. It also introduces the first producer of the `hivly:knowledge:events` stream (consumer deferred to Epic 6).
+This is the **third story of Epic 3** (Knowledge Indexing Pipeline), after Story 3.1 (Gateway + `messageCreate`, `done`). It reuses 3.1's ingestion path (`persistMessage`) and **feeds Story 3.3** (Indexer worker) through the same `share2brain:discord:messages` stream. It also introduces the first producer of the `share2brain:knowledge:events` stream (consumer deferred to Epic 6).
 
 **Baseline commit:** `8aa1d35` — Story 3.1 merged; the bot connects, ingests live `messageCreate` atomically (INSERT + XADD in one tx), reconnects with backoff, and hardens the process. There is **no backfill code** yet.
 
@@ -77,7 +77,7 @@ The Epic 3 spec (`epics.md` §Historia 3.2) and the architecture (`TECHNICAL-DES
 
 **Given** the Backfiller has attempted **all** enabled channels
 **When** it finishes (even if some channels failed)
-**Then** it XADDs a `BackfillCompletedEvent` to `STREAM_KEYS.KNOWLEDGE_EVENTS` (`'hivly:knowledge:events'`) with all-string fields: `type='discord.backfill.completed'`, `guildId`, `timestamp` (ISO 8601 UTC, now), `channelsProcessed`, `channelsFailed`, `messagesPublished` (counts stringified)
+**Then** it XADDs a `BackfillCompletedEvent` to `STREAM_KEYS.KNOWLEDGE_EVENTS` (`'share2brain:knowledge:events'`) with all-string fields: `type='discord.backfill.completed'`, `guildId`, `timestamp` (ISO 8601 UTC, now), `channelsProcessed`, `channelsFailed`, `messagesPublished` (counts stringified)
 **And** a per-channel failure (unknown channel, missing permission, non-text channel, fetch error) is logged at `error` with `{ channelId, error }` and the loop **continues with the next channel** — one bad channel never aborts the backfill or crashes the bot
 **And** a failure of the whole backfill run is caught in `main.ts` (`error` log), never an unhandledRejection — live ingestion keeps running regardless.
 
@@ -93,9 +93,9 @@ The Epic 3 spec (`epics.md` §Historia 3.2) and the architecture (`TECHNICAL-DES
 
 - `npm run lint` — 0 errors/warnings.
 - `npm run test` — all green, including new unit tests (cursor query, pagination/ordering, guards, inter-page delay + abort, completion counts, failure isolation) — see Task 8.
-- `npm run test:integration` — real Postgres + Redis: cursor query picks newest-by-`created_at`; double-insert → 1 row + 1 stream event; completed event lands in `hivly:knowledge:events` with the exact string fields.
+- `npm run test:integration` — real Postgres + Redis: cursor query picks newest-by-`created_at`; double-insert → 1 row + 1 stream event; completed event lands in `share2brain:knowledge:events` with the exact string fields.
 - `npm run build` — all 5 workspaces clean.
-- **Manual smoke** (real token + test guild `1498305407159107735`): first boot with empty `discord_messages` backfills up to `limit` per enabled channel (rows + stream entries + one completed event in `XRANGE hivly:knowledge:events`); post a message, stop the bot, post 2–3 more, restart → only the gap is fetched, `SELECT count(*)` shows no duplicates; a channel id pointing to a non-existent channel logs `error` and the other channels still complete.
+- **Manual smoke** (real token + test guild `1498305407159107735`): first boot with empty `discord_messages` backfills up to `limit` per enabled channel (rows + stream entries + one completed event in `XRANGE share2brain:knowledge:events`); post a message, stop the bot, post 2–3 more, restart → only the gap is fetched, `SELECT count(*)` shows no duplicates; a channel id pointing to a non-existent channel logs `error` and the other channels still complete.
 
 ---
 
@@ -116,10 +116,10 @@ The Epic 3 spec (`epics.md` §Historia 3.2) and the architecture (`TECHNICAL-DES
 - [x] **Task 6 — `main.ts` wiring** (AC: 1, 5)
   - [x] After the DB client opens and **before** `connectWithRetry`, when `config.discord.backfill.enabled`: resolve all cursors (`getChannelCursor` per enabled channel). After `connectWithRetry` resolves: `void runBackfill(…).catch(err => logger.error('backfill failed', …))` — non-blocking, once per process (reconnects must not re-run it), aborted by the existing `shutdownSignal`.
 - [x] **Task 7 — Config & docs touch-check** (AC: 1)
-  - [x] No new config keys, no new env vars, no compose changes (verify: `backfill.{enabled,limit,ignore_bots}` already exist in the schema and in `Hivly.config.yml`). Do NOT add a `last_seen_message_id` column or any migration.
+  - [x] No new config keys, no new env vars, no compose changes (verify: `backfill.{enabled,limit,ignore_bots}` already exist in the schema and in `Share2Brain.config.yml`). Do NOT add a `last_seen_message_id` column or any migration.
 - [x] **Task 8 — Tests** (AC: 7)
   - [x] Unit: cursor (mock db returning rows); `gapPages`/`latestPages` (cursor advancement, ascending order, stop conditions, limit enforcement, empty channel); guards during backfill (bot author, empty content → debug); inter-page delay + abort with fake timers/injected sleep; completed-event field mapping (all strings); per-channel failure isolation (2nd channel still runs, counts reflect the failure); `persistMessage` skip-XADD-on-conflict.
-  - [x] Integration (real PG + Redis, mirror `packages/bot/src/persistence/persistMessage.integration.test.ts` and `test-helpers.ts`): cursor picks newest `created_at` (not lexicographic id); double persist → 1 row + 1 entry in `hivly:discord:messages`; completed event lands in `hivly:knowledge:events`. Discord API is always mocked — no live Discord in tests.
+  - [x] Integration (real PG + Redis, mirror `packages/bot/src/persistence/persistMessage.integration.test.ts` and `test-helpers.ts`): cursor picks newest `created_at` (not lexicographic id); double persist → 1 row + 1 entry in `share2brain:discord:messages`; completed event lands in `share2brain:knowledge:events`. Discord API is always mocked — no live Discord in tests.
 - [x] **Task 9 — Verification gate** (AC: 7)
   - [x] Run and paste `npm run lint && npm run test && npm run build` + `npm run test:integration`; manual smoke per AC-7. Branch `feat/3-2-discord-bot-backfill-snowflake`; open PR; hand off to `bmad-code-review`.
 
@@ -143,7 +143,7 @@ packages/bot/src/backfill/*.test.ts        # NEW — co-located unit tests
 packages/bot/src/backfill/*.integration.test.ts  # NEW — real PG + Redis (cursor + completed event)
 ```
 
-*No changes* to `docker-compose.yml`, `.env*`, `Hivly.config.yml` (schema untouched), Drizzle schema (AD-5 — **no new column**), or `packages/backend|workers|web`.
+*No changes* to `docker-compose.yml`, `.env*`, `Share2Brain.config.yml` (schema untouched), Drizzle schema (AD-5 — **no new column**), or `packages/backend|workers|web`.
 
 ### Current state of the files being modified (baseline `8aa1d35`)
 
@@ -202,7 +202,7 @@ Rollback-on-XADD-failure semantics are unchanged (the XADD still runs inside the
 
 ### Guardrails (ARCHITECTURE-SPINE AD-*)
 
-- **AD-1/AD-2** — all code in `packages/bot` + the one type in `packages/shared`; the bot imports only `@hivly/shared/*`.
+- **AD-1/AD-2** — all code in `packages/bot` + the one type in `packages/shared`; the bot imports only `@share2brain/shared/*`.
 - **AD-5** — no DDL: the cursor is derived, not stored. Adding a `last_seen_message_id` column is the #1 disaster to avoid here.
 - **AD-8** — `loadConfig()` order preserved; cursor reads happen after DB open, before Gateway I/O.
 - **AD-13** — stream keys via `STREAM_KEYS` only (`DISCORD_MESSAGES`, `KNOWLEDGE_EVENTS`); at-least-once delivery; events all-string; producer idempotency added here strengthens the invariant.
@@ -220,10 +220,10 @@ Vitest, co-located `*.test.ts`, AAA, names `should <behavior> when <condition>`.
 ### References
 
 - [Source: _bmad-output/planning-artifacts/epics.md#Historia 3.2] — epic ACs (reconciled above).
-- [Source: _bmad-output/planning-artifacts/architecture/architecture-hivly-2026-06-30/TECHNICAL-DESIGN.md §5.2, §7 "Backfill al arrancar", §8] — boot flow, backfill flowchart, stream table (`hivly:knowledge:events` → Notifier, deferred).
-- [Source: packages/shared/src/types/events.ts#STREAM_KEYS] — `KNOWLEDGE_EVENTS = 'hivly:knowledge:events'`; event field contract.
+- [Source: _bmad-output/planning-artifacts/architecture/architecture-share2brain-2026-06-30/TECHNICAL-DESIGN.md §5.2, §7 "Backfill al arrancar", §8] — boot flow, backfill flowchart, stream table (`share2brain:knowledge:events` → Notifier, deferred).
+- [Source: packages/shared/src/types/events.ts#STREAM_KEYS] — `KNOWLEDGE_EVENTS = 'share2brain:knowledge:events'`; event field contract.
 - [Source: packages/shared/src/db/schema.ts#discordMessages] — columns + `idx_discord_messages_channel (channel_id, created_at DESC)` (the cursor index).
-- [Source: packages/shared/src/config/index.ts#HivlyConfigSchema] — `discord.backfill.{enabled,limit,ignore_bots}` (all already exist).
+- [Source: packages/shared/src/config/index.ts#Share2BrainConfigSchema] — `discord.backfill.{enabled,limit,ignore_bots}` (all already exist).
 - [Source: packages/bot/src/persistence/persistMessage.ts] — the tx to extend (Task 2).
 - [Source: packages/bot/src/main.ts] — boot/shutdown wiring to preserve; `shutdownSignal` to reuse.
 - [Source: packages/bot/src/discord/reconnect.ts#waitOrAbort] — abort-safe sleep pattern to reuse/export.
@@ -239,8 +239,8 @@ Vitest, co-located `*.test.ts`, AAA, names `should <behavior> when <condition>`.
 
 - **Reuse, don't reinvent:** `persistMessage` (atomic INSERT+XADD), the guards in `messageCreate.ts`, `createLogger`, the injectable-`sleep`/abort pattern in `reconnect.ts`, and `test-helpers.ts` + the `bot-integration` vitest project. The backfiller is a *driver* of the existing ingestion path, not a second pipeline.
 - **Review scars to respect:** every shutdown await is bounded by a `Promise.race` timeout and `.catch`-neutralized — follow the same style for anything the backfiller awaits during shutdown (in practice: check `signal.aborted` and return; don't add new shutdown work). node-redis's `reconnectStrategy` means `connect()` never rejects — the 10 s fail-fast race in `main.ts` exists for that reason; don't touch it.
-- **The `[DECIDED]` trio from 3.1** (reuse `backfill.ignore_bots` for filtering; **no** `last_seen_message_id` column — derive from newest row; Redis factory lives in `@hivly/shared/redis`) are settled — do not reopen them.
-- **Epic 3 spike (2026-07-05):** Gateway + MessageContent intent validated live against guild `1498305407159107735`; test channels in `Hivly.config.yml` are `general` (`1498305410942369908`) and `modelos` (`1498779601030086707`) — use them for the manual smoke.
+- **The `[DECIDED]` trio from 3.1** (reuse `backfill.ignore_bots` for filtering; **no** `last_seen_message_id` column — derive from newest row; Redis factory lives in `@share2brain/shared/redis`) are settled — do not reopen them.
+- **Epic 3 spike (2026-07-05):** Gateway + MessageContent intent validated live against guild `1498305407159107735`; test channels in `Share2Brain.config.yml` are `general` (`1498305410942369908`) and `modelos` (`1498779601030086707`) — use them for the manual smoke.
 - **Epic 2 retro carry-over:** integration-test discipline against real Redis/Postgres is part of this story's DoD (as it was for 3.1); minimum hardening already landed in 3.1 — this story must not weaken it (backfill failures are isolated, never fatal).
 
 ---
@@ -282,25 +282,25 @@ npm run build               → all 5 workspaces clean, exit 0
 npm run test:integration    → Vitest: 5 files, 18 tests passed (real PG + Redis)
 ```
 
-Manual smoke (real token, guild `1498305407159107735`, bot run locally with `HIVLY_CONFIG_PATH` + `.env`; docker bot container stopped during the smoke to avoid a second Gateway session):
+Manual smoke (real token, guild `1498305407159107735`, bot run locally with `SHARE2BRAIN_CONFIG_PATH` + `.env`; docker bot container stopped during the smoke to avoid a second Gateway session):
 
-1. **First boot, empty `discord_messages`** → initial path per channel: `backfill channel done {channelId: 1498305410942369908, published: 38, mode: "initial"}`, `{…1498779601030086707, published: 22…}`, `backfill completed {channelsProcessed: 2, channelsFailed: 0, messagesPublished: 60}`. DB: 60 rows = 60 distinct ids; stream `hivly:discord:messages` = 60 entries; `XRANGE hivly:knowledge:events` shows the completed event with exact all-string fields.
+1. **First boot, empty `discord_messages`** → initial path per channel: `backfill channel done {channelId: 1498305410942369908, published: 38, mode: "initial"}`, `{…1498779601030086707, published: 22…}`, `backfill completed {channelsProcessed: 2, channelsFailed: 0, messagesPublished: 60}`. DB: 60 rows = 60 distinct ids; stream `share2brain:discord:messages` = 60 entries; `XRANGE share2brain:knowledge:events` shows the completed event with exact all-string fields.
 2. **Restart reconciliation** → posted 1 live message (ingested by the 3.1 listener, 61 rows), stopped the bot, posted 3 more via REST (the offline gap), restarted: `mode: "gap"` on both channels, `published: 3` (exactly the gap), `SELECT count(*), count(distinct id)` → 64 = 64 (**no duplicates**), one completed event per boot.
 3. **Failure isolation** → bogus channel id `111111111111111111` added to config: `error backfill channel failed {channelId: 111111111111111111, error: "Unknown Channel"}`, the other 2 channels completed, completed event emitted with `channelsFailed: "1"`; process never crashed.
 
-State restored after the smoke: 4 smoke messages deleted from Discord (REST, 204), their DB rows and `hivly:discord:messages` entries removed (60 = 60 again), `Hivly.config.yml` byte-identical to HEAD (`ignore_bots: true` restored, bogus channel removed — it was temporarily `false` because REST-posted smoke messages are bot-authored), docker bot container restarted. Env quirk noted: host port 6379 is a Homebrew Redis (the compose Redis publishes no ports), so the local bot and the integration tests share the Homebrew instance while the dockerized bot uses the compose one — pre-existing, documented here for the reviewer.
+State restored after the smoke: 4 smoke messages deleted from Discord (REST, 204), their DB rows and `share2brain:discord:messages` entries removed (60 = 60 again), `Share2Brain.config.yml` byte-identical to HEAD (`ignore_bots: true` restored, bogus channel removed — it was temporarily `false` because REST-posted smoke messages are bot-authored), docker bot container restarted. Env quirk noted: host port 6379 is a Homebrew Redis (the compose Redis publishes no ports), so the local bot and the integration tests share the Homebrew instance while the dockerized bot uses the compose one — pre-existing, documented here for the reviewer.
 
 ### Completion Notes List
 
 - **Task 1** — `BackfillCompletedEvent` + `KnowledgeStreamEvent` alias added to `packages/shared/src/types/events.ts`; deliberately not extending `StreamEvent` and not part of `DiscordStreamEvent` (not message-scoped). Counts typed as numbers; producers stringify on XADD (AD-13).
 - **Task 2** — `persistMessage` is now idempotent on the single shared live+backfill path: `onConflictDoNothing().returning()`; 0 rows → **no XADD**, returns `{ inserted: false }`. `IngestibleMessage.editedAt?: Date | null` added; `updatedAt = editedAt ?? createdAt`. The live call site needed no change — the full discord.js `Message` is structurally assignable (its `editedAt: Date | null` flows through). Resolves the 3.1 deferred finding (marked resolved in `deferred-work.md`). The XADD-inside-tx / publish-before-COMMIT tradeoffs stay as documented — no outbox attempted.
-- **Task 3** — `getChannelCursor` resolves the derived cursor with raw `sql` (re-exported by `@hivly/shared/db`, AD-2) — `ORDER BY created_at DESC LIMIT 1`, riding `idx_discord_messages_channel`. No `MAX(id)` anywhere; snowflake comparisons in TS use `BigInt`.
+- **Task 3** — `getChannelCursor` resolves the derived cursor with raw `sql` (re-exported by `@share2brain/shared/db`, AD-2) — `ORDER BY created_at DESC LIMIT 1`, riding `idx_discord_messages_channel`. No `MAX(id)` anywhere; snowflake comparisons in TS use `BigInt`.
 - **Task 4** — `pages.ts` is pure (no discord.js): `gapPages` (forward, unbounded — the whole gap) and `latestPages` (backward, bounded by `limit`, trims to the NEWEST `limit`, yields chronologically). Every page sorted ascending by `BigInt(id)`. On abort mid-collection `latestPages` yields nothing — inserting only the newest slice would park the derived cursor at head and skip the rest of the window forever. Throttle is injected (`opts.throttle`), called between fetches only.
 - **Task 5** — `runBackfill` processes channels sequentially, wraps `channel.messages.fetch({ limit: 100, cache: false })` as the injected `FetchPage`, maps to the same `IngestibleMessage` slice as live, applies the live guards at `debug` (not the live intent-warning), throttles ≥1 s between pages via the exported `waitOrAbort` from `reconnect.ts` (single home of the abort-sleep logic — exported instead of duplicated), isolates per-channel failures, and always XADDs the completed event after attempting all channels — except on shutdown abort (not all channels attempted; Redis mid-teardown). `messagesPublished` counts only `inserted: true` — conflict-skipped overlaps are not published.
 - **Task 6** — `main.ts`: cursors resolved after the Redis connect and **before** the client is created (AC-1 — pre-Gateway-I/O); `client.rest.on('rateLimited')` → `warn` bound once; `void runBackfill(…).catch(…)` fired after `connectWithRetry` resolves (once per process — later reconnects are discord.js-internal). All 3.1 boot/shutdown hardening preserved untouched.
 - **Task 7** — No new config keys/env/compose; no schema change, no migration (AD-5 — the cursor stays derived).
-- **Task 8** — 23 new unit tests (cursor 3, pages 13, backfiller 14 → minus renames, see files) + 3 new integration tests (snowflake-length cursor trap, idempotent double-persist, completed event in `hivly:knowledge:events`) + updated persistMessage/messageCreate unit fakes to the new insert chain.
-- **Docs** — stream tables in `ARCHITECTURE-SPINE.md`, `TECHNICAL-DESIGN.md` §8 and `backend-standards.md` updated: `hivly:knowledge:events` now has a real producer (bot, since 3.2); consumer still deferred to Epic 6.
+- **Task 8** — 23 new unit tests (cursor 3, pages 13, backfiller 14 → minus renames, see files) + 3 new integration tests (snowflake-length cursor trap, idempotent double-persist, completed event in `share2brain:knowledge:events`) + updated persistMessage/messageCreate unit fakes to the new insert chain.
+- **Docs** — stream tables in `ARCHITECTURE-SPINE.md`, `TECHNICAL-DESIGN.md` §8 and `backend-standards.md` updated: `share2brain:knowledge:events` now has a real producer (bot, since 3.2); consumer still deferred to Epic 6.
 
 ### File List
 
@@ -318,7 +318,7 @@ State restored after the smoke: 4 smoke messages deleted from Discord (REST, 204
 - `packages/bot/src/backfill/backfiller.test.ts` — NEW: unit tests (paths, guards, counts, isolation, abort, event shape).
 - `packages/bot/src/backfill/backfill.integration.test.ts` — NEW: real PG + Redis (cursor snowflake trap, completed event).
 - `packages/bot/src/main.ts` — UPDATE: pre-login cursor resolution, `rateLimited` warn log, post-connect `runBackfill` wiring.
-- `docs/context/ARCHITECTURE-SPINE.md` — UPDATE: `hivly:knowledge:events` row — producer live since 3.2.
+- `docs/context/ARCHITECTURE-SPINE.md` — UPDATE: `share2brain:knowledge:events` row — producer live since 3.2.
 - `docs/context/TECHNICAL-DESIGN.md` — UPDATE: same stream-table row.
 - `docs/backend-standards.md` — UPDATE: same stream-table row.
 - `_bmad-output/implementation-artifacts/deferred-work.md` — UPDATE: 3.1 `onConflict` finding marked resolved.

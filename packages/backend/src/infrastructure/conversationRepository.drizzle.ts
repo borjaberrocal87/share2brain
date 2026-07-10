@@ -1,7 +1,7 @@
 // Infrastructure adapter: the ONLY file that knows the conversations/messages
-// SQL. Uses the `sql` re-exported by @hivly/shared/db so the backend never
+// SQL. Uses the `sql` re-exported by @share2brain/shared/db so the backend never
 // imports drizzle-orm directly (AD-2). Mirrors readStatusRepository.drizzle.ts.
-import { sql, type Citation, type Database } from '@hivly/shared/db';
+import { sql, type Citation, type Database } from '@share2brain/shared/db';
 
 import type {
   Conversation,

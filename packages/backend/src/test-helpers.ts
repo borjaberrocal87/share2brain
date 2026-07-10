@@ -1,12 +1,12 @@
 // Integration test helper: opens the SAME real clients the backend uses at startup
 // (pooled pg + node-redis) so tests exercise the true DB/Redis path, not a mock.
 // Requires a live Postgres + Redis — `docker compose up -d postgres redis`.
-import { createDatabase, sql, type Database } from '@hivly/shared/db';
+import { createDatabase, sql, type Database } from '@share2brain/shared/db';
 
 import type { AppOptions } from './app.js';
 import type { ChatModel } from './domain/repositories/chatModel.js';
 import type { QueryEmbedder } from './domain/repositories/queryEmbedder.js';
-import { createRedisClient, type RedisClient } from '@hivly/shared/redis';
+import { createRedisClient, type RedisClient } from '@share2brain/shared/redis';
 
 // The deployed embeddings width (Story 3.3 pivot); the migrated column is vector(1536).
 // The fake query embedder MUST match it so the `<=>` operator accepts the query vector.
@@ -33,7 +33,7 @@ export function fakeQueryEmbedder(index = 0): QueryEmbedder {
  * This is what makes `/api/chat` live in every integration test AND the
  * Playwright harness backend without a real provider (AC11).
  */
-export function fakeChatModel(tokens: string[] = ['Hola', ' desde', ' Hivly', '.']): ChatModel {
+export function fakeChatModel(tokens: string[] = ['Hola', ' desde', ' Share2Brain', '.']): ChatModel {
   return {
     async *stream() {
       for (const token of tokens) yield token;
@@ -44,7 +44,7 @@ export function fakeChatModel(tokens: string[] = ['Hola', ' desde', ' Hivly', '.
 // Dev defaults match the ports docker-compose exposes on localhost. Override via env
 // (e.g. CI): DATABASE_URL / REDIS_URL. Password matches the compose `.env` placeholder.
 const DATABASE_URL =
-  process.env.DATABASE_URL ?? 'postgres://hivly:changeme@127.0.0.1:5432/hivly';
+  process.env.DATABASE_URL ?? 'postgres://share2brain:changeme@127.0.0.1:5432/share2brain';
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
 
 export interface TestClients {
@@ -61,13 +61,13 @@ export interface TestClients {
  * shared tables (`channel_permissions`) and causes intermittent integration failures.
  *
  * BEST-EFFORT — it does NOT catch every competing writer: a same-host writer (e.g. a
- * local `npm run dev -w @hivly/backend`) shares this test's client address and slips
+ * local `npm run dev -w @share2brain/backend`) shares this test's client address and slips
  * through, and a writer behind a connection pooler or under a different DB role is
  * also invisible. The `docs/development_guide.md` precondition covers those. Clean/CI
- * DBs (only the test connected) pass. Bypass with `HIVLY_TEST_ALLOW_SHARED_DB=1`.
+ * DBs (only the test connected) pass. Bypass with `SHARE2BRAIN_TEST_ALLOW_SHARED_DB=1`.
  */
 async function assertNoCompetingWriter(db: Database): Promise<void> {
-  if (process.env.HIVLY_TEST_ALLOW_SHARED_DB === '1') return;
+  if (process.env.SHARE2BRAIN_TEST_ALLOW_SHARED_DB === '1') return;
   try {
     const result = await db.execute(sql`
       SELECT count(*)::int AS n
@@ -89,7 +89,7 @@ async function assertNoCompetingWriter(db: Database): Promise<void> {
           `client address — likely a live "docker compose" app container (backend/bot/workers), ` +
           `or another remote client, that mutates shared tables (channel_permissions) and causes ` +
           `intermittent failures. Stop the app containers ("docker compose stop bot backend workers") ` +
-          `or use a dedicated test database. Bypass with HIVLY_TEST_ALLOW_SHARED_DB=1.`,
+          `or use a dedicated test database. Bypass with SHARE2BRAIN_TEST_ALLOW_SHARED_DB=1.`,
       );
     }
   } catch (err) {

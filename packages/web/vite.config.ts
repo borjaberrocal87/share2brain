@@ -9,9 +9,9 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 // Proxy target: the dev backend on :3000 by default; the E2E harness overrides it
-// to the test backend (:3100) via HIVLY_API_PROXY_TARGET so the built SPA served
+// to the test backend (:3100) via SHARE2BRAIN_API_PROXY_TARGET so the built SPA served
 // by `vite preview` talks to the seeded deterministic backend (Story 4.5).
-const apiTarget = process.env.HIVLY_API_PROXY_TARGET || 'http://localhost:3000';
+const apiTarget = process.env.SHARE2BRAIN_API_PROXY_TARGET || 'http://localhost:3000';
 
 const apiProxy = {
   '/api': { target: apiTarget, changeOrigin: true },

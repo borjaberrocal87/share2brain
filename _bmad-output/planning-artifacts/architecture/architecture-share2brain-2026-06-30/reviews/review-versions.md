@@ -5,7 +5,7 @@ reviewer: claude-sonnet-4-6
 date: 2026-06-30
 ---
 
-# Version Currency & Technology Fit Review — Hivly Architecture Spine
+# Version Currency & Technology Fit Review — Share2Brain Architecture Spine
 
 **Verdict:** The stack is current and well-chosen overall, but three entries carry active risk: `pgvector` is pinned to a version with a known CVE (0.8.0), `drizzle-kit` uses a loose `0.x` pin that will land on 0.31.x (not matching the paired `drizzle-orm` 0.45.x minor), and the paradigm name is accurate but incomplete for the ingest half of the system.
 
@@ -21,7 +21,7 @@ date: 2026-06-30
 | Latest stable | 0.8.3 |
 | CVE | CVE-2026-3172 |
 
-CVE-2026-3172 is a buffer-overflow in pgvector's **parallel HNSW index build** path, affecting all 0.6.0–0.8.1 releases. It allows an authenticated DB user to leak data from other relations or crash the server. The fix shipped in **0.8.2**. Any deployment of Hivly that builds HNSW indexes in parallel (likely, given the embedding workload) is exposed.
+CVE-2026-3172 is a buffer-overflow in pgvector's **parallel HNSW index build** path, affecting all 0.6.0–0.8.1 releases. It allows an authenticated DB user to leak data from other relations or crash the server. The fix shipped in **0.8.2**. Any deployment of Share2Brain that builds HNSW indexes in parallel (likely, given the embedding workload) is exposed.
 
 **Required action:** Update the stack entry to `pgvector 0.8.3` (latest as of 2026-06-30) and add a note in AD-5 that `max_parallel_maintenance_workers` must not be set to 0 as a workaround in production — the correct fix is the version bump.
 

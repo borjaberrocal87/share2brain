@@ -7,7 +7,7 @@ reviewer: rubric-walker
 date: 2026-06-30
 ---
 
-# Architecture Spine Rubric Review — Hivly Self-Hosted
+# Architecture Spine Rubric Review — Share2Brain Self-Hosted
 
 **Overall Verdict:** The spine is structurally sound and covers the happy path well, but carries three critical gaps — a session-storage contradiction vs. the PRD, unverified stack versions for major dependencies, and a deferred retry/DLQ policy that can cause silent divergence between implementations of the Workers package — which must be resolved before epics are written.
 
@@ -51,7 +51,7 @@ date: 2026-06-30
 
 **Description:** The retry and dead-letter queue policy for Redis Streams consumer groups is explicitly deferred to "la historia de Workers." However, the choice between at-least-once vs. at-most-once delivery, consumer group naming, and acknowledgment strategy is a cross-cutting invariant: both the `indexer/` and `sync/` subtrees inside `packages/workers` must agree on it, and it is baked into the Redis Streams wire format from day one (the consumer group name must be fixed before the first message is produced by the Bot). Leaving this deferred means two builders implementing `indexer/` and `sync/` can independently choose different group names or ACK strategies and produce a non-recoverable split in stream consumer state.
 
-**Fix recommendation:** Elevate to a new AD-13: define the consumer group naming convention (e.g., `hivly:workers:indexer` and `hivly:workers:sync`), the ACK discipline (XACK only after successful DB write), and the dead-letter behaviour (after N failed deliveries, move to `hivly:dlq` stream). The exact maxlen and DLQ processing cadence can remain deferred, but the invariants above must be fixed now.
+**Fix recommendation:** Elevate to a new AD-13: define the consumer group naming convention (e.g., `share2brain:workers:indexer` and `share2brain:workers:sync`), the ACK discipline (XACK only after successful DB write), and the dead-letter behaviour (after N failed deliveries, move to `share2brain:dlq` stream). The exact maxlen and DLQ processing cadence can remain deferred, but the invariants above must be fixed now.
 
 ---
 
@@ -157,7 +157,7 @@ Additionally, **drizzle-kit 0.x (pinned con drizzle-orm)** is too vague to enfor
 
 **Description:** The Logging convention specifies log level configuration but does not name the logging library (Pino is named in the PRD §6.2 and §10.2 but not in the spine), the structured log format (JSON vs. pretty-print by env), or the shared logger export path. Two builders can independently install `winston` and `pino` in different packages, or configure different serialisers.
 
-**Fix recommendation:** Expand the Logging row: "All services import the logger from `@hivly/shared` (`packages/shared/src/logger/index.ts`), which exports a Pino instance. JSON format in production (`NODE_ENV=production`), pretty-print in development. No service instantiates its own logger directly."
+**Fix recommendation:** Expand the Logging row: "All services import the logger from `@share2brain/shared` (`packages/shared/src/logger/index.ts`), which exports a Pino instance. JSON format in production (`NODE_ENV=production`), pretty-print in development. No service instantiates its own logger directly."
 
 ---
 

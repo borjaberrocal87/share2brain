@@ -1,9 +1,9 @@
 // Infrastructure adapter: the ONLY file that knows the pgvector search SQL. Uses
-// the `sql` template re-exported by @hivly/shared/db so the backend never imports
+// the `sql` template re-exported by @share2brain/shared/db so the backend never imports
 // drizzle-orm directly (AD-2). This is the first pgvector similarity query in the
 // repo and the concrete home of AD-12: the RBAC filter is a clause of the vector
 // query itself, never a JS post-filter.
-import { inArray, sql, type Database } from '@hivly/shared/db';
+import { inArray, sql, type Database } from '@share2brain/shared/db';
 
 import type {
   EmbeddingSearchRepository,

@@ -1,4 +1,4 @@
-import type { MessageCreatedEvent } from '@hivly/shared/types/events';
+import type { MessageCreatedEvent } from '@share2brain/shared/types/events';
 import { describe, expect, it } from 'vitest';
 
 import { partitionByIndexState } from './partition.js';

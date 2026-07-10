@@ -2,7 +2,7 @@
 // The adapter in infrastructure/ composes the existing QueryEmbedder +
 // EmbeddingSearchRepository so it inherits AD-12 (RBAC-in-query) and the
 // deleted-message exclusion (D1) for free. Mirrors embeddingSearchRepository.ts.
-import type { SearchFragment } from '@hivly/shared/schemas';
+import type { SearchFragment } from '@share2brain/shared/schemas';
 
 export interface RagRetriever {
   /**

@@ -11,30 +11,30 @@ Status: done
 ## Story
 
 As a community member,
-I want to see the Hivly login screen and, once authenticated, the main interface with a sidebar and header,
+I want to see the Share2Brain login screen and, once authenticated, the main interface with a sidebar and header,
 so that I can navigate between the sections of the application.
 
 ## Acceptance Criteria
 
-1. **Login screen (unauthenticated).** When the user is not authenticated and opens the web app, they see a full-screen login: amber + Discord-purple radial-gradient background with **4 decorative hexagons** animated via `kh-float`; a centered **card** (`max-width:430px` / `92vw`, `padding:48px 44px 36px`, `border-radius:20px`, `background:var(--card)`, `border:1px solid var(--border-strong)`, deep box-shadow); a **74px hexagon logo** (reuse `<Hexagon size={74} />`); title "Hivly" (Space Grotesk 700, 30px); a mono uppercase subtitle; a descriptive paragraph; a **"Continuar con Discord"** button (`#5865F2`, `height:52px`, `border-radius:12px`) with a **loading state** (spinner `kh-spin` + "Conectando con Discord…"); a security note with a lock icon; and a footer row with the OAuth2 scopes + version. Exact markup/values in Dev Notes → Login spec.
+1. **Login screen (unauthenticated).** When the user is not authenticated and opens the web app, they see a full-screen login: amber + Discord-purple radial-gradient background with **4 decorative hexagons** animated via `kh-float`; a centered **card** (`max-width:430px` / `92vw`, `padding:48px 44px 36px`, `border-radius:20px`, `background:var(--card)`, `border:1px solid var(--border-strong)`, deep box-shadow); a **74px hexagon logo** (reuse `<Hexagon size={74} />`); title "Share2Brain" (Space Grotesk 700, 30px); a mono uppercase subtitle; a descriptive paragraph; a **"Continuar con Discord"** button (`#5865F2`, `height:52px`, `border-radius:12px`) with a **loading state** (spinner `kh-spin` + "Conectando con Discord…"); a security note with a lock icon; and a footer row with the OAuth2 scopes + version. Exact markup/values in Dev Notes → Login spec.
 
 2. **Authenticated app shell.** When authenticated, the user sees the app layout: an outer flex container (`display:flex; height:100vh; width:100vw; overflow:hidden`) with a **sidebar** (`width:236px`, `background:var(--bg-deep)`, `border-right:1px solid var(--line)`) and a **content column** (`flex:1; min-width:0`).
 
-3. **Sidebar contents.** The sidebar shows: a **32px hexagon logo** (`<Hexagon size={32} innerBg="bg-deep" />`) + wordmark "Hivly" (Space Grotesk 700, 17px); **2 nav items** — Búsqueda (magnifier icon) and Documentos (grid icon); a flexible spacer; a **system-status panel** (border, `border-radius:12px`, `background:var(--surface)`) with a green dot + `hivly.config.yml` and three rows — `indexer / running`, `redis stream / ok`, `pgvector / ok` (green values); and a footer `self-hosted · open source` (mono 10px, `--text-subtle`).
+3. **Sidebar contents.** The sidebar shows: a **32px hexagon logo** (`<Hexagon size={32} innerBg="bg-deep" />`) + wordmark "Share2Brain" (Space Grotesk 700, 17px); **2 nav items** — Búsqueda (magnifier icon) and Documentos (grid icon); a flexible spacer; a **system-status panel** (border, `border-radius:12px`, `background:var(--surface)`) with a green dot + `share2brain.config.yml` and three rows — `indexer / running`, `redis stream / ok`, `pgvector / ok` (green values); and a footer `self-hosted · open source` (mono 10px, `--text-subtle`).
 
 4. **Header (62px).** The header shows, left→right: [Discord icon `#5865F2` (17px) + community name (font-weight 600, 15px) | 1px vertical separator | statsLine (mono 11.5px, `--text-muted`)] and, on the right: [an "indexando en vivo" badge with an amber dot animated via `kh-pulse` | a circular 30px user avatar (`#5865F2`) + name | a theme-toggle button (30px) | a logout button (30px, hover color `#ED4245`)]. Bottom border `--line`.
 
 5. **Active vs inactive nav item.** The active nav item has `background:rgba(245,166,35,0.12)` and `color:var(--accent-ink)`; the inactive item has `background:transparent` and `color:var(--text-tertiary)`. Clicking a nav item switches which content pane is shown.
 
-6. **Persistent theme toggle.** Clicking the header theme-toggle button flips the root element's `data-kh` between `"dark"` and `"light"`, persists the choice to `localStorage('hivly-theme')`, and swaps the toggle icon (sun when dark is active / moon when light is active). **On reload, the saved theme is applied before the first visible paint** (no flash of the wrong theme).
+6. **Persistent theme toggle.** Clicking the header theme-toggle button flips the root element's `data-kh` between `"dark"` and `"light"`, persists the choice to `localStorage('share2brain-theme')`, and swaps the toggle icon (sun when dark is active / moon when light is active). **On reload, the saved theme is applied before the first visible paint** (no flash of the wrong theme).
 
 7. **Auth transitions (client-side, mock).** Clicking "Continuar con Discord" shows the loading state, then reveals the authenticated shell. Clicking the header logout button returns to the login screen (and resets the active pane to Búsqueda). In this story the auth state is **local/client-side only** — there is no backend call yet; Story 2.3/2.4 replace the mock with the real Discord OAuth2 flow and `GET /api/auth/me`. See Dev Notes → Scope boundary.
 
 ## Tasks / Subtasks
 
 - [x] **Task 1 — FOUC-free theme init + `useTheme` hook (AC: 6)**
-  - [x] Add a tiny **blocking inline script** to `packages/web/index.html` `<head>` (before the stylesheet `<link>`s) that reads `localStorage('hivly-theme')` and sets `document.documentElement.setAttribute('data-kh', saved === 'light' ? 'light' : 'dark')` synchronously — this guarantees the saved theme is applied before the first paint (AC6). See Dev Notes → Theme init.
-  - [x] Create `packages/web/src/hooks/useTheme.ts`: a hook returning `{ theme, toggleTheme }`. It initializes `theme` from the current `document.documentElement.dataset.kh` (already set by the inline script), and `toggleTheme` flips dark↔light, writes `data-kh` on `document.documentElement`, and persists to `localStorage('hivly-theme')` (wrap `localStorage` access in `try/catch` — private-mode Safari throws). Copy the exact toggle logic from Dev Notes.
+  - [x] Add a tiny **blocking inline script** to `packages/web/index.html` `<head>` (before the stylesheet `<link>`s) that reads `localStorage('share2brain-theme')` and sets `document.documentElement.setAttribute('data-kh', saved === 'light' ? 'light' : 'dark')` synchronously — this guarantees the saved theme is applied before the first paint (AC6). See Dev Notes → Theme init.
+  - [x] Create `packages/web/src/hooks/useTheme.ts`: a hook returning `{ theme, toggleTheme }`. It initializes `theme` from the current `document.documentElement.dataset.kh` (already set by the inline script), and `toggleTheme` flips dark↔light, writes `data-kh` on `document.documentElement`, and persists to `localStorage('share2brain-theme')` (wrap `localStorage` access in `try/catch` — private-mode Safari throws). Copy the exact toggle logic from Dev Notes.
   - [x] Remove the unconditional `document.documentElement.setAttribute('data-kh', 'dark')` currently in `main.tsx` (Story 2.1) — the inline script now owns default + restore.
 
 - [x] **Task 2 — Shared inline-SVG icon set (AC: 1, 3, 4)**
@@ -63,7 +63,7 @@ so that I can navigate between the sections of the application.
   - [x] Static styling that needs `:hover` / `:focus` / `:focus-within` (nav hover, Discord button hover, theme/logout button hover, login card) **cannot be expressed with React inline styles** — use CSS classes. Add the needed classes to a co-located stylesheet (either extend `global.css` or add component `.css` / `.module.css` imports; Vite supports CSS Modules out of the box). Drive dynamic/state values (e.g. active nav) with conditional class names or inline style. Reference tokens only — no new raw hex outside the documented brand colors. See Dev Notes → Styling approach.
 
 - [x] **Task 9 — Tests (behavior-level, jsdom) (AC: 1, 5, 6, 7)**
-  - [x] Add tests under `packages/web/src/**/*.test.tsx` (the `web` Vitest project already exists — jsdom + `@vitejs/plugin-react`). Cover: (a) `App` renders `LoginScreen` when unauthenticated; (b) clicking "Continuar con Discord" transitions to the shell (use Vitest fake timers for the ~1100ms mock — `vi.useFakeTimers()` + `vi.advanceTimersByTime`); (c) logout returns to the login screen; (d) clicking a nav item changes the active pane; (e) `useTheme.toggleTheme` flips `document.documentElement` `data-kh` and writes `localStorage('hivly-theme')`. Behavior-driven names (`should <behavior> when <condition>`), AAA. See Dev Notes → Testing.
+  - [x] Add tests under `packages/web/src/**/*.test.tsx` (the `web` Vitest project already exists — jsdom + `@vitejs/plugin-react`). Cover: (a) `App` renders `LoginScreen` when unauthenticated; (b) clicking "Continuar con Discord" transitions to the shell (use Vitest fake timers for the ~1100ms mock — `vi.useFakeTimers()` + `vi.advanceTimersByTime`); (c) logout returns to the login screen; (d) clicking a nav item changes the active pane; (e) `useTheme.toggleTheme` flips `document.documentElement` `data-kh` and writes `localStorage('share2brain-theme')`. Behavior-driven names (`should <behavior> when <condition>`), AAA. See Dev Notes → Testing.
   - [x] Do NOT assert CSS color/token values — jsdom does not apply `global.css` or resolve custom properties (same limitation documented in Story 2.1). Visual/color ACs are a browser check.
 
 - [x] **Task 10 — Verification (mandatory gate)**
@@ -94,21 +94,21 @@ The design prototype and the epic ACs use short token names (`--tx`, `--tx2`…`
 All **other** tokens keep their prototype names and already exist in `global.css`: `--bg`, `--bg-deep`, `--surface`, `--card`, `--hover-row`, `--track`, `--line`, `--border`, `--border-strong`, `--border-hover`, `--dot-read`, `--hover`, `--on-accent`, `--accent-ink`. **Fixed brand colors** (raw hex allowed): amber `#F5A623` / highlight `#FFCB6B`; Discord `#5865F2`; positive/active `#3BA55D`; danger `#ED4245`; white `#fff`. [Source: packages/web/src/styles/global.css:19-30; 2-1-...md#Review Findings]
 
 ### Language rule — code English, UI copy Spanish
-`project-context.md` mandates **English-only for code, comments, identifiers, tests, and commits**. But the product's **user-facing UI text is Spanish** (this is a Spanish-language product; the prototype copy is authoritative). So: component/prop/variable names, comments and commit messages in English; visible strings ("Continuar con Discord", "Búsqueda", "Documentos", "indexando en vivo", "self-hosted · open source", etc.) stay **Spanish, verbatim from the prototype**. Do not translate the UI. [Source: project-context.md#Code quality & naming; docs/context/design/KeepHive Web.dc.html]
+`project-context.md` mandates **English-only for code, comments, identifiers, tests, and commits**. But the product's **user-facing UI text is Spanish** (this is a Spanish-language product; the prototype copy is authoritative). So: component/prop/variable names, comments and commit messages in English; visible strings ("Continuar con Discord", "Búsqueda", "Documentos", "indexando en vivo", "self-hosted · open source", etc.) stay **Spanish, verbatim from the prototype**. Do not translate the UI. [Source: project-context.md#Code quality & naming; docs/context/design/Share2Brain Web.dc.html]
 
 ### Reuse the existing Hexagon — do not reinvent
 `packages/web/src/components/Hexagon.tsx` (Story 2.1) already renders the nested brand hexagon. Use it:
 - **Login logo:** `<Hexagon size={74} />` (default `innerBg="bg"`, dot shown). The prototype adds `box-shadow:0 12px 30px -8px rgba(245,166,35,0.6)` on the outer shape — pass it via the `style` prop.
 - **Sidebar logo:** `<Hexagon size={32} innerBg="bg-deep" />` (dot shown; middle fill is the deeper bg to match the sidebar background).
 
-The **4 decorative login hexagons** are NOT brand marks — they are single flat-tint `clip-path` divs with `kh-float`. Do NOT use the `Hexagon` component for them; render raw divs (values below). [Source: packages/web/src/components/Hexagon.tsx; KeepHive Web.dc.html:46-49,53-55,92-94]
+The **4 decorative login hexagons** are NOT brand marks — they are single flat-tint `clip-path` divs with `kh-float`. Do NOT use the `Hexagon` component for them; render raw divs (values below). [Source: packages/web/src/components/Hexagon.tsx; Share2Brain Web.dc.html:46-49,53-55,92-94]
 
 ### Theme init (FOUC-free) — `index.html` inline script
 Add this **before** the font `<link>`s in `<head>` so it runs synchronously before any paint. With the empty `#root` body, this guarantees AC6's "saved theme applied before first visible paint":
 ```html
 <script>
   try {
-    var t = localStorage.getItem('hivly-theme');
+    var t = localStorage.getItem('share2brain-theme');
     document.documentElement.setAttribute('data-kh', t === 'light' ? 'light' : 'dark');
   } catch (e) {
     document.documentElement.setAttribute('data-kh', 'dark');
@@ -120,11 +120,11 @@ Add this **before** the font `<link>`s in `<head>` so it runs synchronously befo
 const toggleTheme = () => {
   const next = theme === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-kh', next);
-  try { localStorage.setItem('hivly-theme', next); } catch { /* private mode */ }
+  try { localStorage.setItem('share2brain-theme', next); } catch { /* private mode */ }
   setTheme(next);
 };
 ```
-[Source: KeepHive Web.dc.html:526-532; UX-DR4]
+[Source: Share2Brain Web.dc.html:526-532; UX-DR4]
 
 ### Login spec — copy structure + values (translate tokens per the table above)
 Full-screen container: `position:fixed; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; color:var(--text-primary);` background =
@@ -139,7 +139,7 @@ Full-screen container: `position:fixed; inset:0; display:flex; align-items:cente
 | 140px | 72% | 66% | `rgba(245,166,35,0.04)` | `kh-float 13s ease-in-out infinite 2.2s` |
 
 Card: `position:relative; width:430px; max-width:92vw; padding:48px 44px 36px; background:var(--card); border:1px solid var(--border-strong); border-radius:20px; box-shadow:0 40px 90px -30px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.03)`.
-Inside (centered column): `<Hexagon size={74} style={{ boxShadow:'0 12px 30px -8px rgba(245,166,35,0.6)' }} />` → `<h1>` "Hivly" (`font-family:'Space Grotesk',sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.02em; margin:22px 0 0`) → subtitle (`margin-top:6px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:0.08em; color:var(--text-tertiary); text-transform:uppercase`) "Agente de conocimiento · self-hosted" → paragraph (`margin:20px 2px 0; font-size:14.5px; line-height:1.55; color:var(--text-secondary)`) "El conocimiento de tu comunidad de Discord, indexado y consultable. Iniciá sesión para buscar y chatear con el agente."
+Inside (centered column): `<Hexagon size={74} style={{ boxShadow:'0 12px 30px -8px rgba(245,166,35,0.6)' }} />` → `<h1>` "Share2Brain" (`font-family:'Space Grotesk',sans-serif; font-size:30px; font-weight:700; letter-spacing:-0.02em; margin:22px 0 0`) → subtitle (`margin-top:6px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; letter-spacing:0.08em; color:var(--text-tertiary); text-transform:uppercase`) "Agente de conocimiento · self-hosted" → paragraph (`margin:20px 2px 0; font-size:14.5px; line-height:1.55; color:var(--text-secondary)`) "El conocimiento de tu comunidad de Discord, indexado y consultable. Iniciá sesión para buscar y chatear con el agente."
 
 Discord button: `margin-top:28px; width:100%; height:52px; display:flex; align-items:center; justify-content:center; gap:11px; border:none; border-radius:12px; cursor:pointer; font-size:15px; font-weight:600; color:#fff; background:#5865F2; box-shadow:0 10px 24px -10px rgba(88,101,242,0.8)`. Hover (needs a CSS class): `background:#4853e0; transform:translateY(-1px)`.
 - `loggingIn` true → spinner (`width:18px; height:18px; border:2px solid rgba(255,255,255,0.4); border-top-color:#fff; border-radius:50%; animation:kh-spin 0.7s linear infinite`) + "Conectando con Discord…".
@@ -147,19 +147,19 @@ Discord button: `margin-top:28px; width:100%; height:52px; display:flex; align-i
 
 Security note: `margin-top:16px; display:flex; align-items:center; gap:8px; justify-content:center; color:var(--text-muted); font-size:12.5px` → `<LockIcon size={13} />` + "Solo miembros del guild pueden acceder".
 Footer: `margin-top:26px; padding-top:18px; border-top:1px solid var(--border); display:flex; justify-content:space-between; font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--text-subtle); letter-spacing:0.04em` → `<span>scope: identify · guilds.members.read</span><span>v4.0</span>`.
-[Source: KeepHive Web.dc.html:44-84; UX-DR9]
+[Source: Share2Brain Web.dc.html:44-84; UX-DR9]
 
 ### Sidebar spec
 `aside`: `width:236px; flex-shrink:0; display:flex; flex-direction:column; background:var(--bg-deep); border-right:1px solid var(--line); padding:18px 14px`.
-Logo row: `display:flex; align-items:center; gap:11px; padding:6px 8px 18px` → `<Hexagon size={32} innerBg="bg-deep" />` + `<div>` "Hivly" (`font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:17px; letter-spacing:-0.01em`).
+Logo row: `display:flex; align-items:center; gap:11px; padding:6px 8px 18px` → `<Hexagon size={32} innerBg="bg-deep" />` + `<div>` "Share2Brain" (`font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:17px; letter-spacing:-0.01em`).
 Nav: `display:flex; flex-direction:column; gap:3px; margin-top:6px`. Each item is a `<button>` with base style `display:flex; align-items:center; gap:12px; width:100%; padding:10px 12px; border:none; border-radius:10px; cursor:pointer; font-size:14px; font-weight:500; text-align:left; transition:background .12s ease` **plus**:
 - active: `background:rgba(245,166,35,0.12); color:var(--accent-ink)`
 - inactive: `background:transparent; color:var(--text-tertiary)`; hover (CSS class): `background:var(--hover)`
 Item = icon span (`display:flex; width:18px; justify-content:center`) + label. Documentos gets an amber count badge only when `unreadCount > 0`: `margin-left:auto; min-width:18px; height:18px; padding:0 5px; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:600; color:var(--on-accent); background:#F5A623; border-radius:9px`.
 Spacer: `<div style={{ flex:1 }} />`.
-Status panel: `padding:13px; border:1px solid var(--border); border-radius:12px; background:var(--surface)`. Top row: `display:flex; align-items:center; gap:8px` → dot (`width:8px; height:8px; border-radius:50%; background:#3BA55D; box-shadow:0 0 0 3px rgba(59,165,93,0.18)`) + "hivly.config.yml" (`font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-tertiary)`). Rows wrapper: `margin-top:9px; display:flex; flex-direction:column; gap:5px; font-size:11.5px; color:var(--text-muted)`; each row `display:flex; justify-content:space-between` with label + value where value has `color:#3BA55D`: `indexer→running`, `redis stream→ok`, `pgvector→ok`.
+Status panel: `padding:13px; border:1px solid var(--border); border-radius:12px; background:var(--surface)`. Top row: `display:flex; align-items:center; gap:8px` → dot (`width:8px; height:8px; border-radius:50%; background:#3BA55D; box-shadow:0 0 0 3px rgba(59,165,93,0.18)`) + "share2brain.config.yml" (`font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-tertiary)`). Rows wrapper: `margin-top:9px; display:flex; flex-direction:column; gap:5px; font-size:11.5px; color:var(--text-muted)`; each row `display:flex; justify-content:space-between` with label + value where value has `color:#3BA55D`: `indexer→running`, `redis stream→ok`, `pgvector→ok`.
 Footer: `margin-top:12px; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text-subtle); letter-spacing:0.05em` → "self-hosted · open source".
-[Source: KeepHive Web.dc.html:90-126; UX-DR6, UX-DR7]
+[Source: Share2Brain Web.dc.html:90-126; UX-DR6, UX-DR7]
 
 ### Header spec
 `header`: `height:62px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:0 26px; border-bottom:1px solid var(--line); background:var(--bg)`.
@@ -168,7 +168,7 @@ Right group (`display:flex; align-items:center; gap:12px`):
 - Live badge: `display:flex; align-items:center; gap:7px; padding:5px 11px; border:1px solid var(--border); border-radius:999px; background:var(--surface)` → amber dot `width:7px; height:7px; border-radius:50%; background:#F5A623; animation:kh-pulse 1.6s ease-in-out infinite` + "indexando en vivo" (`font-size:11.5px; color:var(--text-tertiary)`).
 - User cluster (`display:flex; align-items:center; gap:9px`): avatar `width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:600; color:#fff; background:#5865F2` (initials) + name (`font-size:13.5px; color:var(--text-secondary)`) + theme button + logout button.
 - Icon buttons (theme + logout) share: `display:flex; align-items:center; justify-content:center; width:30px; height:30px; border:1px solid var(--border); border-radius:8px; background:transparent; color:var(--text-tertiary); cursor:pointer`. Theme hover (CSS): `color:var(--accent-ink); border-color:var(--border-hover)`; icon = `<SunIcon />` when `theme==='dark'` else `<MoonIcon />`; `title` = e.g. "Cambiar a tema claro/oscuro". Logout hover (CSS): `color:#ED4245; border-color:#ED4245`; icon = `<LogoutIcon size={15} />`; `title="Cerrar sesión"`; `onClick={onLogout}`.
-[Source: KeepHive Web.dc.html:129-152; UX-DR8]
+[Source: Share2Brain Web.dc.html:129-152; UX-DR8]
 
 ### Icons — SVG paths (from prototype)
 All stroke icons: `viewBox="0 0 24 24"`, unless noted `fill:none; stroke:currentColor; stroke-width:2` (or `1.8` for nav), `stroke-linecap:round`.
@@ -179,15 +179,15 @@ All stroke icons: `viewBox="0 0 24 24"`, unless noted `fill:none; stroke:current
 - **Logout** (stroke 2): `<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>`
 - **Sun** (theme, dark active) — standard sun: `<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>`
 - **Moon** (theme, light active): `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`
-[Source: KeepHive Web.dc.html:69,132,147-148,164,656-661]
+[Source: Share2Brain Web.dc.html:69,132,147-148,164,656-661]
 
 ### Styling approach — inline styles vs CSS classes
 Story 2.1 used React inline styles (`CSSProperties`) for the Hexagon. Continue that for **static, stateless** layout. BUT React inline styles **cannot express `:hover`, `:focus`, `:focus-within`** — and the prototype relies on hover states (nav, buttons, card, logout `#ED4245`). Put those in **CSS classes** (extend `global.css`, or add co-located `.css` / `.module.css` — Vite supports CSS Modules natively). Drive active/inactive nav with a conditional class or inline style. Do NOT add a CSS-in-JS library (styled-components/emotion) — it isn't in the stack and would be speculative. Reference design tokens; the only raw hex permitted are the documented brand colors. [Source: 2-1-...md#Dev Notes; project-context.md#Frontend rules]
 
 ### Architecture compliance (non-negotiable)
 - **AD-3 — static SPA only.** No Node server, no SSR. Everything is browser-side; Vite → `dist/`, nginx serves it. [Source: project-context.md#Frontend rules; TECHNICAL-DESIGN.md §5.5]
-- **Web import guard.** `packages/web/**` may import only browser-safe `@hivly/shared/schemas` / `@hivly/shared/types/events`; the root barrel `@hivly/shared` and `/db` / `/config` are banned by `no-restricted-imports` in the root `eslint.config.js` (they pull `pg` + Node built-ins). **This story needs no shared import** (no API types until 2.4) — keep it zero. [Source: eslint.config.js; epic-2-ac-verification-2026-07-04.md]
-- **No router dependency.** No AC requires URL-based routing; the prototype and UX-DR5 use in-app state to switch panes (2 nav items; chat is a floating widget, not a route). Use `screen` state, not `react-router`. If deep-linking is needed later it's a separate, deliberate addition. [Source: UX-DR5; KeepHive Web.dc.html:807-809]
+- **Web import guard.** `packages/web/**` may import only browser-safe `@share2brain/shared/schemas` / `@share2brain/shared/types/events`; the root barrel `@share2brain/shared` and `/db` / `/config` are banned by `no-restricted-imports` in the root `eslint.config.js` (they pull `pg` + Node built-ins). **This story needs no shared import** (no API types until 2.4) — keep it zero. [Source: eslint.config.js; epic-2-ac-verification-2026-07-04.md]
+- **No router dependency.** No AC requires URL-based routing; the prototype and UX-DR5 use in-app state to switch panes (2 nav items; chat is a floating widget, not a route). Use `screen` state, not `react-router`. If deep-linking is needed later it's a separate, deliberate addition. [Source: UX-DR5; Share2Brain Web.dc.html:807-809]
 - **English identifiers / Spanish UI copy** (see Language rule above).
 
 ### Naming & file locations
@@ -204,7 +204,7 @@ Story 2.1 used React inline styles (`CSSProperties`) for the Hexagon. Continue t
 - `main.tsx` currently: `import './styles/global.css'`, unconditionally sets `data-kh="dark"`, renders `<Hexagon size={74} />` with a `#root` null-guard fallback. Replace the render + drop the `data-kh` line (inline script owns it now); keep the CSS import + null-guard.
 - `Hexagon.tsx` props: `size`, `innerBg?: 'bg'|'bg-deep'`, `showDot?`, `children?`, `className?`, `style?`. Exact sizes 74/32/30 are special-cased. When `children` is passed the dot is suppressed. Use `style` to add the login box-shadow.
 - `tsconfig.json` (web) uses `moduleResolution:"Bundler"` — relative imports need **no** `.js` extension; CSS side-effect imports are typed via `vite/client`. Don't reintroduce `.js` extensions.
-- Deferred from 2.1 review, now in scope here: **`prefers-color-scheme`** — 2.1 deferred honoring the OS preference to this story. Optional enhancement: when `localStorage('hivly-theme')` is absent, the inline script MAY default to `window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'` instead of hardcoding dark. AC6 only requires persistence + dark default when nothing is stored; honoring OS preference is a nice-to-have — implement if cheap, else leave dark default. [Source: deferred-work.md#2-1 review; 2-1-...md#defer]
+- Deferred from 2.1 review, now in scope here: **`prefers-color-scheme`** — 2.1 deferred honoring the OS preference to this story. Optional enhancement: when `localStorage('share2brain-theme')` is absent, the inline script MAY default to `window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'` instead of hardcoding dark. AC6 only requires persistence + dark default when nothing is stored; honoring OS preference is a nice-to-have — implement if cheap, else leave dark default. [Source: deferred-work.md#2-1 review; 2-1-...md#defer]
 - Also deferred (system-wide, NOT required here): `@media (prefers-reduced-motion: reduce)` for the `kh-*` animations. Out of scope for 2.2.
 
 ### Project Structure Notes
@@ -214,14 +214,14 @@ Story 2.1 used React inline styles (`CSSProperties`) for the Hexagon. Continue t
 ### References
 - [Source: _bmad-output/planning-artifacts/epics.md#Historia 2.2] — story + acceptance criteria
 - [Source: _bmad-output/planning-artifacts/epics.md#Requisitos de Diseño UX] — UX-DR4 (dual theme + persistent toggle), UX-DR5 (layout, 2 nav, chat floating), UX-DR6 (sidebar), UX-DR7 (status panel), UX-DR8 (header), UX-DR9 (login)
-- [Source: docs/context/design/KeepHive Web.dc.html] — authoritative prototype (login L44-84, app shell L87-88, sidebar L90-126, header L129-152, auth/theme logic L521-532, navStyle L637-642, icons L656-661)
+- [Source: docs/context/design/Share2Brain Web.dc.html] — authoritative prototype (login L44-84, app shell L87-88, sidebar L90-126, header L129-152, auth/theme logic L521-532, navStyle L637-642, icons L656-661)
 - [Source: packages/web/src/styles/global.css:19-30] — actual token names (post-2.1-review rename)
 - [Source: packages/web/src/components/Hexagon.tsx] — reusable brand hexagon (props + size handling)
 - [Source: packages/web/src/main.tsx] — current entry to modify
 - [Source: _bmad-output/implementation-artifacts/2-1-sistema-de-diseno-en-packages-web.md] — Story 2.1 (tokens/fonts/keyframes/Hexagon), Review Findings (var rename), deferred items
 - [Source: _bmad-output/implementation-artifacts/deferred-work.md] — 2.1 deferred: prefers-color-scheme (in scope now), prefers-reduced-motion (out of scope)
 - [Source: _bmad-output/project-context.md#Frontend rules, #Testing rules, #Code quality & naming] — AD-3, web import guard, English-code rule
-- [Source: _bmad-output/planning-artifacts/architecture/architecture-hivly-2026-06-30/TECHNICAL-DESIGN.md §5.5] — packages/web SPA (4 views; Search/Documents bodies are Epic 4)
+- [Source: _bmad-output/planning-artifacts/architecture/architecture-share2brain-2026-06-30/TECHNICAL-DESIGN.md §5.5] — packages/web SPA (4 views; Search/Documents bodies are Epic 4)
 
 ## Dev Agent Record
 

@@ -19,7 +19,7 @@ import { BlockList, isIP } from 'node:net';
 
 import { Agent, type Dispatcher } from 'undici';
 
-import type { EnrichmentConfig } from '@hivly/shared';
+import type { EnrichmentConfig } from '@share2brain/shared';
 
 /** Raised by the Layer B custom lookup when a resolved address is blocked —
  *  distinguishable from a generic DNS/network failure by `fetchUrl`'s caller. */

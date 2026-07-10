@@ -15,9 +15,9 @@ As the **system**,
 I want the Sync worker to consume `discord.message.updated` and `discord.message.deleted` events idempotently,
 so that the pgvector index stays consistent with Discord — edited messages are re-embedded, and deleted messages are purged (soft or hard) — with no duplicates and no data corruption.
 
-This is the **second story of Epic 6** (Synchronization, Notifications & Reliability). It **consumes the two streams Story 6.1 produces** (`hivly:discord:messages:updated`, `hivly:discord:messages:deleted`) and closes the write side of the edit/delete loop. It is the **second consumer** to live in the `@hivly/workers` process (alongside the Story 3.3 Indexer), using its own consumer group `hivly:sync`. It **unblocks Story 6.3** (offline reconciliation republishes the very same two events into these streams).
+This is the **second story of Epic 6** (Synchronization, Notifications & Reliability). It **consumes the two streams Story 6.1 produces** (`share2brain:discord:messages:updated`, `share2brain:discord:messages:deleted`) and closes the write side of the edit/delete loop. It is the **second consumer** to live in the `@share2brain/workers` process (alongside the Story 3.3 Indexer), using its own consumer group `share2brain:sync`. It **unblocks Story 6.3** (offline reconciliation republishes the very same two events into these streams).
 
-**Baseline commit:** `39c62bb` — Story 6.1 merged (PR #35). The bot publishes edit/delete events to Redis Streams; the Indexer (Story 3.3) drains `hivly:discord:messages` and owns the `embeddings` UPSERT + `discord_messages.indexed_at` stamp. Nothing yet consumes the updated/deleted streams — the PEL is filling.
+**Baseline commit:** `39c62bb` — Story 6.1 merged (PR #35). The bot publishes edit/delete events to Redis Streams; the Indexer (Story 3.3) drains `share2brain:discord:messages` and owns the `embeddings` UPSERT + `discord_messages.indexed_at` stamp. Nothing yet consumes the updated/deleted streams — the PEL is filling.
 
 ---
 
@@ -29,7 +29,7 @@ This story's epic AC and the `TECHNICAL-DESIGN.md §5.3` pseudocode were written
 
 2. **Embeddings are grouped + chunked, NOT 1:1 with messages (Story 3.3, `indexBatch.ts:174-212`).** For a group, `chunkKey = "<messageIds[0]>:<chunkIndex>"` and `messageIds` is the **whole group's** id array; the row's `content` is the concatenation of the group's messages, split into chunks. So "delete/re-index the embedding of message X" is not a single-row operation: X may be the anchor (`messageIds[0]`) of some chunks and a non-anchor member of others, and any chunk containing X also contains X's neighbors. **This grouping tension is the central design problem of the story — see the DECISIONS section; it drives every AC below.**
 
-3. **All contracts already exist — reuse, do not redefine.** `packages/shared/src/types/events.ts` defines `MessageUpdatedEvent` (`{ type:'discord.message.updated', messageId, channelId, guildId, timestamp, newContent }`, lines 21-24) and `MessageDeletedEvent` (`{ type:'discord.message.deleted', messageId, channelId, guildId, timestamp }`, lines 26-28); `STREAM_KEYS.DISCORD_MESSAGES_UPDATED` / `DISCORD_MESSAGES_DELETED` (lines 63-65); and `CONSUMER_GROUPS.SYNC = 'hivly:sync'` (line 74). Import these constants — **never hardcode the strings** (AD-13). **No `packages/shared` change, no new stream key, no new consumer group, no migration** — `discord_messages.deleted_at` (nullable) and `embeddings.message_ids` already exist (`schema.ts:48,70`).
+3. **All contracts already exist — reuse, do not redefine.** `packages/shared/src/types/events.ts` defines `MessageUpdatedEvent` (`{ type:'discord.message.updated', messageId, channelId, guildId, timestamp, newContent }`, lines 21-24) and `MessageDeletedEvent` (`{ type:'discord.message.deleted', messageId, channelId, guildId, timestamp }`, lines 26-28); `STREAM_KEYS.DISCORD_MESSAGES_UPDATED` / `DISCORD_MESSAGES_DELETED` (lines 63-65); and `CONSUMER_GROUPS.SYNC = 'share2brain:sync'` (line 74). Import these constants — **never hardcode the strings** (AD-13). **No `packages/shared` change, no new stream key, no new consumer group, no migration** — `discord_messages.deleted_at` (nullable) and `embeddings.message_ids` already exist (`schema.ts:48,70`).
 
 4. **Soft delete is already wired on the READ side (Story 4.1 decision D1) — you only set the flag.** Search, docs, and read-status queries all exclude a chunk the moment **any** of its constituent messages is soft-deleted, via `NOT EXISTS (SELECT 1 FROM discord_messages d WHERE d.id = ANY(e.message_ids) AND d.deleted_at IS NOT NULL)` (verified: `embeddingSearchRepository.drizzle.ts:58-61`, `documentRepository.drizzle.ts:48-51`, `readStatusRepository.drizzle.ts:30,73,114`). So **soft delete = `UPDATE discord_messages SET deleted_at = NOW() WHERE id = :id`** and nothing else — the chunk vanishes from every read path automatically. The AC explicitly says soft delete does **not** touch `embeddings`. Do not.
 
@@ -47,7 +47,7 @@ This story's epic AC and the `TECHNICAL-DESIGN.md §5.3` pseudocode were written
 
 ### AC-1 — Consume `discord.message.updated`: purge old chunks, re-embed, upsert (idempotent)
 
-**Given** the Sync worker (`consumer group hivly:sync`, `CONSUMER_GROUPS.SYNC`) reads a `discord.message.updated` entry from `STREAM_KEYS.DISCORD_MESSAGES_UPDATED`
+**Given** the Sync worker (`consumer group share2brain:sync`, `CONSUMER_GROUPS.SYNC`) reads a `discord.message.updated` entry from `STREAM_KEYS.DISCORD_MESSAGES_UPDATED`
 **When** it processes the entry and a `discord_messages` row exists for `messageId`
 **Then**, in **one DB transaction**:
 - it deletes the dependent `user_read_status` rows for, and then deletes, **every `embeddings` row where `:messageId = ANY(message_ids)`** (the message's old chunks — note #1, #5)
@@ -87,8 +87,8 @@ _Rationale: 6.1 already skips publishing blank edits; this is the defensive floo
 
 ### AC-6 — The Sync consumer boots alongside the Indexer, gated by `config.sync.enabled`, PEL-replay on start, and drains on shutdown
 
-**Given** `@hivly/workers` boots (`main.ts`)
-**Then** it creates the `hivly:sync` group idempotently (BUSYGROUP = "already exists") on **both** streams, replays its own PEL first (crash-recovery), then reads live — **the exact loop shape of `runIndexer` (`consumer.ts`)**
+**Given** `@share2brain/workers` boots (`main.ts`)
+**Then** it creates the `share2brain:sync` group idempotently (BUSYGROUP = "already exists") on **both** streams, replays its own PEL first (crash-recovery), then reads live — **the exact loop shape of `runIndexer` (`consumer.ts`)**
 **And** the Indexer and Sync consumers run **concurrently** in the one process; the existing SIGTERM/SIGINT shutdown waits (bounded) for **both** in-flight loops before closing `db`/`redis` (extend `main.ts`'s current single-`indexerPromise` drain to cover the sync promise too)
 **And** when `config.sync.enabled === false` the Sync consumer is **not** started (the Indexer still runs), logged once at `info`.
 
@@ -124,7 +124,7 @@ No log line (`debug`/`info`/`warn`/`error`) in the Sync worker includes `newCont
   - [x] Idempotent: zero affected rows is success, not error → `{ ack: true }`. Exception → `{ ack: false }` (leave pending).
 
 - [x] **Task 4 — `runSync` consumer loop** (AC-1…AC-6) — new `packages/workers/src/sync/consumer.ts`, **structurally copied from `indexer/consumer.ts`** (idempotent `xGroupCreate` with `MKSTREAM`, PEL replay from `'0'`, then live `'>'` with `BLOCK`, abort at top-of-loop):
-  - [x] Create the `hivly:sync` group on **both** `DISCORD_MESSAGES_UPDATED` and `DISCORD_MESSAGES_DELETED`. Simplest correct shape: **two independent loops** (one per stream) run concurrently via `Promise.all`, or a single `xReadGroup` over both stream keys. **[DECISION 5]: two independent single-stream loops** — mirrors `runIndexer` exactly, keeps updated/deleted failure isolation trivial, and matches "cada uno con su consumer group" intent while staying one group. Each loop dispatches to `processUpdate` / `processDelete`, then `xAck` **only** when the processor returns `{ ack: true }`.
+  - [x] Create the `share2brain:sync` group on **both** `DISCORD_MESSAGES_UPDATED` and `DISCORD_MESSAGES_DELETED`. Simplest correct shape: **two independent loops** (one per stream) run concurrently via `Promise.all`, or a single `xReadGroup` over both stream keys. **[DECISION 5]: two independent single-stream loops** — mirrors `runIndexer` exactly, keeps updated/deleted failure isolation trivial, and matches "cada uno con su consumer group" intent while staying one group. Each loop dispatches to `processUpdate` / `processDelete`, then `xAck` **only** when the processor returns `{ ack: true }`.
   - [x] Per-entry `try/catch` so one bad entry never aborts the loop (AC-5). Log `error` with `{ streamId, messageId, channelId, stream }`, never content (AC-7). Parser-`null` (malformed/tombstoned) → `warn` + ack (AC-2).
   - [x] `runSync(deps: { redis, db, embedder, config, logger, signal })`. **Use a separate Redis client from the Indexer's** — the Indexer's client comment (`consumer.ts:5-7`) warns the blocking loop must not share a client with a concurrent caller; two concurrent blocking loops need two clients. Open a second `createRedisClient(redisUrl)` in `main.ts` for Sync.
 
@@ -144,7 +144,7 @@ No log line (`debug`/`info`/`warn`/`error`) in the Sync worker includes `newCont
   - [x] Seed a `discord_messages` row + its `embeddings` chunk(s) + a `user_read_status` row referencing a chunk. **Update** event → old chunks gone, new `<id>:0` chunk present with new content, `dm.content` refreshed, `indexed_at` bumped, the stale read-status row cascaded away (no FK error). **Redeliver** the same entry → converges (no duplicate rows).
   - [x] **Soft delete** → `deleted_at` set, embeddings intact, chunk excluded by the D1 anti-join (assert via a probe select). **Hard delete** (flip `config.sync.delete_policy`) → embeddings + read-status gone, `deleted_at` set, FK-safe. **Idempotent**: second delete of the same id → 0 rows, no throw, acked.
 
-- [x] **Task 8 — Verify** — `npm run lint && npm run test && npm run build` green; `npm run test:integration` green with infra up. No new dependency (reuse `@hivly/shared/db`, `@hivly/shared/providers`, `chunkContents`). No `packages/shared` change, no migration.
+- [x] **Task 8 — Verify** — `npm run lint && npm run test && npm run build` green; `npm run test:integration` green with infra up. No new dependency (reuse `@share2brain/shared/db`, `@share2brain/shared/providers`, `chunkContents`). No `packages/shared` change, no migration.
 
 ---
 
@@ -152,7 +152,7 @@ No log line (`debug`/`info`/`warn`/`error`) in the Sync worker includes `newCont
 
 ### Architecture & patterns to follow
 - **The Indexer is your template — copy its shape, don't invent.** `runSync` mirrors `runIndexer` (`consumer.ts`): idempotent `xGroupCreate` + `MKSTREAM`, PEL replay from `'0'` advancing past each batch, then a live `'>'` loop with `BLOCK: 5000`, abort checked at top of loop. The XACK-only-after-success + per-entry isolation is the same contract as `indexBatch` (`indexBatch.ts:111-164`) — a failed entry logs and stays PENDING; later entries still run; nothing throws out of the loop.
-- **Reuse the embedding pipeline, don't reimplement it.** `chunkContents` (`indexer/chunking.ts`) and the injected `Embedder` (`indexer/types.ts` — `createEmbeddingsModel(config.embeddings)` in `main.ts`) are exactly what re-index needs. The UPSERT-by-`chunk_key` block in `persistGroup` (`indexBatch.ts:180-202`) is the pattern to copy for the new-chunk insert (`onConflictDoUpdate` on `embeddings.chunkKey`). Import `assertEmbeddingDimensions` from `@hivly/shared/providers` and apply it before persisting (AC-1), same as `indexBatch.ts:135`.
+- **Reuse the embedding pipeline, don't reimplement it.** `chunkContents` (`indexer/chunking.ts`) and the injected `Embedder` (`indexer/types.ts` — `createEmbeddingsModel(config.embeddings)` in `main.ts`) are exactly what re-index needs. The UPSERT-by-`chunk_key` block in `persistGroup` (`indexBatch.ts:180-202`) is the pattern to copy for the new-chunk insert (`onConflictDoUpdate` on `embeddings.chunkKey`). Import `assertEmbeddingDimensions` from `@share2brain/shared/providers` and apply it before persisting (AC-1), same as `indexBatch.ts:135`.
 - **Two blocking loops need two Redis clients.** The Indexer's client is documented as strictly-sequential and non-shareable (`consumer.ts:5-7`). Sync runs concurrently with the Indexer, so `main.ts` opens a **second** `createRedisClient(redisUrl)` for it. `db` (the pg Pool) is safely shared — it's pooled.
 - **AD-13 string rule (read side).** node-redis delivers every XADD field as a string, so `parseUpdatedEvent`/`parseDeletedEvent` receive `Record<string,string>` and validate the fields the worker needs, returning `null` for anything else (copy `parseCreatedEvent` exactly). The producer (6.1) already guarantees all-string payloads.
 
@@ -165,7 +165,7 @@ No log line (`debug`/`info`/`warn`/`error`) in the Sync worker includes `newCont
 - **FK RESTRICT on `user_read_status.embedding_id` (note #5).** Delete order inside the tx is **read-status first, embeddings second** — always. An integration test must seed a read-status row and prove the cascade works (a naive `DELETE FROM embeddings` first will FK-fail).
 - **Soft delete touches only `discord_messages` (note #4).** The D1 anti-join in search/docs/read-status does the exclusion for you. Deleting or altering `embeddings` on a soft delete is a bug (breaks AC-3 and wastes the re-index the message might get if un-deleted later — not in scope, but keep the vectors).
 - **Idempotency = "0 rows affected is success".** Every write in this story is `WHERE id = :id` / `WHERE :id = ANY(message_ids)`; a redelivery that finds nothing must ack and move on. Never treat "0 rows" as an error.
-- **Two Redis instances on this Mac (memory):** `localhost:6379` (Homebrew) vs the Compose Redis (no published ports). Local vs dockerized worker code hit **different** streams — keep in mind when manually checking `XLEN hivly:discord:messages:updated` / `:deleted` or the `hivly:sync` PEL (`XPENDING`).
+- **Two Redis instances on this Mac (memory):** `localhost:6379` (Homebrew) vs the Compose Redis (no published ports). Local vs dockerized worker code hit **different** streams — keep in mind when manually checking `XLEN share2brain:discord:messages:updated` / `:deleted` or the `share2brain:sync` PEL (`XPENDING`).
 
 ### Source tree — files to touch
 - **NEW** `packages/workers/src/sync/events.ts` + `events.test.ts`
@@ -174,7 +174,7 @@ No log line (`debug`/`info`/`warn`/`error`) in the Sync worker includes `newCont
 - **NEW** `packages/workers/src/sync/consumer.ts` (`runSync`) + `consumer.test.ts`
 - **NEW** `packages/workers/src/sync/sync.integration.test.ts`
 - **UPDATE** `packages/workers/src/main.ts` — start `runSync` gated by `config.sync.enabled`, second Redis client, drain both promises on shutdown, fix header comment
-- **REUSE (no change)** `packages/workers/src/indexer/chunking.ts` (`chunkContents`), `indexer/types.ts` (`Embedder`, `RawStreamEntry`), `@hivly/shared/providers` (`assertEmbeddingDimensions`, `createEmbeddingsModel`), `@hivly/shared/db` (`embeddings`, `discordMessages`, `userReadStatus`, `sql`, `inArray`), `@hivly/shared/types/events` (`STREAM_KEYS`, `CONSUMER_GROUPS`, event types)
+- **REUSE (no change)** `packages/workers/src/indexer/chunking.ts` (`chunkContents`), `indexer/types.ts` (`Embedder`, `RawStreamEntry`), `@share2brain/shared/providers` (`assertEmbeddingDimensions`, `createEmbeddingsModel`), `@share2brain/shared/db` (`embeddings`, `discordMessages`, `userReadStatus`, `sql`, `inArray`), `@share2brain/shared/types/events` (`STREAM_KEYS`, `CONSUMER_GROUPS`, event types)
 - **NO CHANGE** `packages/shared/**` (contracts + schema already exist); **NO migration**
 
 ### Testing standards
@@ -183,7 +183,7 @@ No log line (`debug`/`info`/`warn`/`error`) in the Sync worker includes `newCont
 - Integration test uses the `openTestClients` / unique-suffix / `afterAll`-cleanup harness from `indexBatch.integration.test.ts` + `test-helpers.ts`, with a **fake embedder** — a real embeddings API is never called in tests.
 
 ### Project Structure Notes
-- Code stays under `packages/workers/src/sync/` (new sibling of `indexer/`). No root `src/`. Workers depend only on `@hivly/shared`, never another service (AD-2). English only in all code/comments/tests. Only `packages/shared` does DDL (AD-5) — this story does none.
+- Code stays under `packages/workers/src/sync/` (new sibling of `indexer/`). No root `src/`. Workers depend only on `@share2brain/shared`, never another service (AD-2). English only in all code/comments/tests. Only `packages/shared` does DDL (AD-5) — this story does none.
 
 ### Previous-story intelligence
 - **Story 6.1** produced the two streams this story consumes; its handlers are publish-only (recon #6 here). Its recon #4 established that the DB mutation (this story) is the Sync worker's job.
@@ -193,7 +193,7 @@ No log line (`debug`/`info`/`warn`/`error`) in the Sync worker includes `newCont
 
 ### References
 - [Source: _bmad-output/planning-artifacts/epics.md#Historia 6.2]
-- [Source: _bmad-output/planning-artifacts/architecture/architecture-hivly-2026-06-30/TECHNICAL-DESIGN.md#5.3 — Sync worker pseudocode (note: `message_id` predicate is pre-schema; reconciled in note #1)]
+- [Source: _bmad-output/planning-artifacts/architecture/architecture-share2brain-2026-06-30/TECHNICAL-DESIGN.md#5.3 — Sync worker pseudocode (note: `message_id` predicate is pre-schema; reconciled in note #1)]
 - [Source: packages/shared/src/types/events.ts#21-80 — MessageUpdatedEvent/MessageDeletedEvent, STREAM_KEYS, CONSUMER_GROUPS.SYNC]
 - [Source: packages/shared/src/db/schema.ts#36-78,133-150 — discord_messages.deleted_at, embeddings.message_ids/chunk_key, user_read_status FK (no cascade)]
 - [Source: packages/shared/src/config/index.ts#79-83 — config.sync { enabled, sync_on_start, delete_policy: 'soft'|'hard' }]
@@ -218,7 +218,7 @@ See `_bmad-output/project-context.md` (backend rules, AD-13 stream/idempotency i
 2. **[DECIDED — update also refreshes `discord_messages.content` + `updated_at`]** Not strictly required by the AC (search/docs read `embeddings.content`), but the bot is publish-only so the raw row is otherwise permanently stale, which would break 6.3 offline reconciliation's content comparison. Cheap (one UPDATE in the same tx). _Adopted default._
 3. **[DECIDED — hard delete is a superset of soft: purge embeddings + read-status AND set `deleted_at`]** Keeps the raw `discord_messages` row (audit / 6.3) while permanently removing the vectors; avoids ever leaving an anchor-less chunk (note #7), so the search INNER-JOIN stays correct and **does not need to become a LEFT JOIN in this story**. _Confirmed with Borja — chose Superset over embeddings-only; INNER→LEFT change stays out of scope._
 4. **[DECIDED — blank `newContent` and unknown-message updates are ack+skip no-ops (AC-2)]** 6.1 already skips publishing blank edits; an update for a message with no `discord_messages` row would create an anchor-less chunk, so we skip and let the create path own insertion. _Adopted default._
-5. **[DECIDED — two independent single-stream loops under the one `hivly:sync` group]** Mirrors `runIndexer` exactly and keeps updated/deleted failure isolation trivial, vs. one multi-stream `xReadGroup`. _Adopted default._
+5. **[DECIDED — two independent single-stream loops under the one `share2brain:sync` group]** Mirrors `runIndexer` exactly and keeps updated/deleted failure isolation trivial, vs. one multi-stream `xReadGroup`. _Adopted default._
 
 ## Dev Agent Record
 
@@ -233,7 +233,7 @@ None — no blocking failures during implementation. Full verification gate outp
 ### Completion Notes List
 
 - Implemented all 8 tasks in order (events → processUpdate → processDelete → runSync → main.ts wiring → unit tests → integration test → verify). Followed the story's literal task wording for `processUpdate`: the DELETE (read-status then embeddings), the `discord_messages` content/`updated_at` refresh, the chunk/embed/assert, the UPSERT, and the `indexed_at` stamp all run inside **one** `db.transaction` (AC-1's literal "in one DB transaction" — the embed call happens inside the transaction, mirroring the AC text exactly rather than moving it outside for latency reasons).
-- `processDelete`'s soft/hard writes use raw `sql` templates via `db.execute`/`tx.execute` for the `:messageId = ANY(message_ids)` predicate (Drizzle's query builder has no typed helper for value-vs-array-column `ANY()`) — this matches the established convention already used by `readStatusRepository.drizzle.ts`/`embeddingSearchRepository.drizzle.ts` (raw `sql` + the re-exported `inArray`/`sql` from `@hivly/shared/db`, AD-2). The UPSERT insert in `processUpdate` still uses the typed `embeddings` table + `onConflictDoUpdate`, copied verbatim from `persistGroup` (`indexBatch.ts`).
+- `processDelete`'s soft/hard writes use raw `sql` templates via `db.execute`/`tx.execute` for the `:messageId = ANY(message_ids)` predicate (Drizzle's query builder has no typed helper for value-vs-array-column `ANY()`) — this matches the established convention already used by `readStatusRepository.drizzle.ts`/`embeddingSearchRepository.drizzle.ts` (raw `sql` + the re-exported `inArray`/`sql` from `@share2brain/shared/db`, AD-2). The UPSERT insert in `processUpdate` still uses the typed `embeddings` table + `onConflictDoUpdate`, copied verbatim from `persistGroup` (`indexBatch.ts`).
 - `runSync` factors the "one stream's group-create + PEL-replay + live-read" shape into a single `runStreamLoop` helper parameterized by stream/handler, then runs it twice via `Promise.all` (DECISION 5) — structurally identical to `runIndexer` per stream, without duplicating the loop body twice.
 - `main.ts`: extracted a `connectRedisOrExit` helper (bounded-connect + fail-fast, same behavior as the original inline Indexer connect) so the Sync consumer's second Redis client connects identically. Shutdown now drains `Promise.all([indexerPromise, syncPromise])` (bounded, `.catch`-neutralized) and `quit()`s both Redis clients; `syncRedis`/`syncPromise` stay at their no-op defaults when `config.sync.enabled` is false.
 - A shared `ProcessResult` type was added at `sync/types.ts` (`{ ack: boolean }`) so `processDelete.ts` doesn't need to import from `processUpdate.ts` and `consumer.ts` has one place to import the dispatch return shape from.
@@ -262,7 +262,7 @@ None — no blocking failures during implementation. Full verification gate outp
 
 ## Change Log
 
-- 2026-07-08 — Story 6.2 created (bmad-create-story). Sync worker consumes `discord.message.updated`/`deleted` from `hivly:sync`, re-indexes edits (standalone re-embed + UPSERT) and purges deletes (soft = `deleted_at`; hard = purge vectors + read-status, superset of soft), all idempotent with XACK-after-COMMIT. Reconciles the epic/tech-design `message_id` pseudocode against the real grouped `message_ids[]` schema. No `packages/shared` change, no migration. Status → ready-for-dev.
+- 2026-07-08 — Story 6.2 created (bmad-create-story). Sync worker consumes `discord.message.updated`/`deleted` from `share2brain:sync`, re-indexes edits (standalone re-embed + UPSERT) and purges deletes (soft = `deleted_at`; hard = purge vectors + read-status, superset of soft), all idempotent with XACK-after-COMMIT. Reconciles the epic/tech-design `message_id` pseudocode against the real grouped `message_ids[]` schema. No `packages/shared` change, no migration. Status → ready-for-dev.
 - 2026-07-08 — Story 6.2 implemented (bmad-dev-story). All 8 tasks complete; gate green (lint 0 / 582 unit+web (+35 new Sync tests) / build clean 5 pkgs / 8 workers-integration (+4 new Sync tests)). Sync consumer wired into `main.ts` alongside the Indexer on its own Redis client, gated by `config.sync.enabled`. Flagged one pre-existing, unrelated `packages/backend` RBAC integration-test flake (out of this story's file scope) in Completion Notes. Status → review.
 
 - 2026-07-08 — Story 6.2 code review (bmad-code-review). 3 adversarial layers → 2 decision-needed + 2 patch + 4 defer + 2 dismissed. Both decisions resolved with Borja (one Redis client per Sync loop; embed moved outside the tx) and all 4 patches applied: (1) `main.ts` opens `syncRedisUpdated`+`syncRedisDeleted` (3 clients total), `runSync` takes both; (2) `processUpdate` chunks+embeds+asserts BEFORE the tx (mirrors the Indexer, no locks/pool held across embeddings HTTP); (3) `parseUpdatedEvent` rejects blank/missing `timestamp` (was a `updated_at` poison-pill); (4) `processUpdate`/`processDelete` error logs now carry `streamId`+`stream` (AC-5). Gate re-run green: lint 0 / 584 unit+web (+2) / build clean (5 pkgs) / 8 workers-integration. Status → done.

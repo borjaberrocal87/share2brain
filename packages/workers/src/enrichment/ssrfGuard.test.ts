@@ -12,7 +12,7 @@ const FETCH_CONFIG_GUARDED = {
   timeout_ms: 5000,
   max_bytes: 2_000_000,
   max_redirects: 3,
-  user_agent: 'HivlyBot/1.0',
+  user_agent: 'Share2BrainBot/1.0',
   allowed_schemes: ['https'] as ('http' | 'https')[],
   block_private_ips: true,
 };

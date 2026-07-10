@@ -10,7 +10,7 @@
 // un-ACKed. `fetchUrl`/`enrich` never throw on their own account (typed
 // outcomes / {@link EnrichmentError}), so a throw here always means
 // enrichment failed.
-import type { HivlyConfig } from '@hivly/shared';
+import type { Share2BrainConfig } from '@share2brain/shared';
 
 import type { Logger } from '../logger.js';
 import { enrich, type EnrichmentChatModel } from './enrich.js';
@@ -47,7 +47,7 @@ export type ReuseLookup = (
 ) => { title: string; description: string; embedding: number[] } | undefined;
 
 export interface BuildResourceRowsDeps {
-  config: HivlyConfig;
+  config: Share2BrainConfig;
   enrichModel: EnrichmentChatModel;
   guard: GuardedDispatcher;
   signal: AbortSignal;

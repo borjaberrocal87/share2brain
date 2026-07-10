@@ -9,7 +9,7 @@
 // `http://169.254.169.254/` is the classic bypass this defends against.
 import { fetch as undiciFetch, type Response } from 'undici';
 
-import type { EnrichmentConfig } from '@hivly/shared';
+import type { EnrichmentConfig } from '@share2brain/shared';
 
 import { SsrfBlockedError, type GuardedDispatcher } from './ssrfGuard.js';
 

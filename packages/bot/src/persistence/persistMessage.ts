@@ -23,10 +23,10 @@
 // fourth pass, 2026-07-06, Borja): same failure class, same AD-13 idempotent-
 // consumer safety net as the original single-attempt design, just amplified —
 // revisit if Story 3.3's Indexer turns out not to dedupe by messageId in practice.
-import type { HivlyConfig } from '@hivly/shared';
-import { discordMessages, type Database } from '@hivly/shared/db';
-import type { RedisClient } from '@hivly/shared/redis';
-import { STREAM_KEYS } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import { discordMessages, type Database } from '@share2brain/shared/db';
+import type { RedisClient } from '@share2brain/shared/redis';
+import { STREAM_KEYS } from '@share2brain/shared/types/events';
 
 /**
  * The narrow slice of a discord.js `Message` this pipeline reads. Declaring it
@@ -47,7 +47,7 @@ export interface IngestibleMessage {
 
 /** Dependencies shared by the handler and the persistence step (dependency-injected). */
 export interface IngestDeps {
-  config: HivlyConfig;
+  config: Share2BrainConfig;
   db: Database;
   redis: RedisClient;
 }

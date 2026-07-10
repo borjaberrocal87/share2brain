@@ -1,5 +1,5 @@
 ---
-project_name: 'hivly'
+project_name: 'share2brain'
 user_name: 'Borja'
 date: '2026-07-03'
 sections_completed:
@@ -31,8 +31,8 @@ _Authoritative sources: `docs/context/ARCHITECTURE-SPINE.md` (invariants AD-1…
 ## Critical Implementation Rules
 
 ### Architecture boundaries (AD-1, AD-2 — non-negotiable)
-- Code lives under `packages/<service>/src/` — **never a root `src/`**. Packages: `@hivly/{shared,bot,backend,workers,web}`.
-- `packages/shared` is the domain kernel. Services depend on `@hivly/shared` but **NEVER import each other** (no `@hivly/backend` from bot/workers/web, etc.).
+- Code lives under `packages/<service>/src/` — **never a root `src/`**. Packages: `@share2brain/{shared,bot,backend,workers,web}`.
+- `packages/shared` is the domain kernel. Services depend on `@share2brain/shared` but **NEVER import each other** (no `@share2brain/backend` from bot/workers/web, etc.).
 - Bot, Backend, Workers are 3 separate Node processes, each with its own `package.json`, `Dockerfile`, and Compose entry.
 
 ### Contracts live only in shared (AD-5, AD-6)
@@ -42,13 +42,13 @@ _Authoritative sources: `docs/context/ARCHITECTURE-SPINE.md` (invariants AD-1…
 
 ### Language / TypeScript
 - Strict mode always on. Explicit types on function params and returns. **Avoid `any`** — use `unknown` or specific types; prefer Zod-inferred types over hand-written duplicates.
-- Unified error shape everywhere: `{ error: string, code: string }` from `@hivly/shared/schemas/errors.ts`. Map errors at the controller/endpoint layer; never leak raw Discord/LLM/DB errors inward or to clients.
-- Use the logger exported from `@hivly/shared` (level from `observability.log_level`). Never log secrets or full message content.
+- Unified error shape everywhere: `{ error: string, code: string }` from `@share2brain/shared/schemas/errors.ts`. Map errors at the controller/endpoint layer; never leak raw Discord/LLM/DB errors inward or to clients.
+- Use the logger exported from `@share2brain/shared` (level from `observability.log_level`). Never log secrets or full message content.
 
 ### Backend framework rules
 - **RBAC lives INSIDE the vector query, never as a post-filter** (AD-12): every pgvector query carries `WHERE channel_id = ANY(:allowedChannelIds)`. Expand `session.discordRoles → allowedChannelIds` per-request against `channel_permissions` (not cached in session). No search/chat/documents query runs before `allowedChannelIds` is resolved.
 - **Workers are idempotent** (AD-13): consume with `XREADGROUP`; **`XACK` only after successful processing**. On failure, do NOT ACK (Redis reassigns; PEL is the implicit DLQ). An insert on an existing `embedding.id` must UPSERT, not throw.
-- Redis Stream keys & consumer groups are **fixed invariants** (AD-13): `hivly:discord:messages`→`hivly:indexer`, `hivly:discord:messages:{updated,deleted}`→`hivly:sync`. Event types in `packages/shared/src/types/events.ts`; every message carries `messageId`, `channelId`, `guildId`, `timestamp` (ISO 8601).
+- Redis Stream keys & consumer groups are **fixed invariants** (AD-13): `share2brain:discord:messages`→`share2brain:indexer`, `share2brain:discord:messages:{updated,deleted}`→`share2brain:sync`. Event types in `packages/shared/src/types/events.ts`; every message carries `messageId`, `channelId`, `guildId`, `timestamp` (ISO 8601).
 - **Sessions live in Redis only** (AD-10) via `express-session` + `connect-redis`. There is **NO `sessions` table** in the Drizzle schema. httpOnly cookie holds only the session ID; revoke by deleting the Redis key.
 - RAG agent is a LangGraph `StateGraph` (`retrieve → reason → respond`, optional `tool_exec` loop) (AD-11). **No legacy LangChain APIs** — `langchain/chains` / `langchain/memory` are banned by a CI `no-restricted-imports` ESLint rule in `packages/backend`.
 - Every service calls `loadConfig()` in `main.ts` (AD-8); invalid YAML aborts the process before any network I/O.
@@ -83,7 +83,7 @@ _Authoritative sources: `docs/context/ARCHITECTURE-SPINE.md` (invariants AD-1…
 ### Critical don't-miss (anti-patterns)
 - ❌ A root `src/` directory. ❌ One service importing another. ❌ Defining a DB table or Zod schema outside `packages/shared`.
 - ❌ Post-filtering RBAC after the vector query (leaks private channels). ❌ `XACK` before successful processing. ❌ A `sessions` table in the schema.
-- ❌ `EventSource` for chat. ❌ `langchain/chains` or `langchain/memory` imports. ❌ Mixing secrets (`.env`) with behavior config (`Hivly.config.yml`). ❌ `:latest` image tags. ❌ Marking a criterion satisfied without running the verification and pasting evidence.
+- ❌ `EventSource` for chat. ❌ `langchain/chains` or `langchain/memory` imports. ❌ Mixing secrets (`.env`) with behavior config (`Share2Brain.config.yml`). ❌ `:latest` image tags. ❌ Marking a criterion satisfied without running the verification and pasting evidence.
 
 ---
 

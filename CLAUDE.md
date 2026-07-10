@@ -1,4 +1,4 @@
-# Hivly
+# Share2Brain
 
 Self-hosted AI agent that indexes a Discord community's knowledge and answers questions
 with verifiable sources. **npm-workspaces monorepo**; hexagonal shared kernel + event-driven
@@ -25,12 +25,12 @@ ingestion over Redis Streams.
 # Non-negotiables (details in ARCHITECTURE-SPINE.md)
 
 - Code lives under `packages/<service>/src/` — never a root `src/`. Services depend on
-  `@hivly/shared` but **never on each other** (AD-2).
+  `@share2brain/shared` but **never on each other** (AD-2).
 - Only `packages/shared` does DDL; the Drizzle schema is the source of truth (AD-5). API
   contracts are Zod schemas in `packages/shared/src/schemas/` (AD-6).
 - RBAC lives **inside** the vector query, not as a post-filter (AD-12). Workers are idempotent
   (`XACK` only after success, AD-13). Sessions live in Redis — no `sessions` table (AD-10).
-- Secrets only in `.env`; behavior only in `Hivly.config.yml`. Never mix the two.
+- Secrets only in `.env`; behavior only in `Share2Brain.config.yml`. Never mix the two.
 
 # Way of working — BMAD Method
 
@@ -46,10 +46,10 @@ npm install                          # install the whole monorepo (npm workspace
 docker compose up -d                 # start the full stack (7 services)
 docker compose up -d postgres redis  # infra only, for local dev outside Docker
 
-npm run dev -w @hivly/backend        # API + RAG agent on :3000
-npm run dev -w @hivly/web            # Vite dev server (SPA) on :5173
-npm run dev -w @hivly/bot            # Discord Bot (ingestion)
-npm run dev -w @hivly/workers        # Indexer + Sync consumers
+npm run dev -w @share2brain/backend        # API + RAG agent on :3000
+npm run dev -w @share2brain/web            # Vite dev server (SPA) on :5173
+npm run dev -w @share2brain/bot            # Discord Bot (ingestion)
+npm run dev -w @share2brain/workers        # Indexer + Sync consumers
 
 npm run lint                         # ESLint across all packages
 npm run test                         # Vitest (unit/integration)

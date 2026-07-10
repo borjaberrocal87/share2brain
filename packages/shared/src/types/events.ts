@@ -62,22 +62,22 @@ export type KnowledgeStreamEvent = BackfillCompletedEvent;
  */
 export const STREAM_KEYS = {
   /** New messages → Indexer (embeds + inserts). */
-  DISCORD_MESSAGES: 'hivly:discord:messages',
+  DISCORD_MESSAGES: 'share2brain:discord:messages',
   /** Edited messages → Sync (re-index). */
-  DISCORD_MESSAGES_UPDATED: 'hivly:discord:messages:updated',
+  DISCORD_MESSAGES_UPDATED: 'share2brain:discord:messages:updated',
   /** Deleted messages → Sync (soft/hard delete). */
-  DISCORD_MESSAGES_DELETED: 'hivly:discord:messages:deleted',
+  DISCORD_MESSAGES_DELETED: 'share2brain:discord:messages:deleted',
   /** Knowledge events → Notifier (deferred, Epic 6). */
-  KNOWLEDGE_EVENTS: 'hivly:knowledge:events',
+  KNOWLEDGE_EVENTS: 'share2brain:knowledge:events',
 } as const;
 
 export const CONSUMER_GROUPS = {
   /** Consumes DISCORD_MESSAGES. */
-  INDEXER: 'hivly:indexer',
+  INDEXER: 'share2brain:indexer',
   /** Consumes DISCORD_MESSAGES_UPDATED and DISCORD_MESSAGES_DELETED. */
-  SYNC: 'hivly:sync',
+  SYNC: 'share2brain:sync',
   /** Consumes KNOWLEDGE_EVENTS (deferred, Epic 6). */
-  NOTIFIER: 'hivly:notifier',
+  NOTIFIER: 'share2brain:notifier',
 } as const;
 
 export type StreamKey = (typeof STREAM_KEYS)[keyof typeof STREAM_KEYS];

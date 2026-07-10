@@ -1,8 +1,8 @@
 # Development Guide
 
-This guide provides step-by-step instructions for setting up the development environment and running the Hivly Self-Hosted system.
+This guide provides step-by-step instructions for setting up the development environment and running the Share2Brain Self-Hosted system.
 
-Hivly is a self-hosted AI agent that indexes a Discord community's knowledge and answers questions with verifiable sources. It is an **npm-workspaces monorepo** with a shared domain kernel and event-driven ingestion (see `docs/context/ARCHITECTURE-SPINE.md`).
+Share2Brain is a self-hosted AI agent that indexes a Discord community's knowledge and answers questions with verifiable sources. It is an **npm-workspaces monorepo** with a shared domain kernel and event-driven ingestion (see `docs/context/ARCHITECTURE-SPINE.md`).
 
 ## 🚀 Setup Instructions
 
@@ -17,8 +17,8 @@ Ensure you have the following installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Hivly/hivly.git
-cd hivly
+git clone https://github.com/borjaberrocal87/share2brain.git
+cd share2brain
 ```
 
 ### 2. Install dependencies
@@ -31,11 +31,11 @@ npm install   # installs every workspace under packages/*
 
 The system uses **two** configuration files (never mix them):
 
-- `Hivly.config.yml` — behavior configuration (channels, models, RBAC, knowledge tuning, rate limits). Validated by `loadConfig()` in `@hivly/shared`.
+- `Share2Brain.config.yml` — behavior configuration (channels, models, RBAC, knowledge tuning, rate limits). Validated by `loadConfig()` in `@share2brain/shared`.
 - `.env` — secrets only (Discord tokens, LLM API keys, DB/Redis URLs, `SENTRY_DSN`).
 
 ```bash
-cp Hivly.config.yml.example Hivly.config.yml
+cp Share2Brain.config.yml.example Share2Brain.config.yml
 cp .env.example .env
 # edit both files with real values
 ```
@@ -44,7 +44,7 @@ Typical `.env` keys:
 
 ```env
 # Database
-DATABASE_URL="postgresql://hivly:hivly@localhost:5432/hivly"
+DATABASE_URL="postgresql://share2brain:share2brain@localhost:5432/share2brain"
 # Redis (streams + sessions)
 REDIS_URL="redis://localhost:6379"
 # Discord
@@ -81,10 +81,10 @@ Run only the infrastructure in Docker and the app services locally with hot relo
 docker compose up -d postgres redis   # infra only
 npx drizzle-kit migrate               # apply migrations against local DB
 
-npm run dev -w @hivly/backend         # Express API + LangGraph agent on :3000
-npm run dev -w @hivly/web             # Vite dev server (SPA) on :5173
-npm run dev -w @hivly/bot             # Discord Bot (ingestion)
-npm run dev -w @hivly/workers         # Indexer + Sync consumers
+npm run dev -w @share2brain/backend         # Express API + LangGraph agent on :3000
+npm run dev -w @share2brain/web             # Vite dev server (SPA) on :5173
+npm run dev -w @share2brain/bot             # Discord Bot (ingestion)
+npm run dev -w @share2brain/workers         # Indexer + Sync consumers
 ```
 
 In dev the Web App runs on Vite (`:5173`) and the Backend on `:3000` (different origins); the Vite proxy forwards `/api/*` to the backend and the Backend allows `FRONTEND_URL` via CORS.
@@ -108,7 +108,7 @@ Verification gate for every story: **type-check + tests + build** must run green
 npm run lint            # ESLint across all packages
 npm run lint:fix
 npm run test            # Vitest (unit/integration) across workspaces
-npm run test -w @hivly/backend   # scope to one workspace
+npm run test -w @share2brain/backend   # scope to one workspace
 npm run test:integration         # integration suites (need Postgres + Redis; see the warning below)
 npm run build           # build all packages
 ```
@@ -127,8 +127,8 @@ npm run build           # build all packages
 >
 > `openTestClients` has a **best-effort** guard (Story OPS-2) that fails fast if it detects a connection to
 > the test DB from a *foreign client address* (a dockerized app container or a remote client). It does **not**
-> catch a **same-host** writer — e.g. a local `npm run dev -w @hivly/backend` sharing your address — nor a
-> writer behind a connection pooler; stopping those is on you (this doc). Set `HIVLY_TEST_ALLOW_SHARED_DB=1`
+> catch a **same-host** writer — e.g. a local `npm run dev -w @share2brain/backend` sharing your address — nor a
+> writer behind a connection pooler; stopping those is on you (this doc). Set `SHARE2BRAIN_TEST_ALLOW_SHARED_DB=1`
 > to bypass the guard for an intentional shared-DB run.
 
 E2E (web workflows) run with Playwright. The harness lands with **Story 4.5**; it boots the
@@ -137,7 +137,7 @@ Backend with an injected **fake Discord OAuth** client over a test Postgres+pgve
 
 ```bash
 npx playwright install chromium  # one-time: download the browser (chromium only)
-npm run test:e2e -w @hivly/web   # Playwright end-to-end (needs test Postgres+Redis + fake-OAuth session)
+npm run test:e2e -w @share2brain/web   # Playwright end-to-end (needs test Postgres+Redis + fake-OAuth session)
 ```
 
 ## Updating a running deployment

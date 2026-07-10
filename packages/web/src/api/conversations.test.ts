@@ -40,7 +40,7 @@ describe('fetchConversations', () => {
       results: [
         {
           id: '550e8400-e29b-41d4-a716-446655440000',
-          title: 'How do I configure Hivly?',
+          title: 'How do I configure Share2Brain?',
           createdAt: '2026-07-01T00:00:00.000Z',
           updatedAt: '2026-07-02T00:00:00.000Z',
         },
@@ -54,7 +54,7 @@ describe('fetchConversations', () => {
     const res = await fetchConversations();
 
     expect(res.results).toHaveLength(1);
-    expect(res.results[0].title).toBe('How do I configure Hivly?');
+    expect(res.results[0].title).toBe('How do I configure Share2Brain?');
     expect(res.total).toBe(1);
   });
 
@@ -77,14 +77,14 @@ describe('fetchConversation', () => {
       {
         id: '550e8400-e29b-41d4-a716-446655440001',
         role: 'user',
-        content: '¿Cómo configuro Hivly?',
+        content: '¿Cómo configuro Share2Brain?',
         citations: [],
         createdAt: '2026-07-01T00:00:00.000Z',
       },
       {
         id: '550e8400-e29b-41d4-a716-446655440002',
         role: 'assistant',
-        content: 'Se configura en Hivly.config.yml.',
+        content: 'Se configura en Share2Brain.config.yml.',
         citations: [
           {
             title: 'Deploying with Docker Compose',

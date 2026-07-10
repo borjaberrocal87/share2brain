@@ -1,12 +1,12 @@
-# Hivly — behavior configuration (example)
+# Share2Brain — behavior configuration (example)
 #
-# Copy to `Hivly.config.yml` and edit with real values:
-#   cp Hivly.config.yml.example Hivly.config.yml
+# Copy to `Share2Brain.config.yml` and edit with real values:
+#   cp Share2Brain.config.yml.example Share2Brain.config.yml
 #
 # This file holds BEHAVIOR only (channels, models, RBAC, enrichment tuning,
 # rate limits). Secrets (tokens, API keys, DB/Redis URLs) live ONLY in `.env`
 # and are referenced here as ${...} placeholders. Never mix the two (AD Consistency
-# Conventions). Validated by `loadConfig()` in `@hivly/shared`; the service
+# Conventions). Validated by `loadConfig()` in `@share2brain/shared`; the service
 # aborts on invalid/missing keys before opening any connection.
 
 version: "1.0"
@@ -66,7 +66,7 @@ enrichment:
     timeout_ms: 5000        # per-request outbound fetch timeout
     max_bytes: 2000000      # cap on downloaded page size (~2MB)
     max_redirects: 3
-    user_agent: "HivlyBot/1.0"
+    user_agent: "Share2BrainBot/1.0"
     allowed_schemes: ["https"]
     block_private_ips: true   # SSRF mitigation (Story 7.2)
 
@@ -133,7 +133,7 @@ security:
 # --- External notifications (FR21, Story 6.4) ---------------------------------
 # Crash alerts (uncaughtException/unhandledRejection/fatal-shutdown) sent
 # directly via HTTP from each service (bot/backend/workers) — NOT through the
-# reserved hivly:knowledge:events stream. Behavior only (enabled, provider)
+# reserved share2brain:knowledge:events stream. Behavior only (enabled, provider)
 # lives here; credentials are secrets and live ONLY in .env. Never mix the two
 # (AD Consistency Conventions).
 #

@@ -13,7 +13,7 @@ Status: done
 
 ## Story
 
-As the operator of a long-running self-hosted Hivly deployment,
+As the operator of a long-running self-hosted Share2Brain deployment,
 I want every Redis Stream to be bounded in size without ever dropping an unprocessed entry,
 so that a long-lived instance does not grow Redis memory without limit while at-least-once delivery (AD-13) stays intact.
 
@@ -21,7 +21,7 @@ so that a long-lived instance does not grow Redis memory without limit while at-
 
 ## ⚠️ Reconciliation & design notes — read before implementing
 
-1. **This is the third time this work has been deferred.** Epic 3 AI#4 → Epic 5 retro → Epic 6 retro. Story 6.1 added two new *unbounded* streams (`:updated`, `:deleted`) on top of the original `hivly:discord:messages`, which is what finally elevated it. There is no "next epic" to punt to again.
+1. **This is the third time this work has been deferred.** Epic 3 AI#4 → Epic 5 retro → Epic 6 retro. Story 6.1 added two new *unbounded* streams (`:updated`, `:deleted`) on top of the original `share2brain:discord:messages`, which is what finally elevated it. There is no "next epic" to punt to again.
 
 2. **A naive `MAXLEN` on `xAdd` is UNSAFE and is explicitly rejected here.** Redis `XADD … MAXLEN`/`XTRIM … MAXLEN` (approximate or exact) trims the oldest entries **by count, with no awareness of the Pending Entries List (PEL)**. If any consumer group falls behind by more than the cap, its **unacked (pending) entries get trimmed and are lost** — a direct violation of AD-13's at-least-once guarantee and the whole point of `XACK`-only-after-success. Do **not** add `MAXLEN` to any producer's `xAdd`.
 
@@ -33,9 +33,9 @@ so that a long-lived instance does not grow Redis memory without limit while at-
 
 6. **A permanently-dead consumer defeats the PEL-safe floor.** If a group is down forever, its pending floor never advances and the stream still grows unbounded. So an **optional absolute ceiling** backstops it (AC-2): a configurable `streams.max_len` that, when set and exceeded, forces a `MAXLEN` trim **and logs a `warn`** — because hitting it means an entry was dropped below the pending floor (a dead/stuck-consumer alarm). Default: OFF (`null`) so normal operation relies solely on the PEL-safe floor.
 
-7. **Streams with zero consumer groups.** `hivly:knowledge:events` has no consumer today (the Notifier consumer is deferred). With no group there is no PEL to protect, so it is trimmed by the `max_len` backstop only (or left alone if `max_len` is null). Document: if the Notifier consumer is ever built, its group must be created **before** relying on PEL-safe trimming for that stream.
+7. **Streams with zero consumer groups.** `share2brain:knowledge:events` has no consumer today (the Notifier consumer is deferred). With no group there is no PEL to protect, so it is trimmed by the `max_len` backstop only (or left alone if `max_len` is null). Document: if the Notifier consumer is ever built, its group must be created **before** relying on PEL-safe trimming for that stream.
 
-8. **This is a `@hivly/workers` concern.** The trimmer is a long-lived periodic loop that belongs alongside the Indexer/Sync consumers — same package, same `main.ts` lifecycle, same graceful-shutdown drain (Story 6.4). It is NOT a bot or backend concern.
+8. **This is a `@share2brain/workers` concern.** The trimmer is a long-lived periodic loop that belongs alongside the Indexer/Sync consumers — same package, same `main.ts` lifecycle, same graceful-shutdown drain (Story 6.4). It is NOT a bot or backend concern.
 
 ---
 
@@ -43,7 +43,7 @@ so that a long-lived instance does not grow Redis memory without limit while at-
 
 ### AC-1 — PEL-safe periodic trim on every consumed stream (mandatory core)
 
-**Given** the trimmer runs on its interval against `hivly:discord:messages` (group `hivly:indexer`), `hivly:discord:messages:updated` and `hivly:discord:messages:deleted` (group `hivly:sync`)
+**Given** the trimmer runs on its interval against `share2brain:discord:messages` (group `share2brain:indexer`), `share2brain:discord:messages:updated` and `share2brain:discord:messages:deleted` (group `share2brain:sync`)
 **When** it processes a stream
 **Then** for each consumer group on that stream it computes the oldest still-needed entry ID = `min(oldest-pending-id if the group has pending entries, else the group's last-delivered-id)`
 **And** the stream's safe floor = the minimum of those per-group values across all groups
@@ -96,14 +96,14 @@ so that a long-lived instance does not grow Redis memory without limit while at-
 
 ## Tasks / Subtasks
 
-- [x] **Task 1 — Config schema (`packages/shared`).** Add a top-level `streams` block to `HivlyConfigSchema` (`packages/shared/src/config/index.ts`): `{ trim_enabled: z.boolean(), trim_interval_ms: z.number(), max_len: z.number().nullable() }`. Behavior only (YAML), no secrets. Confirm backward-compat: existing configs without the block must still parse *iff* you make `streams` `.optional()` with a sensible default, OR add the block to `Hivly.config.yml`/`.example` in Task 5 (decide per note D1). Add tests to `config/index.test.ts` (present, absent-if-optional, `max_len: null`).
+- [x] **Task 1 — Config schema (`packages/shared`).** Add a top-level `streams` block to `Share2BrainConfigSchema` (`packages/shared/src/config/index.ts`): `{ trim_enabled: z.boolean(), trim_interval_ms: z.number(), max_len: z.number().nullable() }`. Behavior only (YAML), no secrets. Confirm backward-compat: existing configs without the block must still parse *iff* you make `streams` `.optional()` with a sensible default, OR add the block to `Share2Brain.config.yml`/`.example` in Task 5 (decide per note D1). Add tests to `config/index.test.ts` (present, absent-if-optional, `max_len: null`).
 - [x] **Task 2 — `streamTrimmer.ts` (`packages/workers/src/trim/`).** Pure, dependency-injected factory `createStreamTrimmer({ redis, logger, config })` exposing a `runTrimLoop(signal)`:
   - `computeSafeFloor(redis, stream)`: `xInfoGroups(stream)` → for each group, `xPending(stream, group)` summary; per-group needed-id = pending `firstId` if `pending > 0` else the group's `lastDeliveredId`; stream floor = `min` across groups (BigInt-compare the `<ms>-<seq>` snowflake-style stream IDs, NOT string-compare — mirror the `toIdKey`/BigInt ordering trap from Story 6.3's `reconcile.ts`). Return `null` when the stream has no groups.
   - `trimStream(stream)`: if floor is non-null → `xTrim(stream, 'MINID', floor)`; then if `config.streams.max_len` set and `xLen(stream) > max_len` → `xTrim(stream, 'MAXLEN', max_len, { strategyModifier: '~' })` + `warn`.
   - `runTrimLoop`: every `trim_interval_ms`, `for` each of the 3 Discord streams (+ optionally `KNOWLEDGE_EVENTS` for the max_len-only path) call `trimStream` inside a try/catch (AC-4), checking `signal.aborted` at the top of each tick (AC-5). Use an abortable wait between ticks (reuse the `waitOrAbort` pattern from `offlineSync.ts`).
 - [x] **Task 3 — Wire into `main.ts` (`packages/workers`).** Gated by `config.streams?.trim_enabled`: open a dedicated Redis client via the existing `connectRedisOrExit` helper (added in 6.2), start `runTrimLoop(shutdownSignal)`, add its promise to the shutdown `Promise.all` drain and `quit()` its client. Do NOT touch the Indexer/Sync drain bodies (note #8). When disabled, no client, no loop (AC-3).
 - [x] **Task 4 — Unit tests (`streamTrimmer.test.ts`).** Fakes for `xInfoGroups`/`xPending`/`xTrim`/`xLen` (`vi.fn()`), asserting: floor = min across two groups; pending `firstId` wins over `lastDeliveredId`; `MINID` trim called with the exact floor; no-groups stream → no MINID trim; `max_len` backstop fires only when `xLen > max_len` and emits exactly one `warn`; `max_len: null` → no backstop; a throwing `xTrim` for one stream is caught and the next stream still trims; abort before a tick stops the loop; BigInt ordering (an 18-digit vs 19-digit ID floor) is correct. Prove each test discriminates (revert-and-fail — Epic 5 rule).
-- [x] **Task 5 — `Hivly.config.yml` + `.example`.** Add the `streams` block (`trim_enabled: true`, `trim_interval_ms: 300000`, `max_len: null` as shipped defaults — see note D2). Verify `loadConfig()` parses both files (watch `interpolateEnv` — no `${VAR}` needed here since these are plain numbers/booleans; the 6.4 comment-substitution gotcha does not apply, but keep the block credential-free).
+- [x] **Task 5 — `Share2Brain.config.yml` + `.example`.** Add the `streams` block (`trim_enabled: true`, `trim_interval_ms: 300000`, `max_len: null` as shipped defaults — see note D2). Verify `loadConfig()` parses both files (watch `interpolateEnv` — no `${VAR}` needed here since these are plain numbers/booleans; the 6.4 comment-substitution gotcha does not apply, but keep the block credential-free).
 - [x] **Task 6 — Integration test (`streamTrimmer.integration.test.ts`, workers project).** Against real Redis (Homebrew `localhost:6379` — the two-Redis-instances gotcha): create a stream + group, XADD several entries, read+ack some, leave one oldest entry pending; run one trim tick; assert the acked-old entries are gone (`xLen`/`xRange`) and the pending entry survives. Add a second case: two groups at different positions → floor = the laggier group. Run-unique stream keys (`itest-ops1-${salt}`) + own-id cleanup (Epic 4 run-unique-isolation rule).
 - [x] **Task 7 — Verify gate (AC-7).** Run all four commands, paste real evidence in Completion Notes.
 
@@ -114,7 +114,7 @@ so that a long-lived instance does not grow Redis memory without limit while at-
 ### Architecture & patterns to follow
 - **The trimmer mirrors the consumer loop shape** (`indexer/consumer.ts`, `sync/consumer.ts`): dependency-injected, an abort-checked `while` loop, whole body defensive, wired in `main.ts` with a bounded shutdown drain. Copy that structure. The difference: it does **not** `XREADGROUP`/`BLOCK` — it does short periodic admin commands (`XINFO GROUPS`, `XPENDING`, `XTRIM`, `XLEN`) and sleeps between ticks.
 - **Its own Redis client** (note #5). Reuse `connectRedisOrExit` from `packages/workers/src/main.ts` (extracted in 6.2) for identical bounded-connect + fail-fast behavior.
-- **Import `STREAM_KEYS`/`CONSUMER_GROUPS`** from `@hivly/shared/types/events` — never hardcode the stream/group strings (AD-13). The streams to trim: `DISCORD_MESSAGES`, `DISCORD_MESSAGES_UPDATED`, `DISCORD_MESSAGES_DELETED` (+ `KNOWLEDGE_EVENTS` max_len-only).
+- **Import `STREAM_KEYS`/`CONSUMER_GROUPS`** from `@share2brain/shared/types/events` — never hardcode the stream/group strings (AD-13). The streams to trim: `DISCORD_MESSAGES`, `DISCORD_MESSAGES_UPDATED`, `DISCORD_MESSAGES_DELETED` (+ `KNOWLEDGE_EVENTS` max_len-only).
 
 ### The PEL-safe floor — the crux of this story (read with notes #2, #3)
 - Stream IDs are `<millisecondsTime>-<sequence>`. Comparing them requires splitting on `-` and comparing `(BigInt(ms), BigInt(seq))` lexicographically — a plain string compare is wrong once the ms part changes digit count (the exact BigInt-ordering trap Story 6.3's `reconcile.ts` exists to cover). Write a `compareStreamIds(a, b)` helper and unit-test it.
@@ -129,8 +129,8 @@ so that a long-lived instance does not grow Redis memory without limit while at-
 - **NEW** `packages/workers/src/trim/streamTrimmer.ts` + `streamTrimmer.test.ts` + `streamTrimmer.integration.test.ts`
 - **UPDATE** `packages/workers/src/main.ts` — gated dedicated client + `runTrimLoop` + shutdown drain (additive; do not touch Indexer/Sync drain bodies)
 - **UPDATE** `packages/shared/src/config/index.ts` + `config/index.test.ts` — `streams` block
-- **UPDATE** `Hivly.config.yml` + `Hivly.config.yml.example` — `streams` block
-- **NO CHANGE** producers (`persistMessage.ts`, `backfiller.ts`, `messageUpdate.ts`, `messageDelete.ts`), `@hivly/shared` event contracts, DB schema (no migration)
+- **UPDATE** `Share2Brain.config.yml` + `Share2Brain.config.yml.example` — `streams` block
+- **NO CHANGE** producers (`persistMessage.ts`, `backfiller.ts`, `messageUpdate.ts`, `messageDelete.ts`), `@share2brain/shared` event contracts, DB schema (no migration)
 
 ### Testing standards
 - Vitest, co-located `*.test.ts`, dependency-injected fakes (copy `sync/consumer.test.ts` scaffold). Integration test under the `workers-integration` project, real Redis, run-unique keys + own-id cleanup. Assert content is never logged. Every regression test must fail if its fix is reverted (Epic 5 "a test that lies" rule).
@@ -153,11 +153,11 @@ so that a long-lived instance does not grow Redis memory without limit while at-
 
 ## Project Context Reference
 
-See `_bmad-output/project-context.md` (backend rules, AD-13 stream invariants, never-log-content, workers idempotent) and `CLAUDE.md` (non-negotiables: behavior in YAML, secrets in `.env`; workers depend only on `@hivly/shared`, AD-2). Standards: `docs/base-standards.md`, `docs/backend-standards.md`.
+See `_bmad-output/project-context.md` (backend rules, AD-13 stream invariants, never-log-content, workers idempotent) and `CLAUDE.md` (non-negotiables: behavior in YAML, secrets in `.env`; workers depend only on `@share2brain/shared`, AD-2). Standards: `docs/base-standards.md`, `docs/backend-standards.md`.
 
 ## Decisions (confirmed with Borja, 2026-07-08)
 
-- **D1 — [DECIDED, recommended] `streams` config is `.optional()` with in-code defaults** (`trim_enabled: true`, `trim_interval_ms: 300000`, `max_len: null`) so existing/other configs keep parsing without edit, while the block is still shipped in `Hivly.config.yml`/`.example`. Mirrors how `notifications` was made optional in 6.4.
+- **D1 — [DECIDED, recommended] `streams` config is `.optional()` with in-code defaults** (`trim_enabled: true`, `trim_interval_ms: 300000`, `max_len: null`) so existing/other configs keep parsing without edit, while the block is still shipped in `Share2Brain.config.yml`/`.example`. Mirrors how `notifications` was made optional in 6.4.
 - **D2 — [DECIDED by Borja] Shipped defaults = PEL-safe, no ceiling:** `trim_enabled: true`, `trim_interval_ms: 300000` (5 min), **`max_len: null`**. The PEL-safe `MINID` floor is the only bound; no lossy absolute ceiling ships by default. Consequence (accepted): a permanently-dead consumer means unbounded growth for its stream — rare, and visible in logs; an operator can set a non-null `max_len` to opt into the backstop. The `max_len` backstop path (AC-2) must still be **implemented**, just defaulted off.
 - **D3 — [DECIDED, recommended] Trim `KNOWLEDGE_EVENTS` via the `max_len`-only path** (skipped while `max_len` is null, i.e. skipped by default per D2), documented — never PEL-trimmed since it has no consumer group (Notifier deferred). If the Notifier consumer is ever built, create its group before relying on PEL-safe trim for that stream.
 
@@ -173,7 +173,7 @@ None — implementation went green per task; only one lint fix (`prefer-const` o
 
 ### Completion Notes List
 
-- **Design as specified: a PEL-safe `XTRIM … MINID` trimmer, NOT `MAXLEN` on `xAdd`.** New `packages/workers/src/trim/streamTrimmer.ts` — a third long-lived loop alongside the Indexer/Sync consumers, on its **own** Redis client. Producers untouched, no migration, no `@hivly/shared` contract change (only the Zod config schema gained an optional `streams` block).
+- **Design as specified: a PEL-safe `XTRIM … MINID` trimmer, NOT `MAXLEN` on `xAdd`.** New `packages/workers/src/trim/streamTrimmer.ts` — a third long-lived loop alongside the Indexer/Sync consumers, on its **own** Redis client. Producers untouched, no migration, no `@share2brain/shared` contract change (only the Zod config schema gained an optional `streams` block).
 - **`computeSafeFloor`** enumerates a stream's groups via `xInfoGroups`; per group the needed id = the oldest pending id (`xPending().firstId`) when `pending > 0`, else the group's `last-delivered-id`; the stream floor = the minimum across groups. `trimStream` then `XTRIM MINID <floor>` (removes only strictly-older, already-acked entries; keeps the floor entry) and, when `max_len` is set and exceeded, the optional `MAXLEN ~` backstop (warn if the stream has groups = stuck-consumer alarm; info if it has none, e.g. `KNOWLEDGE_EVENTS`).
 - **Real node-redis 6.1.0 gotcha found & handled:** `xInfoGroups` types `last-delivered-id` as `NumberReply`, but the RESP value is a stream-id **string** (`"<ms>-<seq>"`). Coerced with `String()` (identity if already a string) — documented inline. Would have been a silent type-lie otherwise.
 - **BigInt stream-id ordering** (`compareStreamIds`) mirrors Story 6.3's `toIdKey` trap: split on `-`, compare `(BigInt(ms), BigInt(seq))` — a plain string compare mis-orders ids across a millisecond digit-count change. Unit-tested with an 18-vs-19-digit case.
@@ -184,7 +184,7 @@ None — implementation went green per task; only one lint fix (`prefer-const` o
   - `npm run test` → **666 passed** (78 files; unit+web), incl. ~23 new streamTrimmer unit tests + 3 new config tests.
   - `npm run build` → all 5 workspaces clean (`tsc --noEmit` backend/bot/shared/workers, `vite build` web).
   - `npx vitest run --project workers-integration` → **11 passed** (4 Indexer + 4 Sync + **3 new trim** integration tests) against real Redis (Homebrew `localhost:6379` per the two-Redis-instances gotcha). The key case proves an acked+old entry is trimmed while the **oldest-but-pending (unacked)** entry survives — the PEL-safe guarantee, empirically discriminating (a `MAXLEN` implementation would fail it). A second case proves the laggier of two groups governs the floor; a third proves a non-existent stream is a no-op.
-  - `loadConfig()` run against **both** the shipped `Hivly.config.yml` and `Hivly.config.yml.example` → both parse with the `streams` block (guards against the 6.4 `interpolateEnv` class of failure; the block is credential-free so no `${VAR}` risk).
+  - `loadConfig()` run against **both** the shipped `Share2Brain.config.yml` and `Share2Brain.config.yml.example` → both parse with the `streams` block (guards against the 6.4 `interpolateEnv` class of failure; the block is credential-free so no `${VAR}` risk).
 - No new dependency; no migration; no DDL. Only `packages/shared`'s config Zod schema changed (validation, not persisted data).
 
 ### File List
@@ -195,15 +195,15 @@ None — implementation went green per task; only one lint fix (`prefer-const` o
 - `packages/workers/src/trim/streamTrimmer.integration.test.ts`
 
 **Modified:**
-- `packages/shared/src/config/index.ts` (optional `streams` block in `HivlyConfigSchema`)
+- `packages/shared/src/config/index.ts` (optional `streams` block in `Share2BrainConfigSchema`)
 - `packages/shared/src/config/index.test.ts` (+3 tests; `streams` undefined assertion in the valid case)
 - `packages/workers/src/main.ts` (gated dedicated trim client + `runStreamTrimmer` + shutdown drain — additive)
-- `Hivly.config.yml` (new `streams` block; gitignored operator copy)
-- `Hivly.config.yml.example` (same `streams` block; tracked template)
+- `Share2Brain.config.yml` (new `streams` block; gitignored operator copy)
+- `Share2Brain.config.yml.example` (same `streams` block; tracked template)
 
 ## Change Log
 
-- 2026-07-08 — Story OPS-1 created (bmad-create-story) from operational-backlog P1.1, picked up immediately after the Epic 6 retro. First post-roadmap operational story; numbered `ops-N` to stay outside the epic sequence (Borja chose an explicit backlog over a hardening epic). Design: a PEL-safe `XTRIM … MINID` trimmer as a third long-lived loop in `@hivly/workers` on its own Redis client, with an optional `max_len` ceiling backstop for dead consumers; producers untouched (bare `xAdd`), no migration, config-gated. Status → ready-for-dev.
+- 2026-07-08 — Story OPS-1 created (bmad-create-story) from operational-backlog P1.1, picked up immediately after the Epic 6 retro. First post-roadmap operational story; numbered `ops-N` to stay outside the epic sequence (Borja chose an explicit backlog over a hardening epic). Design: a PEL-safe `XTRIM … MINID` trimmer as a third long-lived loop in `@share2brain/workers` on its own Redis client, with an optional `max_len` ceiling backstop for dead consumers; producers untouched (bare `xAdd`), no migration, config-gated. Status → ready-for-dev.
 ## Review Findings
 
 _bmad-code-review 2026-07-08 — 3 adversarial layers (Blind Hunter + Edge Case Hunter + Acceptance Auditor, Opus 4.8) over the uncommitted OPS-1 diff. All three converged that the PRODUCTION code is sound: node-redis 6.1.0 contracts verified against source (`xInfoGroups` rejects with "no such key"; `last-delivered-id` is a stream-id string; `xPending` returns non-null `firstId` when `pending>0`; `XTRIM MINID` is inclusive-floor), the PEL-safe floor is genuinely never above any pending id, abort/shutdown paths are clean, no listener leak. Acceptance Auditor: all AC-1…AC-7 + D1/D2/D3 + note #4 (producers untouched) + AD-2/AD-13 fully met. Findings are test-quality, config ergonomics, and doc-precision. 6 patch, 2 dismissed._
@@ -211,7 +211,7 @@ _bmad-code-review 2026-07-08 — 3 adversarial layers (Blind Hunter + Edge Case 
 - [x] [Review][Patch] **Integration tests don't discriminate `firstId` vs `last-delivered-id`** [packages/workers/src/trim/streamTrimmer.integration.test.ts] — both real-Redis cases arrange the oldest *pending* entry to coincide with `last-delivered-id`, so a regression using `last-delivered` instead of `xPending.firstId` would still pass. The file header CLAIMS to prove "never removes an entry still pending even when older than last-delivered," but that requires an OUT-OF-ORDER ack (read e1,e2,e3 → ack e2+e3 → e1 pending → correct floor=e1; a last-delivered bug computes e3 and trims the unacked e1). Only the fake-based unit test discriminates this. Fix: add a real-Redis out-of-order-ack case. (Edge; the AD-13-critical gap; Epic-5 "a test that lies" rule.)
 - [x] [Review][Patch] **Partial `streams` config block is a hard boot failure, contradicting the "in-code defaults" claim** [packages/shared/src/config/index.ts] — the three fields are all *required* inside the optional object, so `streams:\n  trim_enabled: false` throws `ConfigError` (trim_interval_ms/max_len Required). Meanwhile `resolveStreamsConfig`'s per-field `?? default` is dead code except when the whole block is absent. Fix: make the three fields `.optional()` (matching resolveStreamsConfig's intent) + a partial-block config test. (Edge.)
 - [x] [Review][Patch] **Fail-OPEN fallback when `pending>0` but `xPending.firstId` is null** [packages/workers/src/trim/streamTrimmer.ts:computeSafeFloor] — the fallback uses `lastDelivered` (the HIGHEST delivered id), so if that branch were ever reached, `XTRIM MINID lastDelivered` would drop all pending entries but one. Edge confirmed it's unreachable (Redis guarantees non-null firstId when pending>0), but the direction is a latent footgun in the one module whose whole job is delete-conservatism. Fix: fall back to `'0-0'` (fail-safe → skip trim) instead of `lastDelivered`. (Blind; mirrors Story 6.3's fail-open→fail-safe patch.)
-- [x] [Review][Patch] **`max_len` is an approximate (`~`) cap, documented as an "absolute ceiling"; warn re-fires every tick when the `~` trim can't evict a partial node** [packages/workers/src/trim/streamTrimmer.ts + Hivly.config.yml(.example) + config schema comment] — with `strategyModifier: '~'` Redis only evicts whole macro-nodes, so length can persist above `max_len` and the "exceeded max_len" warn re-fires every tick with `removed: 0`. Fix: reword "absolute ceiling" → "approximate (~) ceiling" in all comments, and gate the warn/info on `removed > 0` to avoid per-tick log spam. (Blind + Edge.)
+- [x] [Review][Patch] **`max_len` is an approximate (`~`) cap, documented as an "absolute ceiling"; warn re-fires every tick when the `~` trim can't evict a partial node** [packages/workers/src/trim/streamTrimmer.ts + Share2Brain.config.yml(.example) + config schema comment] — with `strategyModifier: '~'` Redis only evicts whole macro-nodes, so length can persist above `max_len` and the "exceeded max_len" warn re-fires every tick with `removed: 0`. Fix: reword "absolute ceiling" → "approximate (~) ceiling" in all comments, and gate the warn/info on `removed > 0` to avoid per-tick log spam. (Blind + Edge.)
 - [x] [Review][Patch] **`KNOWLEDGE_EVENTS` is unbounded under the recommended default (`max_len: null`); the "bounds every stream" wording overstates** [packages/workers/src/trim/streamTrimmer.ts header + config comments] — it has no consumer group (Notifier deferred) so the PEL-safe path skips it, and with `max_len: null` the backstop skips it too → never trimmed. By design (D3) and low volume (one backfill event per bot boot), so no behavior change; fix the wording to not claim "every stream" and document the no-consumer-group exemption. (Blind + Edge.)
 - [x] [Review][Patch] **Duplicate "stream trimmer starting" log** [packages/workers/src/main.ts + streamTrimmer.ts] — `main.ts` logs it, then `runStreamTrimmer` logs it again with context. Remove the `main.ts` line. (All 3 layers, trivial.)
 
@@ -221,4 +221,4 @@ _Dismissed (2):_
 
 **All 6 patches applied 2026-07-08.** (P1) new real-Redis out-of-order-ack integration case (read e1-e4, ack e1/e3/e4, e2 pending → asserts `[e2,e3,e4]` remain; a last-delivered bug would drop the pending e2) — now discriminates firstId-vs-last-delivered against real Redis, not just in the fake unit test. (P2) the three `streams` fields are now `.optional()` so a partial block (e.g. just `trim_enabled: false`) parses; +1 partial-block config test. (P3) `computeSafeFloor` fails SAFE (`'0-0'`) instead of `lastDelivered` when `pending>0` but `firstId` is null. (P4) `max_len` reworded to "approximate (~) ceiling" in module + schema + both YAML files; the warn/info now only fires when `removed > 0` (no per-tick spam when `~` can't evict a partial node); +1 unit test. (P5) module header + config comments no longer claim "every stream" and document the no-consumer-group (`KNOWLEDGE_EVENTS`) exemption. (P6) removed the duplicate `main.ts` "stream trimmer starting" log. **Gate re-run green: lint 0 / 668 unit+web (+2) / build clean (5 pkgs) / 12 workers-integration (+1 new). Status → done.**
 
-- 2026-07-08 — Story OPS-1 implemented (bmad-dev-story) → status **review**. All 7 tasks complete. New `packages/workers/src/trim/streamTrimmer.ts` (+ unit + integration tests); optional `streams` block in the shared config schema (D1 optional-with-defaults; D2 shipped defaults `trim_enabled: true` / `300000` / `max_len: null`); additive `main.ts` wiring (dedicated client, gated, drained). Real node-redis 6.1.0 gotcha handled: `last-delivered-id` typed `NumberReply` but is a stream-id string → `String()` coercion. Gate green: lint 0 / 666 unit+web (+26) / build clean (5 pkgs) / 11 workers-integration (+3 new, real Redis — pending entry provably survives the trim) / both shipped config files parse via `loadConfig()`. No migration, no `@hivly/shared` contract change (config schema only). Status → review.
+- 2026-07-08 — Story OPS-1 implemented (bmad-dev-story) → status **review**. All 7 tasks complete. New `packages/workers/src/trim/streamTrimmer.ts` (+ unit + integration tests); optional `streams` block in the shared config schema (D1 optional-with-defaults; D2 shipped defaults `trim_enabled: true` / `300000` / `max_len: null`); additive `main.ts` wiring (dedicated client, gated, drained). Real node-redis 6.1.0 gotcha handled: `last-delivered-id` typed `NumberReply` but is a stream-id string → `String()` coercion. Gate green: lint 0 / 666 unit+web (+26) / build clean (5 pkgs) / 11 workers-integration (+3 new, real Redis — pending entry provably survives the trim) / both shipped config files parse via `loadConfig()`. No migration, no `@share2brain/shared` contract change (config schema only). Status → review.

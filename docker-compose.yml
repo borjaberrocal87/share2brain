@@ -1,18 +1,18 @@
-# Hivly — full stack (AC1: exactly 7 services).
+# Share2Brain — full stack (AC1: exactly 7 services).
 #   postgres, redis ─→ migrator (one-shot) ─→ bot, workers, backend ─→ nginx
 #
 # Secrets come from .env (env_file); in-container hostnames override the
 # localhost URLs via `environment:` (containers reach postgres/redis by service
 # name, never localhost). Behavior config is mounted read-only at
-# /app/Hivly.config.yml. Images are pinned — never :latest.
+# /app/Share2Brain.config.yml. Images are pinned — never :latest.
 
 services:
   # ── Data stores ────────────────────────────────────────────────────────────
   postgres:
     image: pgvector/pgvector:pg17
     environment:
-      POSTGRES_DB: hivly
-      POSTGRES_USER: hivly
+      POSTGRES_DB: share2brain
+      POSTGRES_USER: share2brain
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     # Dev-only host exposure, bound to loopback. nginx is the only public port.
     ports:
@@ -20,7 +20,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U hivly -d hivly"]
+      test: ["CMD-SHELL", "pg_isready -U share2brain -d share2brain"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -43,7 +43,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgres://hivly:${POSTGRES_PASSWORD}@postgres:5432/hivly
+      DATABASE_URL: postgres://share2brain:${POSTGRES_PASSWORD}@postgres:5432/share2brain
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,7 +58,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgres://hivly:${POSTGRES_PASSWORD}@postgres:5432/hivly
+      DATABASE_URL: postgres://share2brain:${POSTGRES_PASSWORD}@postgres:5432/share2brain
       REDIS_URL: redis://redis:6379
       # LLM (RAG, Epic 5) + embeddings (search query, Epic 4). base_url only for "custom".
       LLM_API_KEY: ${LLM_API_KEY}
@@ -66,7 +66,7 @@ services:
       EMBEDDINGS_API_KEY: ${EMBEDDINGS_API_KEY}
       EMBEDDINGS_BASE_URL: ${EMBEDDINGS_BASE_URL:-}
     volumes:
-      - ./Hivly.config.yml:/app/Hivly.config.yml:ro
+      - ./Share2Brain.config.yml:/app/Share2Brain.config.yml:ro
     depends_on:
       migrator:
         condition: service_completed_successfully
@@ -86,10 +86,10 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgres://hivly:${POSTGRES_PASSWORD}@postgres:5432/hivly
+      DATABASE_URL: postgres://share2brain:${POSTGRES_PASSWORD}@postgres:5432/share2brain
       REDIS_URL: redis://redis:6379
     volumes:
-      - ./Hivly.config.yml:/app/Hivly.config.yml:ro
+      - ./Share2Brain.config.yml:/app/Share2Brain.config.yml:ro
     depends_on:
       migrator:
         condition: service_completed_successfully
@@ -108,7 +108,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgres://hivly:${POSTGRES_PASSWORD}@postgres:5432/hivly
+      DATABASE_URL: postgres://share2brain:${POSTGRES_PASSWORD}@postgres:5432/share2brain
       REDIS_URL: redis://redis:6379
       # Embeddings (Indexer, Story 3.3). base_url only for "custom".
       EMBEDDINGS_API_KEY: ${EMBEDDINGS_API_KEY}
@@ -117,7 +117,7 @@ services:
       ENRICHMENT_LLM_API_KEY: ${ENRICHMENT_LLM_API_KEY}
       ENRICHMENT_LLM_BASE_URL: ${ENRICHMENT_LLM_BASE_URL:-}
     volumes:
-      - ./Hivly.config.yml:/app/Hivly.config.yml:ro
+      - ./Share2Brain.config.yml:/app/Share2Brain.config.yml:ro
     depends_on:
       migrator:
         condition: service_completed_successfully

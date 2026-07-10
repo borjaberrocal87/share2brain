@@ -1,6 +1,6 @@
 # Sprint Change Proposal — 2026-07-10
 
-**Project:** hivly · **Author:** Borja · **Workflow:** `bmad-correct-course` · **Mode:** Incremental
+**Project:** share2brain · **Author:** Borja · **Workflow:** `bmad-correct-course` · **Mode:** Incremental
 **Classification:** Moderate (frontend-only; adds a story + updates unit/e2e harness)
 
 ---
@@ -14,13 +14,13 @@ read row* instead of *emphasising the unread one*, which makes consumed knowledg
 inactive rather than simply "done".
 
 **How discovered.** Design review after Story 7.5 (`web: DocsView render of title/description/link
-+ UX`). Borja updated the reference design `docs/context/design/KeepHive Web.dc.html` to a new
++ UX`). Borja updated the reference design `docs/context/design/Share2Brain Web.dc.html` to a new
 treatment and flagged the "disabled feeling" of read rows.
 
 **Evidence.**
 - Implemented read-state styling: `packages/web/src/components/DocsView.tsx:431-443`
   (grey dot + `--text-muted` title at weight 400).
-- Updated design `docs/context/design/KeepHive Web.dc.html`: read → checkmark; unread → amber dot +
+- Updated design `docs/context/design/Share2Brain Web.dc.html`: read → checkmark; unread → amber dot +
   glow + "Nuevo" badge + row accent; título/descripción/link split into separate columns.
 
 ---
@@ -39,7 +39,7 @@ treatment and flagged the "disabled feeling" of read rows.
 | PRD | None | Resource model (title/description/link) unchanged; purely visual. |
 | Architecture (AD-1…AD-13) | None | Frontend-only. No schema, no Zod contract, no RBAC. SPA static (AD-3) preserved. |
 | data-model / api-spec | None | `title/description/link` exist since Story 7.1. |
-| UX / design | Updated (source) | `KeepHive Web.dc.html` already carries the new treatment. |
+| UX / design | Updated (source) | `Share2Brain Web.dc.html` already carries the new treatment. |
 
 ### Technical Impact (frontend-only)
 - `packages/web/src/components/DocsView.tsx` — `DocRow`: 4→6 column grid; header
@@ -101,5 +101,5 @@ See Section 2 "Technical Impact".
   3. `bmad-dev-story` → implement (branch `feat/8-1-docsview-read-unread-redesign`), then
      `bmad-code-review` → `bmad-checkpoint-preview`.
 - **Success criteria:** read rows no longer read as disabled; unread rows carry dot+glow+"Nuevo"
-  badge+accent; 6-column layout matches `KeepHive Web.dc.html`; lint+test+build green with updated
+  badge+accent; 6-column layout matches `Share2Brain Web.dc.html`; lint+test+build green with updated
   unit and e2e assertions.

@@ -2,8 +2,8 @@
 // EXISTING QueryEmbedder + EmbeddingSearchRepository rather than hand-writing a
 // new pgvector query (D4) — this inherits AD-12 (RBAC-in-query) and the
 // deleted-message exclusion (D1) for free. Mirrors searchService.ts's fast path.
-import { SearchFragmentSchema, type SearchFragment } from '@hivly/shared/schemas';
-import type { Logger } from '@hivly/shared/logger';
+import { SearchFragmentSchema, type SearchFragment } from '@share2brain/shared/schemas';
+import type { Logger } from '@share2brain/shared/logger';
 
 import type { EmbeddingSearchRepository } from '../domain/repositories/embeddingSearchRepository.js';
 import type { QueryEmbedder } from '../domain/repositories/queryEmbedder.js';

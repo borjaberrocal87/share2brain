@@ -11,7 +11,7 @@ baseline_commit: 1ff69b1030bc466798c728f1d510252f32a80a04
 Status: done
 
 <!-- Ultimate context engine analysis completed - comprehensive developer guide created
-     (design HTML placeholder values extracted from the KeepHive Web.dc.html script block;
+     (design HTML placeholder values extracted from the Share2Brain Web.dc.html script block;
      current DocsView.tsx / DocsView.test.tsx / docs.spec.ts / components.css / global.css
      read in full; 7.5/7.6 story + review intelligence folded in). -->
 
@@ -47,7 +47,7 @@ Zero handler/state/effect/API changes. If you find yourself editing `handleRowCl
 
 ## Design source of truth (extracted, authoritative)
 
-The reference design `docs/context/design/KeepHive Web.dc.html` is a single-line encoded mock —
+The reference design `docs/context/design/Share2Brain Web.dc.html` is a single-line encoded mock —
 do NOT try to re-read it; its DocsView treatment and its script's placeholder values are
 extracted verbatim here. Design tokens map to app tokens (established `--tx*` map, Story 5.3):
 `--tx`→`--text-primary`, `--tx2`→`--text-secondary`, `--tx3`→`--text-tertiary`,
@@ -366,7 +366,7 @@ order is the invariant you must preserve).
 - [Source: _bmad-output/planning-artifacts/epics.md:1013-1040 — Épico 8 + Historia 8.1 ACs]
 - [Source: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-10.md — trigger,
   impact analysis, layout decision (Borja), branch name]
-- [Source: docs/context/design/KeepHive Web.dc.html — extracted verbatim in "Design source of
+- [Source: docs/context/design/Share2Brain Web.dc.html — extracted verbatim in "Design source of
   truth" above; do not re-parse the file]
 - [Source: packages/web/src/components/DocsView.tsx:297-535 — current header/row implementation]
 - [Source: packages/web/tests/docs.spec.ts — 7.6 harness patterns + ordering invariants]
@@ -457,7 +457,7 @@ after implementation.
 
 - 2026-07-10 — Story created (bmad-create-story). DocsView read/unread redesign + 6-col
   layout, per `sprint-change-proposal-2026-07-10.md`. Re-skin, not re-wire: zero
-  handler/effect changes. Design placeholder values extracted verbatim from `KeepHive
+  handler/effect changes. Design placeholder values extracted verbatim from `Share2Brain
   Web.dc.html`. 3 ratified defaults flagged for review (D1 link icon-button opens the
   resource w/ amber hover; D5 `--dot-read` token removed; D6 title single-line → clamp-2).
   Status: ready-for-dev.

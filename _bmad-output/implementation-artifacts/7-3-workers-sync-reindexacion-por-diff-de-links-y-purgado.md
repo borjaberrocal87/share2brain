@@ -33,7 +33,7 @@ so that the curated resource index stays consistent with Discord edits and delet
 - **D1 — Failure classification is byte-for-byte the 7.2 contract**: fetch failure (`timeout`/`http_error`/`network_error`/`too_large`/`too_many_redirects`) is NOT a processing failure → enrich from message text only (row still produced). SSRF block (`ssrf_blocked`/`scheme_disallowed`) is NOT a failure → that URL is skipped, no row. Only LLM (`EnrichmentError`), embedding, or DB errors are real failures → no writes committed, no XACK, PEL replay (no retry cap, P2.2). [Source: docs/context/TECHNICAL-DESIGN.md §7:540-546]
 - **D2 — Tombstone guard (closes 6.2 deferral #4's resurrect hazard)**: an update for a message whose `deleted_at IS NOT NULL` is a `debug`-log + ACK no-op. Previously an update arriving after a hard delete re-inserted purged embeddings (storage-only leak hidden by the anti-join). Unknown message stays a `debug` + ACK no-op (create path owns insertion).
 - **D3 — `processDelete` survives unchanged.** Its predicates (`:messageId = ANY(message_ids)`, read-status-first FK order, soft = `deleted_at` only / hard = superset, idempotent 0-rows-is-success) are already URL-count-agnostic and correct post-7.2. 7.3 only re-confirms it via tests against per-URL rows. Do not rewrite it.
-- **D4 — Demolition (the 7.2 D4 hand-off)**: delete `indexer/chunking.ts` + `chunking.test.ts`; drop `@langchain/textsplitters` from `packages/workers/package.json`; remove the `MAX_CHUNK_SIZE` import and the boot clamp warning from `main.ts`; retire the `knowledge` block from the shared config Zod schema, `Hivly.config.yml` and `Hivly.config.yml.example`. Zod strips unknown keys by default, so a deployed yml still carrying `knowledge:` keeps booting — removal is not a breaking config change.
+- **D4 — Demolition (the 7.2 D4 hand-off)**: delete `indexer/chunking.ts` + `chunking.test.ts`; drop `@langchain/textsplitters` from `packages/workers/package.json`; remove the `MAX_CHUNK_SIZE` import and the boot clamp warning from `main.ts`; retire the `knowledge` block from the shared config Zod schema, `Share2Brain.config.yml` and `Share2Brain.config.yml.example`. Zod strips unknown keys by default, so a deployed yml still carrying `knowledge:` keeps booting — removal is not a breaking config change.
 - **D5 — Reuse by relocation, not duplication**: the per-message URL pipeline that 7.2 left module-private in `indexBatch.ts` (`processMessage`, `ResourceRow`, `MessageOutcome`, `MAX_URLS_PER_MESSAGE`) moves to `packages/workers/src/enrichment/` (e.g. `resourceRows.ts`) and gains an optional reuse lookup (`reuse?: (link: string) => { title; description; embedding } | undefined`). The Indexer re-imports it (passing no lookup); sync passes the old-row map. 7.2's dev notes explicitly planned this ("so 7.3 imports … and deletes its duplication"). Same-package relocation — AD-2 is about cross-service imports, not intra-package structure.
 - **D6 — The cap applies to edits too**: `MAX_URLS_PER_MESSAGE = 20` (module constant, not config) with the same first-N + `logger.warn` dropped-count behavior.
 - **D7 — Idempotent persistence stays UPSERT**: inside the rebuild transaction the inserts use `.onConflictDoUpdate({ target: embeddings.chunkKey, … })` even though old rows were just deleted — a concurrently-processing Indexer `created` event for the same message must converge, not crash (AD-13 last-write-wins per `chunk_key` is the ratified convergence model).
@@ -43,7 +43,7 @@ so that the curated resource index stays consistent with Discord edits and delet
 ## Acceptance Criteria
 
 **AC-1 — Link-diff re-index on update (FR6).**
-**Dado** que el Sync worker consume un evento `discord.message.updated` del grupo `hivly:sync` para un mensaje existente y no tombstoned
+**Dado** que el Sync worker consume un evento `discord.message.updated` del grupo `share2brain:sync` para un mensaje existente y no tombstoned
 **Cuando** lo procesa
 **Entonces** re-extrae las URLs de `newContent` con `extractUrls(newContent, config.enrichment.fetch.allowed_schemes)` (mismo cap `MAX_URLS_PER_MESSAGE = 20` + `warn` con el recuento descartado)
 **Y** hace diff por `link` normalizado contra las filas existentes del mensaje (`SELECT id, chunk_key, link, title, description, embedding FROM embeddings WHERE :messageId = ANY(message_ids)`)
@@ -78,7 +78,7 @@ so that the curated resource index stays consistent with Discord edits and delet
 
 **AC-6 — Demolition (D4).**
 **Dado** el repositorio tras esta historia
-**Entonces** `indexer/chunking.ts` y `chunking.test.ts` no existen; `@langchain/textsplitters` no está en `packages/workers/package.json`; `main.ts` no importa `MAX_CHUNK_SIZE` ni emite el clamp warning; el bloque `knowledge` no existe en el Zod schema de config compartido, ni en `Hivly.config.yml`, ni en `Hivly.config.yml.example`, ni en fixtures de test
+**Entonces** `indexer/chunking.ts` y `chunking.test.ts` no existen; `@langchain/textsplitters` no está en `packages/workers/package.json`; `main.ts` no importa `MAX_CHUNK_SIZE` ni emite el clamp warning; el bloque `knowledge` no existe en el Zod schema de config compartido, ni en `Share2Brain.config.yml`, ni en `Share2Brain.config.yml.example`, ni en fixtures de test
 **Y** `npm run lint`, `npm run build` y la suite completa pasan sin referencias colgantes (grep repo-wide de `chunkContents|chunk_size|chunk_overlap|grouping_window|textsplitters|MAX_CHUNK_SIZE|knowledge\.` limpio en código activo).
 
 **AC-7 — Wiring (AD-8).**
@@ -108,7 +108,7 @@ so that the curated resource index stays consistent with Discord edits and delet
   - [x] Catch: `error` log `{streamId, stream, messageId, channelId, reason}` (jamás contenido) + `{ack: false}`; rethrow-aware con abort (patrón 7.2 P3: no tragar `AbortError`)
 - [x] Task 3 — Relajar `parseUpdatedEvent` (AC-2): `newContent` puede ser vacío (usa `?? ''` y elimina el check non-blank); `timestamp` sigue non-blank; actualizar doc-comment y `events.test.ts`
 - [x] Task 4 — Wiring (AC-7): `ProcessUpdateDeps` + `RunSyncDeps` ganan `enrichModel: EnrichmentChatModel` y `guard: GuardedDispatcher`; `main.ts:237-248` los pasa a `runSync`; `consumer.ts` los propaga a `processUpdate`
-- [x] Task 5 — Demolición (AC-6): borrar `chunking.ts`/`chunking.test.ts`; quitar `@langchain/textsplitters` (workers `package.json`); limpiar `main.ts` (import `MAX_CHUNK_SIZE` + clamp warn `:90-97`, reword del comment block); quitar `knowledge` del schema Zod (`packages/shared/src/config/index.ts:80-84`), de `Hivly.config.yml`, `Hivly.config.yml.example` y de TODOS los fixtures (grep repo-wide; los fixtures de `sync.integration.test.ts:31-40` y `processUpdate.test.ts` lo incluyen hoy)
+- [x] Task 5 — Demolición (AC-6): borrar `chunking.ts`/`chunking.test.ts`; quitar `@langchain/textsplitters` (workers `package.json`); limpiar `main.ts` (import `MAX_CHUNK_SIZE` + clamp warn `:90-97`, reword del comment block); quitar `knowledge` del schema Zod (`packages/shared/src/config/index.ts:80-84`), de `Share2Brain.config.yml`, `Share2Brain.config.yml.example` y de TODOS los fixtures (grep repo-wide; los fixtures de `sync.integration.test.ts:31-40` y `processUpdate.test.ts` lo incluyen hoy)
 - [x] Task 6 — Unit tests (AC-9): reescribir `processUpdate.test.ts` (diff matrix, reuse, purge, guards, failure classification, cap, no-content-logged); tocar `consumer.test.ts` solo al nivel de deps; `processDelete.test.ts` intacto; tests de `resourceRows.ts` (movidos + caso `reuse`)
 - [x] Task 7 — Integration tests (AC-9): reescribir el caso update de `sync.integration.test.ts` + añadir los casos del AC-9 (patrón `indexBatch.integration.test.ts`: `openTestClients`, salt por run, cleanup por `chunk_key LIKE`, fake `EnrichmentChatModel` inyectado, `block_private_ips: false` + servidor `node:http` efímero si se ejercita fetch real)
 - [x] Task 8 — Docs (AC-8): TD §5.3 pseudocódigo Sync + §7 paréntesis + §13 config sample; SPINE §Deferred línea batching; revisar data-model.md
@@ -120,10 +120,10 @@ so that the curated resource index stays consistent with Discord edits and delet
 
 - **AD-13**: XACK solo tras éxito; PEL = DLQ implícita sin retry-cap; convergencia last-write-wins por `chunk_key` bajo IA no-determinista (ratificado en 7.2). [Source: docs/context/ARCHITECTURE-SPINE.md:117-139]
 - **AD-5**: solo `packages/shared` hace DDL — esta historia NO toca `schema.ts` ni genera migración (el schema por-URL ya existe desde 7.1). Retirar `knowledge` del config Zod NO es DDL.
-- **AD-2**: nada de imports entre servicios; toda la reutilización es intra-`packages/workers` + `@hivly/shared`.
+- **AD-2**: nada de imports entre servicios; toda la reutilización es intra-`packages/workers` + `@share2brain/shared`.
 - **AD-8**: config inválida aborta el boot; Zod hace strip de claves desconocidas → yml viejos con `knowledge:` siguen arrancando.
 - **FK crítico**: `user_read_status.embedding_id → embeddings.id` SIN `ON DELETE` (RESTRICT de facto) — todo `DELETE FROM embeddings` DEBE borrar antes sus `user_read_status` en la misma tx. "This is the #1 way hard-delete ships broken" (6.2 note #5; 7.2 lo re-confirmó: "7.3's purge owns that"). [Source: packages/shared/src/db/schema.ts:139-155]
-- **Contratos de eventos**: interfaces TS (NO Zod) en `packages/shared/src/types/events.ts` — `MessageUpdatedEvent {type:'discord.message.updated', messageId, channelId, guildId, timestamp, newContent}`, `MessageDeletedEvent` (sin contenido); `STREAM_KEYS.DISCORD_MESSAGES_UPDATED/DELETED`, `CONSUMER_GROUPS.SYNC='hivly:sync'`. Nunca hardcodear. No cambian en esta historia.
+- **Contratos de eventos**: interfaces TS (NO Zod) en `packages/shared/src/types/events.ts` — `MessageUpdatedEvent {type:'discord.message.updated', messageId, channelId, guildId, timestamp, newContent}`, `MessageDeletedEvent` (sin contenido); `STREAM_KEYS.DISCORD_MESSAGES_UPDATED/DELETED`, `CONSUMER_GROUPS.SYNC='share2brain:sync'`. Nunca hardcodear. No cambian en esta historia.
 
 ### Current state — verbatim anchors (verified 2026-07-09, main @ c557b96)
 
@@ -133,7 +133,7 @@ so that the curated resource index stays consistent with Discord edits and delet
 - Flujo actual: existence check (`:48-59`, select por `inArray` — NO mira `deleted_at`) → `chunkContents([newContent], {chunk_size, chunk_overlap})` + `embedder.embedDocuments` + `assertEmbeddingDimensions` fuera de la tx (`:61-76`) → tx (`:78-126`): delete read-status → delete embeddings `ANY(message_ids)` → `UPDATE discord_messages SET content, updated_at` → inserta chunks con `chunkKey: \`${messageId}:${i}\``, `title: ''`, `description: chunks[i]`, `link: ''` + `onConflictDoUpdate` (`:97-123`) → stamp `indexed_at` (`:125`) → catch `{ack:false}` (`:129-140`).
 - Hoy una edición **destruye las filas enriquecidas de 7.2 y las sustituye por basura chunked** (`title:''`, `link:''`, chunkIndex ≠ urlIndex) — ese es el bug de producto que esta historia elimina.
 - `sync/processDelete.ts`: soft `:41-47`, hard `:49-61` (tx read-status → embeddings → `deleted_at`), catch `:64-75` con `policy` en el log. Correcto post-7.2 — NO tocar (D3).
-- `sync/consumer.ts`: `runSync(deps)` (`:47`), deps `{redisUpdated, redisDeleted, db, embedder, config, logger, signal}` (`:29-40`) — un cliente Redis dedicado POR loop bloqueante; `CONSUMER='consumer-1'`, `COUNT=10`, `BLOCK_MS=5000` (`:25-27`); dos `runStreamLoop` bajo el grupo único `hivly:sync` con PEL replay desde `'0'` + live `'>'`, BUSYGROUP tolerado; XACK solo con `{ack:true}` (`:165-183`).
+- `sync/consumer.ts`: `runSync(deps)` (`:47`), deps `{redisUpdated, redisDeleted, db, embedder, config, logger, signal}` (`:29-40`) — un cliente Redis dedicado POR loop bloqueante; `CONSUMER='consumer-1'`, `COUNT=10`, `BLOCK_MS=5000` (`:25-27`); dos `runStreamLoop` bajo el grupo único `share2brain:sync` con PEL replay desde `'0'` + live `'>'`, BUSYGROUP tolerado; XACK solo con `{ack:true}` (`:165-183`).
 - `sync/events.ts`: `parseUpdatedEvent` (`:23`) exige hoy `newContent` non-blank (`:26-35`) — F3 lo relaja; `timestamp` non-blank DEBE quedarse (poison-pill de `updated_at` NOT NULL, doc-comment `:16-20`). `parseDeletedEvent` (`:53`) sin cambios.
 - `main.ts`: modelos construidos UNA vez (`:202-208`): `embedder = createEmbeddingsModel(config.embeddings)`, `enrichModel = createChatModel(config.enrichment.llm)`, `guard = createGuardedDispatcher(config.enrichment.fetch)` — hoy solo el Indexer los recibe; `runSync` (`:237-248`) recibe solo `embedder`. Gating `config.sync.enabled` (`:214-223`) crea+conecta `syncRedisUpdated`/`syncRedisDeleted`. Clamp warning a eliminar: `:90-97` + import `MAX_CHUNK_SIZE` en `:18`. Shutdown: abort → race 7s → quit Redis (5s c/u) → `db.$client.end()` 10s.
 
@@ -187,7 +187,7 @@ Todo ya existe en `packages/workers/src/enrichment/`; **no escribas ningún fetc
 
 - Nuevo: `packages/workers/src/enrichment/resourceRows.ts` (+ test) — relocación de `indexBatch.ts`, no código nuevo salvo el hook `reuse`.
 - Reescrito: `packages/workers/src/sync/processUpdate.ts` (+ test), `sync.integration.test.ts` (caso update + casos nuevos).
-- Tocado: `sync/types.ts` o deps-interfaces (enrichModel/guard), `sync/consumer.ts` (propagación), `sync/events.ts` (blank relax), `main.ts` (inyección + demolición clamp), `packages/workers/package.json` (−`@langchain/textsplitters`), `packages/shared/src/config/index.ts` (−`knowledge`), `Hivly.config.yml`(.example), fixtures.
+- Tocado: `sync/types.ts` o deps-interfaces (enrichModel/guard), `sync/consumer.ts` (propagación), `sync/events.ts` (blank relax), `main.ts` (inyección + demolición clamp), `packages/workers/package.json` (−`@langchain/textsplitters`), `packages/shared/src/config/index.ts` (−`knowledge`), `Share2Brain.config.yml`(.example), fixtures.
 - Borrado: `packages/workers/src/indexer/chunking.ts`, `chunking.test.ts`.
 - Sin migración, sin cambio de `schema.ts`, sin dependencia nueva, sin cambio en bot/backend/web.
 
@@ -232,7 +232,7 @@ fixed inline during Task 7/9 before the gate went green.
   the SAME boot-built `enrichModel`/`guard` used by the Indexer into `runSync`.
 - Task 5: `indexer/chunking.ts`+test deleted; `@langchain/textsplitters` dropped from
   `packages/workers/package.json`; `main.ts`'s `MAX_CHUNK_SIZE` import + clamp warning removed;
-  `knowledge` block removed from `HivlyConfigSchema`, `Hivly.config.yml`(.example), and the
+  `knowledge` block removed from `Share2BrainConfigSchema`, `Share2Brain.config.yml`(.example), and the
   `packages/shared/src/config/index.test.ts` fixture.
 - Task 6: `processUpdate.test.ts` rewritten (17 cases: tombstone/unknown guards, added/kept/
   removed/reordered diff, late-index-entry, cap-20, LLM/embed failure no-ack, content-never-logged);
@@ -259,8 +259,8 @@ fixed inline during Task 7/9 before the gate went green.
 - `npm run test` (unit+web) → 787 passed, 1 skipped (85 files).
 - `npm run build` → clean across all 5 packages.
 - `npm run test:integration` (backend+bot+workers, real Postgres+Redis) → 118 passed (19 files).
-- `npm run test:e2e -w @hivly/web` → 13/13 chromium passed, pass-count unchanged (this story
-  touches no `@hivly/web` code).
+- `npm run test:e2e -w @share2brain/web` → 13/13 chromium passed, pass-count unchanged (this story
+  touches no `@share2brain/web` code).
 - Idempotency evidence (§3.2): `sync.integration.test.ts` — "should converge to the same single
   row on redelivery of the same update event (idempotency, AD-13)" redelivers the identical
   `MessageUpdatedEvent` twice against a real DB and asserts exactly one row survives with zero
@@ -268,7 +268,7 @@ fixed inline during Task 7/9 before the gate went green.
 - No schema/DDL change, no new dependency, no bot/backend/web behavior change — nothing to restore
   beyond each integration test's own `afterAll` cleanup (already self-contained).
 - §3.3 (API endpoints) and §3.4 (Playwright UI verification beyond the unchanged full run) are not
-  applicable — this story touches no HTTP endpoint and no `@hivly/web` UI code.
+  applicable — this story touches no HTTP endpoint and no `@share2brain/web` UI code.
 
 ### File List
 
@@ -289,8 +289,8 @@ fixed inline during Task 7/9 before the gate went green.
 - `packages/workers/package.json`
 - `packages/shared/src/config/index.ts`
 - `packages/shared/src/config/index.test.ts`
-- `Hivly.config.yml`
-- `Hivly.config.yml.example`
+- `Share2Brain.config.yml`
+- `Share2Brain.config.yml.example`
 - `docs/context/TECHNICAL-DESIGN.md`
 - `docs/context/ARCHITECTURE-SPINE.md`
 - `docs/data-model.md`
@@ -312,7 +312,7 @@ fixed inline during Task 7/9 before the gate went green.
   positional `chunk_key`. Zero-URL/blank edits purge all rows; tombstoned/unknown messages are
   ack'd no-ops. `enrichModel`/`guard` now injected into `runSync`/`processUpdate` from the same
   boot-built instances the Indexer uses. Demolished `chunking.ts`, `@langchain/textsplitters`, and
-  the `knowledge` config block repo-wide (code + `Hivly.config.yml`(.example) + fixtures + stale
+  the `knowledge` config block repo-wide (code + `Share2Brain.config.yml`(.example) + fixtures + stale
   doc references). Gate green: lint 0 / 787 unit+web / build clean (5 pkgs) / 118 integration (19
   files) / 13 e2e chromium unchanged. No migration, no schema change, no new dependency, no
   bot/backend/web behavior change. Status: review.

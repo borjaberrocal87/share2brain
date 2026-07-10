@@ -1,5 +1,5 @@
 // The Sync consumer loop (AC-1…AC-6). Consumes BOTH `discord.message.updated`
-// and `discord.message.deleted` under the ONE `hivly:sync` consumer group, via
+// and `discord.message.deleted` under the ONE `share2brain:sync` consumer group, via
 // TWO independent single-stream loops (DECISION 5) — each structurally
 // identical to `runIndexer` (`indexer/consumer.ts`): idempotent xGroupCreate +
 // MKSTREAM, PEL replay from '0' advancing past each batch, then a live '>' loop
@@ -10,10 +10,10 @@
 // single node-redis connection a parked `XREADGROUP … BLOCK` serializes the
 // other loop's read and its `xAck` behind it (see indexer/consumer.ts's header
 // comment). So the updated- and deleted-stream loops truly drain in parallel.
-import type { HivlyConfig } from '@hivly/shared';
-import type { Database } from '@hivly/shared/db';
-import type { RedisClient } from '@hivly/shared/redis';
-import { CONSUMER_GROUPS, STREAM_KEYS } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { Database } from '@share2brain/shared/db';
+import type { RedisClient } from '@share2brain/shared/redis';
+import { CONSUMER_GROUPS, STREAM_KEYS } from '@share2brain/shared/types/events';
 
 import type { EnrichmentChatModel } from '../enrichment/enrich.js';
 import type { GuardedDispatcher } from '../enrichment/ssrfGuard.js';
@@ -35,7 +35,7 @@ export interface RunSyncDeps {
   redisDeleted: RedisClient;
   db: Database;
   embedder: Embedder;
-  config: HivlyConfig;
+  config: Share2BrainConfig;
   logger: Logger;
   /** The enrichment chat model — built once at boot, injected (AC-7, the SAME
    *  instance given to the Indexer). Only the updated-stream loop uses it. */

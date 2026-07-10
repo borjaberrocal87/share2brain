@@ -15,7 +15,7 @@ Status: done
 
 ## Story
 
-As a **community member consuming Hivly's search, documents and chat**,
+As a **community member consuming Share2Brain's search, documents and chat**,
 I want **the backend to project the curated resource index for real end-to-end — a RAG agent that
 reasons and cites in resource terms (title + source link, FR13), strict link contracts, retrieval
 that survives a corrupt row, and an e2e seed with realistic resources**,
@@ -92,7 +92,7 @@ language, the e2e seed and every fixture insert `title: ''`/`link: ''`, and
    `GET /api/conversations/:conversationId` round-trips it; `ChatWidget.tsx` citation construction
    gains `title` (mechanical compile ripple ONLY — no chip redesign).
 3. **RAG prompt reframed to the curated resource index (FR13, D5)** — `SYSTEM_PROMPT` in
-   `agent/prompt.ts` rewritten: Hivly answers ONLY from the curated community resources provided as
+   `agent/prompt.ts` rewritten: Share2Brain answers ONLY from the curated community resources provided as
    context; grounds every claim in them; cites channel and author inline AND includes the resource
    link when recommending a resource; states plainly when no resource answers the question.
    `buildRAGContext` keeps the `[n] #${channelName} — ${authorName} (${createdAt}):` header +
@@ -145,7 +145,7 @@ language, the e2e seed and every fixture insert `title: ''`/`link: ''`, and
    `POST /api/chat` SSE verified (incremental `token` frames → `citation` frames carrying
    `title`+`link` → `done`); state restored. Gate green and pasted: `npm run lint` (0) &&
    `npm run test` (unit+web) && `npm run build` (5 pkgs) && `npm run test:integration` &&
-   `npm run test:e2e -w @hivly/web` (13 chromium, pass-count unchanged).
+   `npm run test:e2e -w @share2brain/web` (13 chromium, pass-count unchanged).
 
 ## Tasks / Subtasks
 
@@ -395,7 +395,7 @@ assertions (only the fixture flip) since it doesn't exercise search/documents re
   `allowedChannelIds`, 401/400/404 unified `{error, code}` shapes, and the SSE `token`→`citation`
   (title+link)→`done` frame sequence — all passing. Gate green: `npm run lint` (0) &&
   `npm run test` (86 files / 800 passed, 1 skipped) && `npm run build` (5 packages clean) &&
-  `npm run test:integration` (19 files / 120 passed) && `npm run test:e2e -w @hivly/web` (13
+  `npm run test:integration` (19 files / 120 passed) && `npm run test:e2e -w @share2brain/web` (13
   chromium, pass-count unchanged). No DDL, no migration, no new dependency — confirmed by the
   clean `tsc --noEmit` + `drizzle-kit` untouched.
 

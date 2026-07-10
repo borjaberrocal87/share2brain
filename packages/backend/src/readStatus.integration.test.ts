@@ -6,7 +6,7 @@
 //
 // Requires infra:  docker compose up -d postgres redis
 // Run:             npm run test:integration
-import { sql } from '@hivly/shared/db';
+import { sql } from '@share2brain/shared/db';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 

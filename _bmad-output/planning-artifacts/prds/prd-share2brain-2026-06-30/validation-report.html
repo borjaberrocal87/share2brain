@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>PRD Validation: Hivly Self-Hosted</title>
+<title>PRD Validation: Share2Brain Self-Hosted</title>
 <style>
   :root {
     --bg: #fafaf9;
@@ -203,7 +203,7 @@
 
     <header class="report-header">
       <div class="title">
-        <h1>Hivly Self-Hosted — Validation Report</h1>
+        <h1>Share2Brain Self-Hosted — Validation Report</h1>
         <div class="subtitle">docs/PRD.md</div>
       </div>
       <div class="grade grade-poor">Poor</div>
@@ -489,7 +489,7 @@
               <h3 class="finding-title">Distinción Operador vs Admin subdesarrollada</h3>
               <span class="finding-location">§3</span>
             </header>
-            <div class="finding-note">El PRD asume que el operador y el Admin de Discord son la misma persona, pero no tienen por qué serlo. Si son diferentes, el Admin no tiene ruta de acceso a Hivly (sin endpoints de admin, sin login).</div>
+            <div class="finding-note">El PRD asume que el operador y el Admin de Discord son la misma persona, pero no tienen por qué serlo. Si son diferentes, el Admin no tiene ruta de acceso a Share2Brain (sin endpoints de admin, sin login).</div>
             <div class="finding-fix"><strong>Fix:</strong> Declarar explícitamente si Operador = Admin es una restricción requerida o una asunción.</div>
           </article>
           <article class="finding">
@@ -678,7 +678,7 @@
               <span class="finding-location">§12 Despliegue, §17 Checklist</span>
             </header>
             <div class="finding-note">El checklist menciona "Backup de base de datos programado" como checkbox post-despliegue, pero el PRD no especifica: frecuencia de backup, política de retención, procedimiento de restore, o qué ocurre con <code>user_read_status</code> después de un restore. Para un producto self-hosted, el operador es responsable — y el PRD no da orientación.</div>
-            <div class="finding-fix"><strong>Fix:</strong> Añadir sección definiendo el contrato mínimo de backup: <code>pg_dump</code> diario, cadencia de snapshot de volumen, y procedimiento de restore documentado. Hacer la configuración de backup parte de <code>Hivly.config.yml</code>.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Añadir sección definiendo el contrato mínimo de backup: <code>pg_dump</code> diario, cadencia de snapshot de volumen, y procedimiento de restore documentado. Hacer la configuración de backup parte de <code>Share2Brain.config.yml</code>.</div>
           </article>
           <article class="finding">
             <header>

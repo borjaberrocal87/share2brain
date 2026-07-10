@@ -3,7 +3,7 @@
 // ErrorSchema shape. Raw Discord/DB errors are never leaked to the client.
 import { randomBytes } from 'node:crypto';
 
-import { AUTH_ERROR } from '@hivly/shared/schemas';
+import { AUTH_ERROR } from '@share2brain/shared/schemas';
 import type { Request, Response } from 'express';
 
 import type { AuthService } from '../../application/services/authService.js';

@@ -5,10 +5,10 @@
 //
 // Requires infra:  docker compose up -d postgres redis
 // Run:             npm run test:integration
-import type { HivlyConfig } from '@hivly/shared';
-import { sql } from '@hivly/shared/db';
-import type { RedisClient } from '@hivly/shared/redis';
-import { STREAM_KEYS } from '@hivly/shared/types/events';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import { sql } from '@share2brain/shared/db';
+import type { RedisClient } from '@share2brain/shared/redis';
+import { STREAM_KEYS } from '@share2brain/shared/types/events';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { persistMessage, type IngestibleMessage } from './persistMessage.js';
@@ -16,7 +16,7 @@ import { openTestClients, type TestClients } from '../test-helpers.js';
 
 const config = {
   discord: { guild_id: 'itest-guild-fallback' },
-} as unknown as HivlyConfig;
+} as unknown as Share2BrainConfig;
 
 /** A unique-per-run message id so parallel/repeat runs never collide on the PK. */
 function uniqueId(): string {

@@ -72,7 +72,7 @@ enrichment:
     timeout_ms: 5000
     max_bytes: 2000000
     max_redirects: 3
-    user_agent: "HivlyBot/1.0"
+    user_agent: "Share2BrainBot/1.0"
     allowed_schemes:
       - "https"
     block_private_ips: true
@@ -88,7 +88,7 @@ describe('loadConfig', () => {
   };
 
   beforeEach(() => {
-    dir = mkdtempSync(join(tmpdir(), 'hivly-config-'));
+    dir = mkdtempSync(join(tmpdir(), 'share2brain-config-'));
   });
 
   afterEach(() => {
@@ -179,11 +179,11 @@ describe('loadConfig', () => {
   });
 
   it('should throw a descriptive error when a referenced env var is unset', () => {
-    delete process.env.HIVLY_TEST_UNSET_VAR;
-    const yaml = VALID_YAML.replace('"111111111111111111"', '"${HIVLY_TEST_UNSET_VAR}"');
+    delete process.env.SHARE2BRAIN_TEST_UNSET_VAR;
+    const yaml = VALID_YAML.replace('"111111111111111111"', '"${SHARE2BRAIN_TEST_UNSET_VAR}"');
     const path = writeFixture('unset.yml', yaml);
 
-    expect(() => loadConfig(path)).toThrow(/HIVLY_TEST_UNSET_VAR/);
+    expect(() => loadConfig(path)).toThrow(/SHARE2BRAIN_TEST_UNSET_VAR/);
   });
 
   it('should throw a descriptive error when a required key is missing', () => {
@@ -260,7 +260,7 @@ describe('loadConfig', () => {
   });
 
   it('should accept an empty base_url for non-custom providers (shipped-config pattern)', () => {
-    // Mirrors Hivly.config.yml: base_url references ${LLM_BASE_URL}/${EMBEDDINGS_BASE_URL},
+    // Mirrors Share2Brain.config.yml: base_url references ${LLM_BASE_URL}/${EMBEDDINGS_BASE_URL},
     // which interpolate to "" when the operator leaves them blank (non-custom).
     const yaml = VALID_YAML.replace(
       '  api_key: "sk-ant-test"',

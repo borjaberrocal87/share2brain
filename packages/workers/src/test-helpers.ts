@@ -1,16 +1,16 @@
 // Integration test helper: opens the SAME real clients the workers process uses at
-// startup (pooled pg via @hivly/shared/db + node-redis via @hivly/shared/redis) so
+// startup (pooled pg via @share2brain/shared/db + node-redis via @share2brain/shared/redis) so
 // tests exercise the true DB/Redis path, not a mock. Mirrors packages/bot's helper,
-// importing only from @hivly/shared (AD-2 — workers never import another service).
+// importing only from @share2brain/shared (AD-2 — workers never import another service).
 //
 // Requires a live Postgres + Redis — `docker compose up -d postgres redis`.
-import { createDatabase, type Database } from '@hivly/shared/db';
-import { createRedisClient, type RedisClient } from '@hivly/shared/redis';
+import { createDatabase, type Database } from '@share2brain/shared/db';
+import { createRedisClient, type RedisClient } from '@share2brain/shared/redis';
 
 // Dev defaults match the ports docker-compose exposes on localhost. Override via env
 // (e.g. CI): DATABASE_URL / REDIS_URL. Password matches the compose `.env` placeholder.
 const DATABASE_URL =
-  process.env.DATABASE_URL ?? 'postgres://hivly:changeme@127.0.0.1:5432/hivly';
+  process.env.DATABASE_URL ?? 'postgres://share2brain:changeme@127.0.0.1:5432/share2brain';
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
 
 export interface TestClients {

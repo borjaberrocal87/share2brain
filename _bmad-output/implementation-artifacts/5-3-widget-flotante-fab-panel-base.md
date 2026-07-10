@@ -25,7 +25,7 @@ so that **I can reach the agent without leaving my current context**.
 ## Acceptance Criteria
 
 Derived from epics.md §Historia 5.3, UX-DR15/16/17/18/23, and the pixel-exact prototype
-`docs/context/design/KeepHive Web.dc.html` (lines 284–348). The prototype is the source of truth
+`docs/context/design/Share2Brain Web.dc.html` (lines 284–348). The prototype is the source of truth
 for exact px/color values; **its `--tx*` token names are stale** — use the real names (see Dev
 Notes §Token mapping).
 
@@ -45,7 +45,7 @@ Notes §Token mapping).
      a deep shadow, `overflow: hidden`;
    - animates in with `animation: kh-pop 0.2s ease both`;
    - shows a header (`background: var(--bg-deep)`, bottom border `var(--line)`) containing the
-     hexagon logo + "Hivly" (Space Grotesk 700 15px) + status row (green 6px dot + "Agente de
+     hexagon logo + "Share2Brain" (Space Grotesk 700 15px) + status row (green 6px dot + "Agente de
      conocimiento" in `var(--text-muted)` 11px) + **three** 32×32px icon buttons: **historial**
      (clock), **nueva conversación** (plus), **cerrar** (X). History/new buttons hover to
      `color: var(--accent-ink)` + `border-color: var(--border-hover)`; the close button hovers to
@@ -84,7 +84,7 @@ Notes §Token mapping).
    the populated history is assertable.
 
 8. **Verification gate green** — `npm run lint && npm run test && npm run build` all clean, plus
-   `npm run test:e2e -w @hivly/web` passing on chromium; output pasted in the Dev Agent Record. No
+   `npm run test:e2e -w @share2brain/web` passing on chromium; output pasted in the Dev Agent Record. No
    secrets/behavior mixing; English-only code; Spanish UI copy verbatim.
 
 ## Tasks / Subtasks
@@ -108,7 +108,7 @@ Notes §Token mapping).
         `fetchConversations(params: { page?: number; limit?: number }, signal?: AbortSignal): Promise<ConversationsResponse>`,
         modeled exactly on `api/documents.ts` (`credentials: 'include'`, `!res.ok` throw,
         `ConversationsResponseSchema.parse(...)`). Import types **only** from
-        `@hivly/shared/schemas` (never the root barrel — AD-3 ESLint ban).
+        `@share2brain/shared/schemas` (never the root barrel — AD-3 ESLint ban).
   - [x] Create `packages/web/src/api/conversations.test.ts` mirroring `documents.test.ts`
         (mock `fetch`, assert URL/credentials/parse/throw-on-!ok).
   - [x] Do **NOT** add a detail client (`fetchConversation`) or any chat/SSE client — those are 5.4.
@@ -124,7 +124,7 @@ Notes §Token mapping).
   - [x] Render the FAB (`data-testid="chat-fab"`) when `!chatOpen`; render the panel
         (`data-testid="chat-panel"`, `role="dialog"`, `aria-label="Chat con el agente"`) when
         `chatOpen`. Match every inline style/px/color from the prototype using the **real** tokens.
-  - [x] Header: hexagon logo + "Hivly" + status + 3 icon buttons wired to
+  - [x] Header: hexagon logo + "Share2Brain" + status + 3 icon buttons wired to
         `toggleHistory` / `newChat` / `closeChat`.
   - [x] Message area: render the empty state (`data-testid="chat-empty-state"`) with the 60px
         hexagon, heading, description, and 3 suggestion chips (`data-testid="chat-suggestion"`).
@@ -183,7 +183,7 @@ Notes §Token mapping).
 
 - [x] **Task 11 — Verification gate** (AC: 8)
   - [x] Run and paste: `npm run lint && npm run test && npm run build`, then
-        `npm run test:e2e -w @hivly/web` (chromium; ensure `npx playwright install chromium` done).
+        `npm run test:e2e -w @share2brain/web` (chromium; ensure `npx playwright install chromium` done).
 
 ### Review Findings
 
@@ -238,7 +238,7 @@ sibling element. The `launcherActive` green pulsing dot from UX-DR15 (sending-wh
 5.4's trigger; include the dot markup gated on an internal `launcherActive` boolean that stays
 `false` in 5.3 (forward-compatible, matches the prototype).
 
-Prototype state handlers to mirror (`KeepHive Web.dc.html` lines 550–563):
+Prototype state handlers to mirror (`Share2Brain Web.dc.html` lines 550–563):
 `toggleChat` (open/close + close history), `closeChat`, `toggleHistory`, `selectConv(id)`
 (set active + close history), `newChat` (clear active + close history).
 
@@ -263,7 +263,7 @@ dark `rgb`.
 
 ### AC-vs-source reconciliation (D3)
 The epic AC5 phrasing "header con título 'Chat'" is loose. **UX-DR16 + the prototype are
-authoritative for detail**: the header shows the hexagon logo + brand "**Hivly**" + status
+authoritative for detail**: the header shows the hexagon logo + brand "**Share2Brain**" + status
 "**Agente de conocimiento**", **not** a literal "Chat" heading. Implement per UX-DR16/prototype
 (this is intentional, not a miss — noted so review doesn't flag it).
 
@@ -322,13 +322,13 @@ ellipsis + `font-size:10.5px; color:var(--text-subtle)` time), hover `background
 page, limit, total }`; `ConversationSummary { id, title, createdAt, updatedAt }` (title is
 **derived server-side** from the first user message — there is no title column;
 `CONVERSATION_TITLE_MAX_LENGTH = 80`). Ordered `updated_at DESC` by the backend. All these Zod
-schemas **already exist** in `@hivly/shared/schemas` (Story 5.2) — do not add shared schemas; add
+schemas **already exist** in `@share2brain/shared/schemas` (Story 5.2) — do not add shared schemas; add
 only the web client. Detail (`GET /api/conversations/:id` → `ConversationDetail.messages`),
 `POST /api/chat` (SSE), `SSEFrameSchema`, and `ChatRequestSchema` exist but are **5.4's** concern.
 
 Client template (from `api/documents.ts`):
 ```ts
-import { ConversationsResponseSchema, type ConversationsResponse } from '@hivly/shared/schemas';
+import { ConversationsResponseSchema, type ConversationsResponse } from '@share2brain/shared/schemas';
 export async function fetchConversations(
   params: { page?: number; limit?: number } = {},
   signal?: AbortSignal,
@@ -346,12 +346,12 @@ export async function fetchConversations(
 
 ### E2E harness integration (D6 — Epic 4 retro AI#6, critical path)
 - Config: `packages/web/playwright.config.ts` — 2 webServers (test backend `npm run e2e:server -w
-  @hivly/backend` on `:3100`; built SPA `vite preview --port 4173` with
-  `HIVLY_API_PROXY_TARGET=http://127.0.0.1:3100`), `workers:1`, chromium only,
+  @share2brain/backend` on `:3100`; built SPA `vite preview --port 4173` with
+  `SHARE2BRAIN_API_PROXY_TARGET=http://127.0.0.1:3100`), `workers:1`, chromium only,
   `reuseExistingServer:!CI`. Dark theme is forced **inside `loginAs`**, not the config.
 - `loginAs(page, code='e2e-member')` (`tests/helpers/session.ts`) drives fake OAuth
   (`/api/auth/login` 302 → extract `state` → `/api/auth/callback?code&state` 302), shares the
-  `page.request` cookie jar, and `addInitScript(localStorage 'hivly-theme'='dark')`. `code` selects
+  `page.request` cookie jar, and `addInitScript(localStorage 'share2brain-theme'='dark')`. `code` selects
   identity: `e2e-member` (role `e2e-role-member`, sees general/random) or `e2e-empty`. **The chat
   is a floating widget, not a nav item (UX-DR5)** — there is no "Chat" sidebar entry; the spec
   opens the panel via the FAB (`getByTestId('chat-fab').click()` or
@@ -387,14 +387,14 @@ export async function fetchConversations(
 - Naming: `kh-` class prefix; `PascalCase.tsx` components; Spanish UI copy, English identifiers.
 - No new npm deps. No shared-schema change. No DB migration (5.2 tables already exist). No router
   (in-app state; the widget is not a "screen"). No change to `Sidebar`/`Header`/`AppLayout` props.
-- AD-3: web imports only `@hivly/shared/schemas` (browser-safe), never the root barrel.
+- AD-3: web imports only `@share2brain/shared/schemas` (browser-safe), never the root barrel.
 
 ### References
 - [Source: _bmad-output/planning-artifacts/epics.md#Historia 5.3] — story + ACs.
 - [Source: _bmad-output/planning-artifacts/epics.md#Requisitos de Diseño UX] — UX-DR5 (floating,
   not nav), UX-DR15 (FAB), UX-DR16 (panel/header), UX-DR17 (history overlay), UX-DR18 (empty state),
   UX-DR23 (kh-pop/kh-pulse).
-- [Source: docs/context/design/KeepHive Web.dc.html:284-348] — pixel-exact FAB/panel/empty/history
+- [Source: docs/context/design/Share2Brain Web.dc.html:284-348] — pixel-exact FAB/panel/empty/history
   markup (stale `--tx*` tokens; map per §Token mapping).
 - [Source: packages/web/src/App.tsx] — auth gate + mount point (sibling after `<AppLayout>`).
 - [Source: packages/web/src/components/Hexagon.tsx] — `CLIP_PATH`, `AMBER_GRADIENT`, `EXACT_MIDDLE`.
@@ -463,7 +463,7 @@ external CSS).
 npm run lint   → clean (eslint ., 0 errors)
 npm run test   → 62 files, 475 passed  (unit + web projects; +31 over the 444 baseline)
 npm run build  → clean (backend/bot/shared tsc --noEmit + web vite build 304.28 kB, workers tsc)
-npm run test:e2e -w @hivly/web → 10 passed (chromium); 4 new chat.spec (AC1-5) +
+npm run test:e2e -w @share2brain/web → 10 passed (chromium); 4 new chat.spec (AC1-5) +
   6 pre-existing (docs/interactions/search) still green, docs mutating test last.
 ```
 
@@ -473,7 +473,7 @@ npm run test:e2e -w @hivly/web → 10 passed (chromium); 4 new chat.spec (AC1-5)
 npm run lint   → clean (eslint ., 0 errors)
 npm run test   → 62 files, 484 passed (unit + web projects; +9 over the 475 pre-review baseline)
 npm run build  → clean (backend/bot/shared tsc --noEmit + web vite build 304.79 kB, workers tsc)
-npm run test:e2e -w @hivly/web → 10 passed (chromium); chat.spec (AC1-5, using the new
+npm run test:e2e -w @share2brain/web → 10 passed (chromium); chat.spec (AC1-5, using the new
   gotoChat helper for 3 of 4 tests) + 6 pre-existing (docs/interactions/search) still green.
 ```
 
@@ -483,7 +483,7 @@ npm run test:e2e -w @hivly/web → 10 passed (chromium); chat.spec (AC1-5, using
 npm run lint   → clean (eslint ., 0 errors)
 npm run test   → 62 files, 486 passed (unit + web projects; +2 over the 484 round-1 baseline)
 npm run build  → clean (backend/bot/shared tsc --noEmit + web vite build 304.95 kB, workers tsc)
-npm run test:e2e -w @hivly/web → 10 passed (chromium); unchanged pass count.
+npm run test:e2e -w @share2brain/web → 10 passed (chromium); unchanged pass count.
 ```
 
 **Gate re-run (2026-07-07, after Round 3 — 1 more focus-trap gap found in the original round-1 selector and fixed, see Review Findings Round 3):**
@@ -492,7 +492,7 @@ npm run test:e2e -w @hivly/web → 10 passed (chromium); unchanged pass count.
 npm run lint   → clean (eslint ., 0 errors)
 npm run test   → 62 files, 488 passed (unit + web projects; +2 over the 486 round-2 baseline)
 npm run build  → clean (backend/bot/shared tsc --noEmit + web vite build 304.95 kB, workers tsc)
-npm run test:e2e -w @hivly/web → 10 passed (chromium); unchanged pass count.
+npm run test:e2e -w @share2brain/web → 10 passed (chromium); unchanged pass count.
 ```
 
 No new npm deps, no shared-schema change, no DB migration, no router change, no

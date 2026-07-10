@@ -10,10 +10,10 @@
 // Since edits and deletes are both computed from one diffChannel call after a
 // fully successful re-fetch, a mid-walk failure means neither branch runs for
 // that channel this run (note #5: "no deletes for that channel this run").
-import type { HivlyConfig } from '@hivly/shared';
-import type { Database } from '@hivly/shared/db';
-import { sql } from '@hivly/shared/db';
-import type { RedisClient } from '@hivly/shared/redis';
+import type { Share2BrainConfig } from '@share2brain/shared';
+import type { Database } from '@share2brain/shared/db';
+import { sql } from '@share2brain/shared/db';
+import type { RedisClient } from '@share2brain/shared/redis';
 import type { Client } from 'discord.js';
 
 import { getChannelCursor } from '../backfill/cursor.js';
@@ -31,7 +31,7 @@ const defaultSleep = (ms: number): Promise<void> =>
 
 export interface OfflineSyncDeps {
   client: Client;
-  config: HivlyConfig;
+  config: Share2BrainConfig;
   db: Database;
   redis: RedisClient;
   logger: Logger;

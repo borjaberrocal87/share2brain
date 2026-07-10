@@ -3,11 +3,11 @@
 // domain's ChannelPermissionInput and upserts them via the repository. Called from
 // main.ts BEFORE the server listens (AC1) — no /api/* request may run against an
 // unmaterialized table. The config schema has no `category_id`, so it maps to null.
-import type { HivlyConfig } from '@hivly/shared';
+import type { Share2BrainConfig } from '@share2brain/shared';
 
 import type { ChannelPermissionRepository } from '../domain/repositories/channelPermissionRepository.js';
 
-type ConfigChannelPermissions = HivlyConfig['access_control']['channel_permissions'];
+type ConfigChannelPermissions = Share2BrainConfig['access_control']['channel_permissions'];
 
 export function materializeChannelPermissions(
   repo: ChannelPermissionRepository,

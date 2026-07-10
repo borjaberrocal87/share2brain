@@ -1,6 +1,6 @@
 # Sprint Change Proposal — 2026-07-10 (Statistics)
 
-**Project:** hivly · **Author:** Borja · **Workflow:** `bmad-correct-course` · **Mode:** Incremental
+**Project:** share2brain · **Author:** Borja · **Workflow:** `bmad-correct-course` · **Mode:** Incremental
 **Classification:** Moderate (additive; new PRD FRs + new endpoints + one index migration; **no AD-* invariant broken**)
 
 > Second change of the 2026-07-10 session. The first (Epic 8 · DocsView read/unread redesign) is in
@@ -11,7 +11,7 @@
 ## Section 1 — Issue Summary
 
 **Requirement.** Add a **Statistics** section (3rd nav item) as specified in the updated design
-`docs/context/design/KeepHive Web.dc.html` (`isStats` screen): community knowledge analytics.
+`docs/context/design/Share2Brain Web.dc.html` (`isStats` screen): community knowledge analytics.
 
 **Type.** New requirement emerged (stakeholder / design iteration) — not covered by the closed
 roadmap (Epics 1–7).
@@ -42,7 +42,7 @@ roadmap (Epics 1–7).
 | **api-spec.yml** | ➕ Add | New `GET /api/stats` (RBAC-protected) returning KPIs + activity + channels + coverage. |
 | **data-model.md + schema.ts** | ➕ Add | New index for the timeseries (`indexed_at`); **no new table** (aggregations over existing). |
 | **Architecture (AD-12)** | ✅ Upholds | Aggregations filter by `allowedChannelIds` **inside the SQL** — see §3. |
-| **UX / design** | ✅ Source | `KeepHive Web.dc.html` `isStats` is authoritative; nav gains a 3rd item. |
+| **UX / design** | ✅ Source | `Share2Brain Web.dc.html` `isStats` is authoritative; nav gains a 3rd item. |
 | **Other AD-***| None | AD-3 SPA preserved (client fetch); AD-6 contracts in shared; AD-5 DDL only in shared. |
 
 ### 🚩 Critical design constraint — AD-12 (RBAC inside the query)
@@ -114,7 +114,7 @@ AC6  Gate: lint + unit + integration (real Postgres) + build green; migration ge
 AC1  Given the sidebar, Then a 3rd nav item "Estadísticas" appears and routes to StatsView
      (no router — same AppLayout branch pattern as Búsqueda/Documentos, UX-DR5).
 AC2  Given StatsView, Then it renders 4 KPI cards, the 14-day activity bar chart, per-channel bars,
-     and the read-coverage donut per KeepHive Web.dc.html (isStats).
+     and the read-coverage donut per Share2Brain Web.dc.html (isStats).
 AC3  Given types, Then all shapes come from z.infer<StatsResponse> — no shape redefined in web (AD-6).
 AC4  Given rendering, Then bars/donut use plain flex/grid + CSS gradients (no new chart dependency).
 AC5  Given theme, Then the view is correct in light and dark.

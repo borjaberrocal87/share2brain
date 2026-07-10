@@ -21,7 +21,7 @@
 //     fallback to the raw `author_id`; the out-of-scope canary `e2e-msg-s1`
 //     also carries one ('Eve Intrusa') deliberately, so the leak check is
 //     meaningful.
-import { sql, type Database } from '@hivly/shared/db';
+import { sql, type Database } from '@share2brain/shared/db';
 
 // Must match the migrated column width `vector(1536)` and the fake query embedder
 // (one-hot at index 0), so `<=>` accepts the seeded vectors.
@@ -99,7 +99,7 @@ const SEED_NOW = new Date();
 // denied `e2e-ch-secreto` channel, dated `SEED_NOW` ("today") so a leak would
 // also show up as a tall activity bar on the last day of the 14-day window.
 const MESSAGES: MessageSpec[] = [
-  { id: 'e2e-msg-g1', channelId: 'e2e-ch-general', authorId: 'e2e-author-ada', content: '¿Cómo configuro los canales a indexar en Hivly?', createdAt: '2026-06-01T10:00:00Z' },
+  { id: 'e2e-msg-g1', channelId: 'e2e-ch-general', authorId: 'e2e-author-ada', content: '¿Cómo configuro los canales a indexar en Share2Brain?', createdAt: '2026-06-01T10:00:00Z' },
   { id: 'e2e-msg-g2', channelId: 'e2e-ch-general', authorId: 'e2e-author-linus', content: 'La indexación corre sobre Redis Streams con workers idempotentes.', createdAt: '2026-06-02T10:00:00Z' },
   { id: 'e2e-msg-g3', channelId: 'e2e-ch-general', authorId: 'e2e-author-ada', content: 'El RBAC vive dentro de la query vectorial, nunca como post-filtro.', createdAt: '2026-06-03T10:00:00Z' },
   { id: 'e2e-msg-r1', channelId: 'e2e-ch-random', authorId: 'e2e-author-linus', authorName: 'Linus Torvalds', content: 'Los embeddings usan pgvector con distancia coseno.', createdAt: '2026-06-04T10:00:00Z' },
@@ -110,8 +110,8 @@ const MESSAGES: MessageSpec[] = [
 // embeddings.created_at drives the Documentos ordering (newest first). The vectors
 // give a descending similarity spread against one-hot(0): 1.0, 0.8, 0.6, 0.5, 0.3.
 const EMBEDDINGS: EmbeddingSpec[] = [
-  { chunkKey: 'e2e-msg-g1:0', title: 'Cómo configurar los canales a indexar', description: 'Para indexar canales, listalos en Hivly.config.yml y reiniciá el bot.', link: 'https://example.com/e2e/configurar-canales-indexados', channelId: 'e2e-ch-general', anchorMessageId: 'e2e-msg-g1', vector: unitVector(1), createdAt: '2026-06-06T10:00:00Z' },
-  { chunkKey: 'e2e-msg-g2:0', title: 'Indexación con Redis Streams', description: 'El Indexer consume hivly:discord:messages y hace XACK sólo tras éxito.', link: 'https://example.com/e2e/indexacion-redis-streams', channelId: 'e2e-ch-general', anchorMessageId: 'e2e-msg-g2', vector: unitVector(0.8), createdAt: '2026-06-05T10:00:00Z' },
+  { chunkKey: 'e2e-msg-g1:0', title: 'Cómo configurar los canales a indexar', description: 'Para indexar canales, listalos en Share2Brain.config.yml y reiniciá el bot.', link: 'https://example.com/e2e/configurar-canales-indexados', channelId: 'e2e-ch-general', anchorMessageId: 'e2e-msg-g1', vector: unitVector(1), createdAt: '2026-06-06T10:00:00Z' },
+  { chunkKey: 'e2e-msg-g2:0', title: 'Indexación con Redis Streams', description: 'El Indexer consume share2brain:discord:messages y hace XACK sólo tras éxito.', link: 'https://example.com/e2e/indexacion-redis-streams', channelId: 'e2e-ch-general', anchorMessageId: 'e2e-msg-g2', vector: unitVector(0.8), createdAt: '2026-06-05T10:00:00Z' },
   { chunkKey: 'e2e-msg-g3:0', title: 'RBAC dentro de la query vectorial', description: 'Cada query pgvector lleva WHERE channel_id = ANY(:allowedChannelIds).', link: 'https://example.com/e2e/rbac-query-vectorial', channelId: 'e2e-ch-general', anchorMessageId: 'e2e-msg-g3', vector: unitVector(0.6), createdAt: '2026-06-04T10:00:00Z' },
   { chunkKey: 'e2e-msg-r1:0', title: 'Similitud coseno con pgvector', description: 'pgvector ordena por distancia coseno ascendente para similitud descendente.', link: 'https://example.com/e2e/similitud-coseno-pgvector', channelId: 'e2e-ch-random', anchorMessageId: 'e2e-msg-r1', vector: unitVector(0.5), createdAt: '2026-06-03T10:00:00Z' },
   { chunkKey: 'e2e-msg-r2:0', title: 'Sesiones en Redis, sin tabla propia', description: 'connect-redis respalda express-session; la cookie sólo lleva el sid.', link: 'https://example.com/e2e/sesiones-en-redis', channelId: 'e2e-ch-random', anchorMessageId: 'e2e-msg-r2', vector: unitVector(0.3), createdAt: '2026-06-02T10:00:00Z' },
@@ -138,7 +138,7 @@ const CONVERSATION_TITLE = '¿Cómo configuro las notificaciones externas?';
 const CONVERSATION_CREATED_AT = new Date(SEED_NOW.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString();
 const CONVERSATION_UPDATED_AT = new Date(SEED_NOW.getTime() - 5 * 24 * 60 * 60 * 1000 + 5_000).toISOString();
 const CONVERSATION_ANSWER =
-  'Las notificaciones externas se configuran en Hivly.config.yml bajo la sección notifications.';
+  'Las notificaciones externas se configuran en Share2Brain.config.yml bajo la sección notifications.';
 const CONVERSATION_CITATIONS = [
   {
     title: 'Cómo configurar los canales a indexar',

@@ -10,11 +10,11 @@
 //
 // Requires infra:  docker compose up -d postgres redis
 // Run:             npm run test:integration
-import { sql } from '@hivly/shared/db';
+import { sql } from '@share2brain/shared/db';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import type { SSEFrame } from '@hivly/shared/schemas';
+import type { SSEFrame } from '@share2brain/shared/schemas';
 
 import { createApp } from './app.js';
 import type { DiscordOAuthClient } from './domain/repositories/discordOAuthClient.js';

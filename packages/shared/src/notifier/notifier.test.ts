@@ -175,7 +175,7 @@ describe('createNotifier', () => {
 
     await notifier.notify({
       service: 'backend',
-      message: 'connect failed: postgres://admin:hunter2@db:5432/hivly and redis://:s3cr3t@cache:6379',
+      message: 'connect failed: postgres://admin:hunter2@db:5432/share2brain and redis://:s3cr3t@cache:6379',
       timestamp: '2026-07-08T00:00:00.000Z',
     });
 
@@ -183,7 +183,7 @@ describe('createNotifier', () => {
     const { text } = JSON.parse(init.body as string) as { text: string };
     expect(text).not.toContain('hunter2');
     expect(text).not.toContain('s3cr3t');
-    expect(text).toContain('postgres://***@db:5432/hivly');
+    expect(text).toContain('postgres://***@db:5432/share2brain');
     expect(text).toContain('redis://***@cache:6379');
   });
 
