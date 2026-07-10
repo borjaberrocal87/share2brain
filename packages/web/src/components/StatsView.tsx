@@ -246,7 +246,7 @@ function ActivityChart({ activity }: { activity: StatsActivityPoint[] }): ReactE
             <div
               key={point.date}
               data-testid="stats-activity-bar"
-              title={`${point.count} recursos`}
+              title={`${point.count.toLocaleString('es')} recursos`}
               style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}
             >
               <div
