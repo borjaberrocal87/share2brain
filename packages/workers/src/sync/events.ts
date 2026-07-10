@@ -30,6 +30,10 @@ export function parseUpdatedEvent(
   const channelId = fields.channelId?.trim();
   const timestamp = fields.timestamp?.trim();
   const newContent = fields.newContent ?? '';
+  // Absent/blank normalizes to undefined — never '' — so processUpdate can
+  // tell "no name arrived" apart from "blank the stored name" (D3): a missing
+  // or empty authorName must leave the column untouched, never null/blank it.
+  const authorName = fields.authorName?.trim() || undefined;
 
   if (!messageId || !channelId || !timestamp) {
     return null;
@@ -42,6 +46,7 @@ export function parseUpdatedEvent(
     guildId: fields.guildId ?? '',
     timestamp,
     newContent,
+    authorName,
   };
 }
 

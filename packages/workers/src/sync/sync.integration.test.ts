@@ -144,12 +144,12 @@ describe('Sync worker (integration)', () => {
     id: string,
     channelId: string,
     content: string,
-    opts: { indexedAt?: boolean } = {},
+    opts: { indexedAt?: boolean; authorName?: string } = {},
   ): Promise<void> {
     createdMessageIds.push(id);
     await clients.db.execute(sql`
-      insert into discord_messages (id, channel_id, guild_id, author_id, content, created_at, updated_at, indexed_at)
-      values (${id}, ${channelId}, 'itest-guild', 'itest-author', ${content}, now(), now(),
+      insert into discord_messages (id, channel_id, guild_id, author_id, author_name, content, created_at, updated_at, indexed_at)
+      values (${id}, ${channelId}, 'itest-guild', 'itest-author', ${opts.authorName ?? null}, ${content}, now(), now(),
               ${opts.indexedAt ? sql`now()` : sql`null`})
     `);
   }
@@ -204,7 +204,7 @@ describe('Sync worker (integration)', () => {
 
   async function fetchMessage(id: string): Promise<Record<string, unknown>> {
     const result = await clients.db.execute(
-      sql`select content, updated_at, indexed_at, deleted_at from discord_messages where id = ${id}`,
+      sql`select content, updated_at, indexed_at, deleted_at, author_name from discord_messages where id = ${id}`,
     );
     return result.rows[0] as Record<string, unknown>;
   }
@@ -242,6 +242,7 @@ describe('Sync worker (integration)', () => {
         guildId: 'itest-guild',
         timestamp: new Date().toISOString(),
         newContent: `keep ${keptLink} and add ${localServerUrl}/new-${suffix}`,
+        authorName: 'Edited By Alice',
       },
       db: clients.db,
       embedder: goodEmbedder,
@@ -264,6 +265,9 @@ describe('Sync worker (integration)', () => {
 
     const fresh = rows.find((r) => r.link === `${localServerUrl}/new-${suffix}`);
     expect(fresh).toMatchObject({ title: 'Integration Test Title', description: 'Integration Test Description' });
+
+    const dm = await fetchMessage(id);
+    expect(dm.author_name).toBe('Edited By Alice'); // edits DO refresh author_name (D4)
   });
 
   it('should treat a previously-discarded message (no old rows) whose edit adds a URL as a late index entry', async () => {
@@ -350,7 +354,7 @@ describe('Sync worker (integration)', () => {
     const id = `${suffix}-unchanged`;
     const channelId = `chan-${suffix}`;
     const link = `${localServerUrl}/unchanged-${suffix}`;
-    await seedMessage(id, channelId, `see ${link}`, { indexedAt: true });
+    await seedMessage(id, channelId, `see ${link}`, { indexedAt: true, authorName: 'Original Author' });
     const embedding = new Array(DIMENSIONS).fill(0.04);
     await seedEmbedding(`${id}:0`, channelId, [id], {
       title: 'Unchanged Title',
@@ -391,6 +395,9 @@ describe('Sync worker (integration)', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ title: 'Unchanged Title', description: 'Unchanged Description' });
     expect(rows[0].embedding).toEqual(embeddingAsStored);
+
+    const dm = await fetchMessage(id);
+    expect(dm.author_name).toBe('Original Author'); // absent authorName never blanks the stored name
   });
 
   it('should purge every row on a zero-URL edit and stamp indexed_at (F3)', async () => {
