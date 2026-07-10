@@ -1009,3 +1009,64 @@ title/description/link en search, documentos, RAG y las vistas web.
 - **Historia 7.4 · backend:** proyección search/documents/RAG/prompt/citas + seed e2e.
 - **Historia 7.5 · web:** SearchView/DocsView/citas render de title/description/link + UX.
 - **Historia 7.6 · e2e:** extender harness visual (patrón Epic 4) a los campos nuevos.
+
+## Épico 8: UX Polish
+
+**Goal:** Refinamientos visuales post-roadmap sobre vistas ya entregadas, sin tocar contratos,
+schema ni backend. Frontend-only (AD-3 intacto).
+
+> Aprobado via `bmad-correct-course` (2026-07-10,
+> `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-10.md`), clasificación
+> **Moderate**. Las ACs Gherkin completas de cada historia se detallan al crearse vía
+> `bmad-create-story`.
+
+### Historia 8.1: web — DocsView: rediseño de estados leído/no-leído y layout de columnas
+
+**Disparador:** las filas leídas se leían como "deshabilitadas" (punto gris + título atenuado a
+`--text-muted`). El diseño actualizado (`docs/context/design/KeepHive Web.dc.html`) mueve el énfasis
+a *destacar lo no leído* en vez de *apagar lo leído*.
+
+- **AC1 · Layout 6 columnas:** título · descripción · link · canal · autor · indexado; fila con
+  `min-width:720px` y scroll horizontal en viewports estrechos.
+- **AC2 · Fila no leída = énfasis:** punto ámbar (8px) con glow, badge "Nuevo" bajo el título y
+  acento de fila (`box-shadow` en el borde izquierdo).
+- **AC3 · Fila leída = "hecho", no "deshabilitado":** indicador checkmark ✓ (`--text-subtle`/`--tx5`),
+  no punto gris; el título permanece legible (sin atenuar a `--text-muted`).
+- **AC4 · Link como botón-icono con bubbling preservado:** botón-icono external-link que abre el
+  recurso en nueva pestaña; un click sobre él en fila no leída sigue marcándola como leída (7.5).
+- **AC5 · Paridad de tema y sin regresión funcional:** correcto en tema claro y oscuro; filtros por
+  canal, "Sin leer", "Marcar todas" y paginación no regresan.
+- **AC6 · Tests verdes:** `DocsView.test.tsx` y el harness e2e `docs.spec.ts` actualizados al nuevo
+  tratamiento (checkmark en leído, badge/acento en no leído) y pasando.
+
+## Épico 9: Estadísticas del Conocimiento (Analytics)
+
+**Goal:** Añadir la vista Estadísticas (3ª entrada de nav) del diseño `KeepHive Web.dc.html`
+(`isStats`): KPIs de conocimiento, actividad de indexado (14 días), volumen por canal y cobertura
+de lectura personal. Sin ingesta nueva (agrega sobre datos existentes); sin tabla nueva.
+
+**FRs cubiertos:** FR22, FR23 (nuevos)
+
+> Aprobado via `bmad-correct-course` (2026-07-10,
+> `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-10-stats.md`), clasificación
+> **Moderate**. 🚩 Restricción crítica ratificada: **AD-12 — toda agregación filtra por
+> `allowedChannelIds` dentro del SQL** (no expone volumen de canales privados). Endpoint único
+> `GET /api/stats`. Las ACs Gherkin completas se detallan al crear cada historia vía
+> `bmad-create-story`; este resumen lista su alcance.
+
+- **Historia 9.1 · shared + backend:** contrato `StatsResponse` (Zod, AD-6) + endpoint
+  RBAC-scoped `GET /api/stats` (kpis + activity + channels + coverage) + índice de timeseries
+  sobre `embeddings(indexed_at)` (migración, sin tabla nueva) + test de integración RBAC que
+  prueba la exclusión de canales fuera de alcance.
+- **Historia 9.2 · web:** `StatsView` + 3ª entrada de nav "Estadísticas" (mismo patrón AppLayout
+  que Búsqueda/Documentos, UX-DR5); KPI cards, bar-chart de actividad, barras por canal y donut de
+  cobertura; tipos vía `z.infer<StatsResponse>`; sin dependencia de gráficos (flex/grid + gradientes CSS).
+- **Historia 9.3 · e2e:** extender el harness visual Playwright (patrón Epic 4/7) a la vista de
+  estadísticas con seed determinista y RBAC-consistente.
+
+> **KPIs (ratificado 2026-07-10):** los 4 cards son **Recursos indexados · Canales · Autores ·
+> Tus consultas al agente**. Los 3 primeros RBAC-scoped por `allowedChannelIds` (AD-12). El 4º
+> ("Tus consultas al agente") cuenta los mensajes de rol `user` de las conversaciones del propio
+> usuario (`conversations`/`messages`, Epic 5) — métrica **per-usuario**, sin `channel_id`, por lo
+> que no aplica el filtro de canal y no hay fuga. La **cobertura de lectura** la cubre el donut
+> (no se duplica como KPI).

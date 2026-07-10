@@ -1,5 +1,5 @@
 # generated: 2026-06-30
-# last_updated: 2026-07-07
+# last_updated: 2026-07-10
 # project: hivly
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-06-30
-last_updated: 2026-07-09  # epic-7 → done (retro complete + verified): all 6 stories done, retro done, feat/7-6 merged to main (PR #50, cae1ccb), code tree clean, no commits outstanding off the 7-6 branch. Roadmap CLOSED (all 7 epics done). || epic-7-retrospective → done (bmad-retrospective): 6/6 done, 0 incidents, roadmap truly closed (Epic 7 = post-Epic-6 product pivot). Follow-through best of roadmap: both Epic-6 P1s merged (ops-1 MAXLEN PR#39, ops-2 isolation PR#41) + standing real-provider LLM smoke DoD's first live trigger caught a real config bug in 7.2. 3 action items recorded (Blind-Hunter triage tuning, residual load-sensitive integration flake, standing LLM smoke DoD). Retro: epic-7-retro-2026-07-09.md. || (prior) story 7-6 review → done (bmad-code-review): 3 adversarial layers @ Opus (Blind/Edge/Auditor). Edge Case Hunter cross-verified every new assert against the real 7.5 components/CSS/seed; Auditor 0 AC violations, 16/16 counts, ordering invariants hold. 2 patches applied (P1: added overflow-x/overflow-y hidden to the citation title + docs title + description-clamp asserts — closed a discrimination gap where ellipsis/clamp could pass green with overflow dropped; P2: ratified the AC2/D2 clamp-assertion substitution in the Change Log). 11 dismissed as verified false positives / spec-mandated (Unicode NFC/NFD flake, ordering comment-only w/ workers:1 pinned, has:-multi-match links unique per embedding, getAttribute-null, search-no-submit=4.3 pattern, card p/h3 single-match, 15.5px inline not rem, max-width 180px=D4-mandated, popup-fires-before-abort verified, discord regex=unchanged coexistence smoke). Gate: eslint 0 / web typecheck clean / 16 e2e chromium green (search 3 / docs 4 / chat 7 / interactions 2). Integration skipped (tests-only, no shared/backend/seed change). Epic 7 feature-complete — only the retro remains. Patches UNCOMMITTED on feat/7-6-e2e-visual-new-fields.
+last_updated: 2026-07-10  # epic-9 created (bmad-correct-course, sprint-change-proposal-2026-07-10-stats.md): new feature — Statistics view (3rd nav) per design isStats. Stories 9-1/9-2/9-3 → backlog. Aggregates over existing data (no ingestion/table). AD-12 RATIFIED (Borja): every aggregation filters by allowedChannelIds in-SQL — no leak of private-channel volume. Single GET /api/stats. New FR22/FR23. Adds a timeseries index on embeddings(indexed_at) (migration, no new table). PRD/api-spec/data-model edits deferred to story-creation time. Next: finish 8-1 first, then bmad-create-story 9-1. || (prior) epic-8 created (bmad-correct-course, sprint-change-proposal-2026-07-10.md): post-roadmap UX-polish epic. Story 8-1 → backlog. Trigger: DocsView read rows read as "disabled" (grey dot + title dimmed to --text-muted) vs updated design KeepHive Web.dc.html which emphasizes unread instead (read→checkmark, unread→dot+glow+"Nuevo" badge+row accent, 6-col layout título·descripción·link·canal·autor·indexado). Classification Moderate, frontend-only (no schema/contract/backend; AD-* intact). epics.md appended with Épico 8 + Historia 8.1 (6 ACs). Next: bmad-create-story 8-1. || (prior) epic-7 → done (retro complete + verified): all 6 stories done, retro done, feat/7-6 merged to main (PR #50, cae1ccb), code tree clean, no commits outstanding off the 7-6 branch. Roadmap CLOSED (all 7 epics done). || epic-7-retrospective → done (bmad-retrospective): 6/6 done, 0 incidents, roadmap truly closed (Epic 7 = post-Epic-6 product pivot). Follow-through best of roadmap: both Epic-6 P1s merged (ops-1 MAXLEN PR#39, ops-2 isolation PR#41) + standing real-provider LLM smoke DoD's first live trigger caught a real config bug in 7.2. 3 action items recorded (Blind-Hunter triage tuning, residual load-sensitive integration flake, standing LLM smoke DoD). Retro: epic-7-retro-2026-07-09.md. || (prior) story 7-6 review → done (bmad-code-review): 3 adversarial layers @ Opus (Blind/Edge/Auditor). Edge Case Hunter cross-verified every new assert against the real 7.5 components/CSS/seed; Auditor 0 AC violations, 16/16 counts, ordering invariants hold. 2 patches applied (P1: added overflow-x/overflow-y hidden to the citation title + docs title + description-clamp asserts — closed a discrimination gap where ellipsis/clamp could pass green with overflow dropped; P2: ratified the AC2/D2 clamp-assertion substitution in the Change Log). 11 dismissed as verified false positives / spec-mandated (Unicode NFC/NFD flake, ordering comment-only w/ workers:1 pinned, has:-multi-match links unique per embedding, getAttribute-null, search-no-submit=4.3 pattern, card p/h3 single-match, 15.5px inline not rem, max-width 180px=D4-mandated, popup-fires-before-abort verified, discord regex=unchanged coexistence smoke). Gate: eslint 0 / web typecheck clean / 16 e2e chromium green (search 3 / docs 4 / chat 7 / interactions 2). Integration skipped (tests-only, no shared/backend/seed change). Epic 7 feature-complete — only the retro remains. Patches UNCOMMITTED on feat/7-6-e2e-visual-new-fields.
 # (prior) story 7-6 created (bmad-create-story) → ready-for-dev. FINAL Epic 7 story: tests-only,
 # extend Playwright visual harness to the 7.5-rendered resource fields (h3 title, .kh-resource-link hover,
 # doc-row-description clamp, citation title+href) 7.5 deferred. 4 forks w/ Borja: F1 extend 3 existing specs
@@ -322,6 +322,27 @@ development_status:
   7-5-web-searchview-docsview-citas-title-description-link: done
   7-6-e2e-extender-harness-visual-campos-nuevos: done
   epic-7-retrospective: done
+
+  # ── Épico 8: UX Polish ──────────────────────────────────────────────────────
+  # Added 2026-07-10 via bmad-correct-course (sprint-change-proposal-2026-07-10.md).
+  # Post-roadmap UX refinement: DocsView read/unread visual language was inverted
+  # (dim-the-read → "disabled" feeling) vs the updated design KeepHive Web.dc.html.
+  # Frontend-only, Moderate. Approved by Borja incl. 6-column layout.
+  epic-8: backlog
+  8-1-web-docsview-rediseno-estados-leido-no-leido-y-layout-columnas: backlog
+  epic-8-retrospective: optional
+
+  # ── Épico 9: Estadísticas del Conocimiento (Analytics) ──────────────────────
+  # Added 2026-07-10 via bmad-correct-course (sprint-change-proposal-2026-07-10-stats.md).
+  # New feature: Stats view (3rd nav) per design KeepHive Web.dc.html (isStats) —
+  # KPIs + 14-day indexing activity + per-channel volume + read coverage. Aggregates
+  # over existing data (no new ingestion, no new table). Moderate. AD-12 RATIFIED:
+  # every aggregation filters by allowedChannelIds inside the SQL. Single GET /api/stats.
+  epic-9: backlog
+  9-1-shared-backend-contrato-stats-endpoint-agregacion-rbac-scoped: backlog
+  9-2-web-statsview-tercera-entrada-nav: backlog
+  9-3-e2e-extender-harness-visual-estadisticas: backlog
+  epic-9-retrospective: optional
 
   # ── Operational backlog (post-roadmap) — no epic; see operational-backlog.md ─
   # Numbered ops-N to stay outside the epic sequence (Borja chose an explicit backlog
