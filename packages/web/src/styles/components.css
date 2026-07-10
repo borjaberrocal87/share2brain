@@ -105,6 +105,23 @@
 .kh-doc-row:hover {
   background: var(--hover-row);
 }
+
+/* Doc row "ver recurso" icon-button (Story 8.1): base border/color live here
+   (not inline) so :hover can override them — an inline value would outrank
+   this rule regardless of pseudo-class (cascade rule, Epic 4 retro Action
+   Item #4, mirrors .kh-resource-link above). */
+.kh-doc-link {
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.kh-doc-link:hover {
+  border-color: var(--accent-ink);
+  color: var(--accent-ink);
+}
+.kh-doc-link:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}
 .kh-load-more:hover {
   border-color: var(--accent-ink);
   color: var(--accent-ink);

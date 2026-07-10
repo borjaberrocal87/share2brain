@@ -299,15 +299,16 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
               marginTop: 20,
               border: '1px solid var(--border)',
               borderRadius: 14,
-              overflow: 'hidden',
+              overflowX: 'auto',
               background: 'var(--surface)',
             }}
           >
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 130px 130px 96px',
-                gap: 14,
+                gridTemplateColumns: '150px minmax(160px,1fr) 44px 92px 116px 84px',
+                gap: 12,
+                minWidth: 720,
                 padding: '12px 20px',
                 background: 'var(--bg)',
                 borderBottom: '1px solid var(--border)',
@@ -318,7 +319,9 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
                 color: 'var(--text-subtle)',
               }}
             >
-              <span>recurso</span>
+              <span>título</span>
+              <span>descripción</span>
+              <span>link</span>
               <span>canal</span>
               <span>autor</span>
               <span style={{ textAlign: 'right' }}>indexado</span>
@@ -411,79 +414,120 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
       onClick={onClick}
       style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 130px 130px 96px',
-        gap: 14,
+        gridTemplateColumns: '150px minmax(160px,1fr) 44px 92px 116px 84px',
+        gap: 12,
+        minWidth: 720,
         padding: '15px 20px',
         borderBottom: '1px solid var(--line)',
         alignItems: 'center',
         cursor: 'pointer',
+        boxShadow: doc.isRead ? 'inset 3px 0 0 transparent' : 'inset 3px 0 0 #F5A623',
       }}
     >
-      <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start', minWidth: 0 }}>
-        <span
-          data-testid="doc-row-dot"
+      <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', minWidth: 0 }}>
+        <div
           style={{
-            width: 7,
-            height: 7,
-            marginTop: 6,
+            marginTop: 2,
             flexShrink: 0,
-            borderRadius: '50%',
-            background: doc.isRead ? 'var(--dot-read)' : '#F5A623',
-            boxShadow: doc.isRead ? 'none' : '0 0 0 3px rgba(245,166,35,0.16)',
+            display: 'flex',
+            width: 16,
+            justifyContent: 'center',
           }}
-        />
+        >
+          {doc.isRead ? (
+            <span data-testid="doc-row-check" style={{ color: 'var(--text-subtle)' }}>
+              <CheckIcon size={14} />
+            </span>
+          ) : (
+            <span
+              data-testid="doc-row-dot"
+              style={{
+                width: 8,
+                height: 8,
+                marginTop: 4,
+                borderRadius: '50%',
+                background: '#F5A623',
+                boxShadow: '0 0 0 3px rgba(245,166,35,0.16)',
+              }}
+            />
+          )}
+        </div>
         <div style={{ minWidth: 0, flex: 1 }}>
           <span
             data-testid="doc-row-content"
             style={{
-              display: 'block',
-              fontSize: 13.5,
-              lineHeight: 1.5,
-              color: doc.isRead ? 'var(--text-muted)' : 'var(--text-primary)',
-              fontWeight: doc.isRead ? 400 : 500,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {doc.title}
-          </span>
-          <span
-            data-testid="doc-row-description"
-            style={{
               display: '-webkit-box',
-              marginTop: 2,
-              fontSize: 12.5,
-              lineHeight: 1.5,
-              color: 'var(--text-muted)',
+              fontSize: 13.5,
+              lineHeight: 1.4,
+              color: 'var(--text-primary)',
+              fontWeight: doc.isRead ? 500 : 700,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
             }}
           >
-            {doc.description}
+            {doc.title}
           </span>
-          <a
-            href={doc.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="kh-resource-link"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 5,
-              marginTop: 4,
-              fontFamily: "'IBM Plex Mono', monospace",
-              fontSize: 11.5,
-              textDecoration: 'none',
-            }}
-          >
-            <span>ver recurso</span>
-            <ExternalLinkIcon size={12} />
-          </a>
+          {!doc.isRead && (
+            <span
+              data-testid="doc-row-new-badge"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                marginTop: 5,
+                padding: '1px 7px',
+                fontFamily: "'IBM Plex Mono', monospace",
+                fontSize: 9.5,
+                fontWeight: 600,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: 'var(--accent-ink)',
+                background: 'rgba(245,166,35,0.13)',
+                borderRadius: 5,
+              }}
+            >
+              Nuevo
+            </span>
+          )}
         </div>
       </div>
+
+      <span
+        data-testid="doc-row-description"
+        style={{
+          display: '-webkit-box',
+          fontSize: 13,
+          lineHeight: 1.5,
+          color: 'var(--text-tertiary)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+        }}
+      >
+        {doc.description}
+      </span>
+
+      <a
+        href={doc.link}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Ver recurso"
+        title="Ver recurso"
+        className="kh-doc-link"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          textDecoration: 'none',
+        }}
+      >
+        <ExternalLinkIcon size={13} />
+      </a>
 
       <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'var(--accent-ink)' }}>
         #{doc.channelName}

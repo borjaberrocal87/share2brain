@@ -1,17 +1,19 @@
 // Retroactive visual verification of Story 4.4 (Documentos) via getComputedStyle
-// against the REAL global CSS (Story 4.5). Dark theme is forced by loginAs. The
-// mutating "mark all read" test runs LAST in this file; workers:1 + file order
-// keep it isolated from the non-mutating tests and from search.spec.
+// against the REAL global CSS (Story 4.5), extended by Story 7.6 (description +
+// resource link) and Story 8.1 (read/unread redesign + 6-col layout). Dark theme
+// is forced by loginAs. The mutating "mark all read" test runs LAST in this
+// file; workers:1 + file order keep it isolated from the non-mutating tests and
+// from search.spec.
 import { expect, test } from '@playwright/test';
 
 import { loginAs } from './helpers/session';
 
 // Dark-theme computed tokens (see global.css :root).
 const ACCENT_INK = 'rgb(245, 166, 35)'; // --accent-ink #F5A623
-const DOT_READ = 'rgb(39, 46, 57)'; // --dot-read #272E39
 const HOVER_ROW = 'rgb(20, 25, 34)'; // --hover-row #141922
 const TEXT_PRIMARY = 'rgb(230, 233, 239)'; // --text-primary #E6E9EF
 const TEXT_MUTED = 'rgb(124, 132, 148)'; // --text-muted #7C8494
+const TEXT_TERTIARY = 'rgb(154, 163, 178)'; // --text-tertiary #9AA3B2
 const TEXT_SUBTLE = 'rgb(100, 108, 124)'; // --text-subtle #646C7C
 const BORDER_STRONG = 'rgb(42, 49, 61)'; // --border-strong #2A313D
 
@@ -26,42 +28,55 @@ async function gotoDocs(page: import('@playwright/test').Page): Promise<void> {
 }
 
 test.describe('Story 4.4 — Documentos (retroactive visual verification)', () => {
-  test('grid, header cells, read/unread dots, row hover, and sidebar badge (4.4)', async ({
+  test('grid, header cells, read/unread rows, row hover, and sidebar badge (4.4, 8.1)', async ({
     page,
   }, testInfo) => {
     await gotoDocs(page);
 
-    // Table grid: 1fr resolves to px in Chromium; the three fixed tracks stay.
+    // Table grid: 6 tracks; minmax(160px,1fr) resolves to px in Chromium.
     const firstRow = page.locator('.kh-doc-row').first();
     await expect(firstRow).toHaveCSS(
       'grid-template-columns',
-      /^\d+(\.\d+)?px 130px 130px 96px$/,
+      /^150px \d+(\.\d+)?px 44px 92px 116px 84px$/,
     );
 
     // Header cells (source lowercase, uppercased by CSS): mono, 10.5px, uppercase, subtle.
-    const header = page.getByText('recurso', { exact: true });
+    const header = page.getByText('título', { exact: true });
     await expect(header).toHaveCSS('font-family', /IBM Plex Mono/);
     await expect(header).toHaveCSS('font-size', '10.5px');
     await expect(header).toHaveCSS('text-transform', 'uppercase');
     await expect(header).toHaveCSS('color', TEXT_SUBTLE);
 
-    // Unread row: amber dot + glow; primary-color content, weight 500.
+    // Unread row: amber dot + glow, "Nuevo" badge, amber row accent; primary
+    // title color, weight 700.
     const unreadRow = page.locator('.kh-doc-row[data-read="false"]').first();
     const unreadDot = unreadRow.getByTestId('doc-row-dot');
     await expect(unreadDot).toHaveCSS('background-color', ACCENT_INK);
     await expect(unreadDot).toHaveCSS('box-shadow', 'rgba(245, 166, 35, 0.16) 0px 0px 0px 3px');
     const unreadContent = unreadRow.getByTestId('doc-row-content');
     await expect(unreadContent).toHaveCSS('color', TEXT_PRIMARY);
-    await expect(unreadContent).toHaveCSS('font-weight', '500');
+    await expect(unreadContent).toHaveCSS('font-weight', '700');
+    const unreadBadge = unreadRow.getByTestId('doc-row-new-badge');
+    await expect(unreadBadge).toBeVisible();
+    await expect(unreadBadge).toHaveCSS('color', ACCENT_INK);
+    await expect(unreadBadge).toHaveCSS('background-color', 'rgba(245, 166, 35, 0.13)');
+    await expect(unreadBadge).toHaveCSS('text-transform', 'uppercase');
+    await expect(unreadBadge).toHaveCSS('font-family', /IBM Plex Mono/);
+    await expect(unreadRow).toHaveCSS('box-shadow', 'rgb(245, 166, 35) 3px 0px 0px 0px inset');
 
-    // Read row: grey dot, no shadow; muted content, weight 400.
+    // Read row: checkmark (no dot, no badge); primary title color (never dimmed),
+    // weight 500; transparent row accent (same computed shape as the unread
+    // accent, only the color differs — D3).
     const readRow = page.locator('.kh-doc-row[data-read="true"]').first();
-    const readDot = readRow.getByTestId('doc-row-dot');
-    await expect(readDot).toHaveCSS('background-color', DOT_READ);
-    await expect(readDot).toHaveCSS('box-shadow', 'none');
+    await expect(readRow.getByTestId('doc-row-dot')).toHaveCount(0);
+    const readCheck = readRow.getByTestId('doc-row-check');
+    await expect(readCheck).toBeVisible();
+    await expect(readCheck).toHaveCSS('color', TEXT_SUBTLE);
+    await expect(readRow.getByTestId('doc-row-new-badge')).toHaveCount(0);
     const readContent = readRow.getByTestId('doc-row-content');
-    await expect(readContent).toHaveCSS('color', TEXT_MUTED);
-    await expect(readContent).toHaveCSS('font-weight', '400');
+    await expect(readContent).toHaveCSS('color', TEXT_PRIMARY);
+    await expect(readContent).toHaveCSS('font-weight', '500');
+    await expect(readRow).toHaveCSS('box-shadow', 'rgba(0, 0, 0, 0) 3px 0px 0px 0px inset');
 
     // Row hover background (.kh-doc-row:hover → --hover-row).
     await firstRow.hover();
@@ -82,27 +97,28 @@ test.describe('Story 4.4 — Documentos (retroactive visual verification)', () =
 
 });
 
-// Story 7.5 restructured the DocsView main cell into a title (single-line ellipsis)
-// + a 2-line-clamped description + a "ver recurso" resource link. jsdom can't verify
-// the clamp/typography/hover; this harness does (Epic 4 retro AI#6). Both tests run
-// AFTER the 4.4 dots test (which needs the seeded read/unread mix) and BEFORE the
-// terminal mark-all mutation below.
+// Story 7.5 restructured the DocsView main cell into a title + a 2-line-clamped
+// description + a "ver recurso" resource link; Story 8.1 gave the title its own
+// 2-line clamp (was single-line ellipsis) and replaced the text link with a
+// 28×28 icon-button (.kh-doc-link). jsdom can't verify the clamp/typography/
+// hover; this harness does (Epic 4 retro AI#6). Both tests run AFTER the 4.4
+// dots test (which needs the seeded read/unread mix) and BEFORE the terminal
+// mark-all mutation below.
 test.describe('Story 7.6 — DocsView description + resource link', () => {
-  test('first row: clamped description, ellipsis title, resource link (AC2)', async ({
+  test('first row: clamped title, clamped description, resource icon-button (AC2)', async ({
     page,
   }, testInfo) => {
     await gotoDocs(page);
     const firstRow = page.locator('.kh-doc-row').first();
 
-    // Description: muted, 2-line -webkit-box clamp. NOTE: with -webkit-line-clamp
-    // engaged, Chromium reports the *computed* `display` as `flow-root` (not
-    // `-webkit-box`) even though the specified/used value is -webkit-box and the
-    // clamp works — so we assert the clamp via the properties that DO compute
-    // meaningfully (line-clamp + box-orient + overflow), which a non-clamped span
-    // would lack. (A bare `display:-webkit-box` element still computes -webkit-box;
-    // it's the line-clamp interaction that serializes to flow-root.)
+    // Description: tertiary color, 2-line -webkit-box clamp. NOTE: with
+    // -webkit-line-clamp engaged, Chromium reports the *computed* `display` as
+    // `flow-root` (not `-webkit-box`) even though the specified/used value is
+    // -webkit-box and the clamp works — so we assert the clamp via the
+    // properties that DO compute meaningfully (line-clamp + box-orient +
+    // overflow), which a non-clamped span would lack.
     const description = firstRow.getByTestId('doc-row-description');
-    await expect(description).toHaveCSS('color', TEXT_MUTED);
+    await expect(description).toHaveCSS('color', TEXT_TERTIARY);
     await expect(description).toHaveCSS('-webkit-line-clamp', '2');
     await expect(description).toHaveCSS('-webkit-box-orient', 'vertical');
     await expect(description).toHaveCSS('overflow-x', 'hidden');
@@ -110,31 +126,37 @@ test.describe('Story 7.6 — DocsView description + resource link', () => {
     // it the clamp is inert, so assert it too (not just overflow-x).
     await expect(description).toHaveCSS('overflow-y', 'hidden');
 
-    // Title stays single-line (read/unread color+weight already covered by the 4.4 test).
+    // Title: same 2-line clamp set as the description — never assert `display`
+    // on a line-clamped element (see the note above).
     const title = firstRow.getByTestId('doc-row-content');
-    await expect(title).toHaveCSS('white-space', 'nowrap');
-    await expect(title).toHaveCSS('text-overflow', 'ellipsis');
-    // Ellipsis only truncates when overflow is clipped — guard the necessary pair.
+    await expect(title).toHaveCSS('-webkit-line-clamp', '2');
+    await expect(title).toHaveCSS('-webkit-box-orient', 'vertical');
     await expect(title).toHaveCSS('overflow-x', 'hidden');
+    await expect(title).toHaveCSS('overflow-y', 'hidden');
 
-    // Resource link: seed href, mono, new tab, base muted color, hover amber. Base
-    // color lives in .kh-resource-link (components.css), not inline — the hover
-    // assertion is the cascade guard (7.5 fix, Epic 4 retro AI#4).
-    const resourceLink = firstRow.locator('.kh-resource-link');
+    // Resource icon-button: seed href, new tab, 28×28 geometry, base muted
+    // color, hover amber (color AND border-color — the border-color hover is
+    // the D2 cascade guard: base border/color live in .kh-doc-link, not inline,
+    // Epic 4 retro AI#4).
+    const resourceLink = firstRow.locator('.kh-doc-link');
     await expect(resourceLink).toHaveAttribute('href', FIRST_DOC_RESOURCE_LINK);
     await expect(resourceLink).toHaveAttribute('target', '_blank');
-    await expect(resourceLink).toHaveCSS('font-family', /IBM Plex Mono/);
+    await expect(resourceLink).toHaveCSS('width', '28px');
+    await expect(resourceLink).toHaveCSS('height', '28px');
+    await expect(resourceLink).toHaveCSS('border-radius', '8px');
     await expect(resourceLink).toHaveCSS('color', TEXT_MUTED);
     await resourceLink.hover();
     await expect(resourceLink).toHaveCSS('color', ACCENT_INK);
+    await expect(resourceLink).toHaveCSS('border-top-color', ACCENT_INK);
 
     await page.screenshot({ path: testInfo.outputPath('docs-resource.png'), fullPage: true });
   });
 
-  // MUTATING — clicking "ver recurso" on an UNREAD row bubbles to handleRowClick
-  // (the anchor has no stopPropagation, 7.5 F2) and flips the row read. Ordered
-  // before the terminal mark-all so the file's last mutation stays mark-all. The
-  // external host is route-blocked so the target="_blank" popup never egresses.
+  // MUTATING — clicking the "ver recurso" icon-button on an UNREAD row bubbles
+  // to handleRowClick (the anchor has no stopPropagation, 7.5 F2, verbatim
+  // under the 8.1 icon-button) and flips the row read. Ordered before the
+  // terminal mark-all so the file's last mutation stays mark-all. The external
+  // host is route-blocked so the target="_blank" popup never egresses.
   test('"ver recurso" bubbles to mark the row read (AC3)', async ({ page }, testInfo) => {
     await gotoDocs(page);
 
@@ -146,16 +168,16 @@ test.describe('Story 7.6 — DocsView description + resource link', () => {
     // unread row, so the assertion would never see 'true'.
     const firstUnread = page.locator('.kh-doc-row[data-read="false"]').first();
     await expect(firstUnread).toBeVisible();
-    const href = await firstUnread.locator('.kh-resource-link').getAttribute('href');
+    const href = await firstUnread.locator('.kh-doc-link').getAttribute('href');
     const row = page.locator('.kh-doc-row', {
-      has: page.locator(`.kh-resource-link[href="${href}"]`),
+      has: page.locator(`.kh-doc-link[href="${href}"]`),
     });
     await expect(row).toHaveAttribute('data-read', 'false');
 
     // Capture the popup BEFORE the click, then close it — the mark-read is driven
     // by the bubbled click on the SPA page, independent of the popup.
     const popupPromise = page.waitForEvent('popup');
-    await row.locator('.kh-resource-link').click();
+    await row.locator('.kh-doc-link').click();
     const popup = await popupPromise;
     await popup.close();
 

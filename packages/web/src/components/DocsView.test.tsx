@@ -68,14 +68,16 @@ afterEach(() => {
 });
 
 describe('DocsView', () => {
-  it('should render the title, description and table header labels (AC1)', async () => {
+  it('should render the title, description and 6-column table header labels (AC1)', async () => {
     fetchChannels.mockResolvedValue([]);
     fetchDocuments.mockResolvedValue(page([], 0));
 
     renderView();
 
     expect(screen.getByText('Documentos indexados')).toBeTruthy();
-    expect(await screen.findByText('recurso')).toBeTruthy();
+    expect(await screen.findByText('título')).toBeTruthy();
+    expect(screen.getByText('descripción')).toBeTruthy();
+    expect(screen.getByText('link')).toBeTruthy();
     expect(screen.getByText('canal')).toBeTruthy();
     expect(screen.getByText('autor')).toBeTruthy();
     expect(screen.getByText('indexado')).toBeTruthy();
@@ -103,7 +105,7 @@ describe('DocsView', () => {
     expect(description.getAttribute('data-testid')).toBe('doc-row-description');
   });
 
-  it('should switch read-state color/weight on doc-row-content between unread and read (AC3)', async () => {
+  it('should switch title weight between unread and read while keeping the title color primary in both states (AC3)', async () => {
     fetchChannels.mockResolvedValue([]);
     fetchDocuments.mockResolvedValue(page([DOC_UNREAD, DOC_READ], 2));
 
@@ -112,9 +114,48 @@ describe('DocsView', () => {
     const unreadTitle = await screen.findByText('Unread Fragment');
     const readTitle = screen.getByText('Already Read Fragment');
     expect(unreadTitle.style.color).toBe('var(--text-primary)');
-    expect(unreadTitle.style.fontWeight).toBe('500');
-    expect(readTitle.style.color).toBe('var(--text-muted)');
-    expect(readTitle.style.fontWeight).toBe('400');
+    expect(unreadTitle.style.fontWeight).toBe('700');
+    expect(readTitle.style.color).toBe('var(--text-primary)');
+    expect(readTitle.style.fontWeight).toBe('500');
+  });
+
+  it('should show the unread dot + "Nuevo" badge and hide the read checkmark on an unread row (AC2, D4)', async () => {
+    fetchChannels.mockResolvedValue([]);
+    fetchDocuments.mockResolvedValue(page([DOC_UNREAD], 1));
+
+    renderView();
+    const title = await screen.findByText('Unread Fragment');
+    const row = title.closest('.kh-doc-row') as HTMLElement;
+
+    expect(row.querySelector('[data-testid="doc-row-dot"]')).toBeTruthy();
+    expect(row.querySelector('[data-testid="doc-row-check"]')).toBeNull();
+    expect(row.querySelector('[data-testid="doc-row-new-badge"]')?.textContent).toBe('Nuevo');
+  });
+
+  it('should show the read checkmark and hide the unread dot + "Nuevo" badge on a read row (AC3, D4)', async () => {
+    fetchChannels.mockResolvedValue([]);
+    fetchDocuments.mockResolvedValue(page([DOC_READ], 1));
+
+    renderView();
+    const title = await screen.findByText('Already Read Fragment');
+    const row = title.closest('.kh-doc-row') as HTMLElement;
+
+    expect(row.querySelector('[data-testid="doc-row-check"]')).toBeTruthy();
+    expect(row.querySelector('[data-testid="doc-row-dot"]')).toBeNull();
+    expect(row.querySelector('[data-testid="doc-row-new-badge"]')).toBeNull();
+  });
+
+  it('should apply the amber row accent on unread rows and a transparent accent on read rows (AC2, AC3, D3)', async () => {
+    fetchChannels.mockResolvedValue([]);
+    fetchDocuments.mockResolvedValue(page([DOC_UNREAD, DOC_READ], 2));
+
+    renderView();
+    const unreadTitle = await screen.findByText('Unread Fragment');
+    const unreadRow = unreadTitle.closest('.kh-doc-row') as HTMLElement;
+    const readRow = screen.getByText('Already Read Fragment').closest('.kh-doc-row') as HTMLElement;
+
+    expect(unreadRow.getAttribute('style')).toContain('inset 3px 0 0 #F5A623');
+    expect(readRow.getAttribute('style')).toContain('inset 3px 0 0 transparent');
   });
 
   it('should link "ver recurso" to doc.link and mark the row read on click (AC3, F2, D6)', async () => {
@@ -210,7 +251,7 @@ describe('DocsView', () => {
     fetchDocuments.mockResolvedValue(page([], 0));
 
     renderView();
-    await screen.findByText('recurso');
+    await screen.findByText('título');
 
     fireEvent.click(screen.getByRole('button', { name: /Sin leer/i }));
 
