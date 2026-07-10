@@ -63,18 +63,46 @@ Mapped by the OAuth `code` (`packages/backend/src/e2e/seed.ts`):
 
 | Code (`loginAs`) | Sees | Data |
 |---|---|---|
-| `e2e-member` (default) | `e2e-ch-general` (3), `e2e-ch-random` (2) | 5 embeddings, similarity spread 1.0/0.8/0.6/0.5/0.3; 2 pre-read → mixed read/unread + sidebar badge |
-| `e2e-empty` | `e2e-ch-void` (0) | no embeddings → reaches the search / all-read empty states |
+| `e2e-member` (default) | `e2e-ch-general` (3), `e2e-ch-random` (2) | 5 embeddings, similarity spread 1.0/0.8/0.6/0.5/0.3; 2 pre-read → mixed read/unread + sidebar badge; `/api/stats` → kpis 5/2/2/1, coverage 2/5/40%, topUsers Ada Lovelace(3)/Linus Torvalds(2) |
+| `e2e-empty` | `e2e-ch-void` (0) | no embeddings → reaches the search / all-read empty states; `/api/stats` returns all-zero figures |
+
+There is also an **invisible** RBAC canary trio (Story 9.3 D3), held by
+`e2e-role-none` — no fake-OAuth identity ever carries that role: channel
+`e2e-ch-secreto`, message `e2e-msg-s1` (author `Eve Intrusa`, dated "today" at
+seed-boot), and its embedding. Neither identity above can ever see it; the
+member's `/api/stats` figures pinned above ARE the leak canaries (a regression
+would flip resources 5→6, channels 2→3, authors 2→3, and add a 3rd `topUsers`
+row). Only the LATEST message of `e2e-author-ada`/`e2e-author-linus`
+(`e2e-msg-r2`/`e2e-msg-r1`) carries `author_name` — the rest resolve via the
+`author_id` COALESCE fallback (mirrors the post-9.4 no-backfill production
+shape; `search.spec.ts`'s `'E2'`-initials assert on `e2e-msg-g1` depends on
+this).
 
 RBAC is enforced inside the query (AD-12); the `e2e-role-member` / `e2e-role-empty`
-role names keep the e2e scope from leaking into the integration suites and vice
-versa. Search has **no similarity threshold** (any query returns the whole scope,
-LIMIT 5), so the empty state is only reachable via the empty-scope identity.
+/ `e2e-role-none` role names keep the e2e scope from leaking into the
+integration suites and vice versa. Search has **no similarity threshold** (any
+query returns the whole scope, LIMIT 5), so the empty state is only reachable
+via the empty-scope identity.
 
 ## Spec discovery order (invariant)
 
 Playwright discovers spec files **alphabetically** and runs with `workers: 1`, so
-they execute in name order: `chat.spec.ts` → `docs.spec.ts` → `search.spec.ts`.
+they execute in name order: `analytics.spec.ts` → `chat.spec.ts` →
+`docs.spec.ts` → `interactions.spec.ts` → `search.spec.ts`.
+
+`analytics.spec.ts` (Story 9.3) sorts **first** on purpose: its assertions bind
+to seed-fresh per-user figures (`queries: 1`, `coverage: 2/5/40%`) that
+**mutating** specs would otherwise have already perturbed — `chat.spec.ts`'s
+Story 5.4 streaming test adds a user message (`queries` KPI), and
+`docs.spec.ts`'s "mark all read" test flips coverage to 5/5/100%. Every test in
+`analytics.spec.ts` is non-mutating (logins + reads only), so no spec after it
+is affected; a fresh backend boot/reseed still makes the whole suite reorder-
+independent — a run that only executes `analytics.spec.ts` sees the identical
+seed-fresh figures. Keep this in mind before pointing `loginAs` at a mutating
+flow inside `analytics.spec.ts`: it would make cross-run and standalone-run
+results diverge (same failure mode `chat.spec.ts`'s `toHaveCount(1)` already
+guards against with its own ordering).
+
 `chat.spec.ts` is **no longer read-only**: its Story 5.4 **streaming** test
 persists a new conversation, so it is ordered **last** in the file (after the
 Story 5.3 `toHaveCount(1)` history test and the 5.4 composer/history-load tests,
