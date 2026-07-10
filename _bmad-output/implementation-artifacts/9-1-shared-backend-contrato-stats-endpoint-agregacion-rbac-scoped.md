@@ -1,6 +1,6 @@
 # Story 9.1: shared + backend — contrato StatsResponse + endpoint de agregación RBAC-scoped
 
-Status: review
+Status: done
 
 baseline_commit: 4b14064 (main — story 8.1 merged tree state at creation time; verify PR #53 is merged before branching)
 
@@ -462,7 +462,69 @@ with `HIVLY_CONFIG_PATH=<repo-root>/Hivly.config.yml` (not a code change).
   ARCHITECTURE-SPINE/TECHNICAL-DESIGN/epics/PRD (Task 7). Gate green: lint 0 / 860 unit+web
   (+44) / build clean (5 packages) / 127 integration (+7, 20 files). No new dependency, no web
   change (9.2/9.3 out of scope). Status: review.
+- 2026-07-10 — Code review (bmad-code-review, 3 adversarial layers @ Opus). Acceptance
+  Auditor PASS (6/6 ACs + D1–D10, AD-compliant); no Critical/High/Medium-correctness defects.
+  2 decisions resolved by Borja: (1) `queries` KPI → últimos 30 días (was all-time); (2) "Top 5
+  usuarios" → promoted to its OWN story via `bmad-correct-course` (not bolted onto 9.1; review
+  surfaced a data-model gap — no author display name, only `author_id` snowflake). 4 patches
+  applied: P1 clamp `readPct` ≤100 (non-transactional race guard), P2 rename `scoped`→`emptyScope`,
+  P3 pin the 4 KPI keys' order in `StatsResponseSchema` via `superRefine` (+ 2 schema tests),
+  P4 `queries` 30-day window (SQL + sub `últimos 30 días` + unit/integration assertions + 1 clamp
+  test). 2 deferred to `deferred-work.md` (no upper time bound; index migration not zero-downtime),
+  4 dismissed. Re-gate green: lint 0 / 863 unit+web (+3) / build clean / 127 integration.
+  Status: done. FOLLOW-UP: run `bmad-correct-course` for the Top-5-users section.
+- 2026-07-10 — Re-run code review (extra scrutiny, requested). Auditor PASS again (0 regressions
+  from the patches). Blind + Edge converged on 4 refinements OF the round-1 patches — RP1 thread
+  the 30-day `queries` window through the service (single clock / deterministic; port signature +
+  doc updated, RP3 folded in), RP2 clamp `readCount` to `totalCount` (fixes the contradictory
+  `{readCount:5,totalCount:4}` pair the readPct-only clamp left; readPct clamp now redundant/removed),
+  RP4 add a >30-day-old-message integration seed + a service-level window assert so the 30-day cutoff
+  is actually verified (was invisible to the suite). All 4 applied. Re-gate green: lint 0 / 863
+  unit+web / build clean / 127 integration (the queries integration test now fails if the 30d filter
+  is dropped). Status: done.
 
 ---
 
 Ultimate context engine analysis completed — comprehensive developer guide created.
+
+## Review Findings (bmad-code-review 2026-07-10)
+
+3 adversarial layers @ Opus (Blind Hunter / Edge Case Hunter / Acceptance Auditor).
+**Acceptance Auditor: PASS** — 6/6 ACs + D1–D10 honored, AD-2/5/6/9/10/12 compliant, no
+violations. No Critical/High/Medium-correctness defects. Triage: 2 decision-needed (pre-flagged
+in the spec), 3 patch (all Low/defensive), 2 defer, 4 dismissed.
+
+### decision-needed (RESOLVED by Borja 2026-07-10)
+
+- [x] [Review][Decision] `queries` KPI window → **RESOLVED: change to últimos 30 días** — Borja vetoed the all-time default. Becomes patch P4 below.
+- [x] [Review][Decision] "Top 5 usuarios más activos" section → **RESOLVED: promote to its own story via `bmad-correct-course`** — Borja chose NOT to bolt it onto 9.1. 9.1 keeps the ratified kpis/activity/channels/coverage shape (D9 exclusion stands for THIS story). Review surfaced a data-model gap the new story must resolve: `discord_messages` has only `author_id` (Discord snowflake), no display name; `users.username` resolves only for the OAuth-logged-in subset. New story must define the metric (proposed RBAC-safe: top 5 `author_id` by count of scoped non-deleted embeddings, `authorName = COALESCE(users.username, authorId)`) + shape + query + tests + docs. FOLLOW-UP: run `bmad-correct-course`.
+
+### patch
+
+- [x] [Review][Patch] (applied) Clamp `readPct` to [0,100] — non-transactional race across the 5 parallel reads (a soft-delete committing between the `resources` and `readCount` queries) can make `readCount > totalCount` → `readPct > 100` → `StatsCoverageSchema.max(100)` throws → transient 500 on a GET. `Math.min(100, …)` removes the whole class cheaply. [packages/backend/src/application/services/statsService.ts:70]
+- [x] [Review][Patch] (applied) Rename the `scoped` variable — it is `true` when the caller has NO scope (deny-all); every ternary reads "if scoped, return empty", the inverse of the name. Inverted-boolean landmine for a future edit. Rename to `emptyScope`/`denyAll`. [packages/backend/src/application/services/statsService.ts:54]
+- [x] [Review][Patch] (applied) Pin the 4 KPI keys' order/identity in `StatsResponseSchema` — AC1 mandates "exactly 4 in fixed order resources·channels·authors·queries" but the schema checks only `.length(4)` + per-item `z.enum`, so `[resources,resources,resources,resources]` or the wrong order would pass. The AD-6 safety net doesn't encode what AC1 specifies. Add a `superRefine` asserting `kpis.map(k=>k.key)` equals the fixed tuple. [packages/shared/src/schemas/stats.ts:43]
+- [x] [Review][Patch] (applied) `queries` KPI → últimos 30 días (from decision above) — add `AND m.created_at >= now() - interval '30 days'` in `countUserAgentQueries` [packages/backend/src/infrastructure/statsRepository.drizzle.ts:139]; change the KPI sub `'en total'` → `'últimos 30 días'` [packages/backend/src/application/services/statsService.ts:95]; update the unit + integration sub assertions [statsService.test.ts:63,130 · stats.integration.test.ts:298].
+
+### defer
+
+- [x] [Review][Defer] No upper time bound on KPI/coverage queries — a future-dated `created_at` (clock skew) inflates `resources`/`channels`/`authors` but is dropped from the 14-day activity series (falls outside `windowDays`), making the totals irreconcilable [packages/backend/src/infrastructure/statsRepository.drizzle.ts:74] — deferred, robustness (does not occur with `defaultNow()` + NTP-synced clocks).
+- [x] [Review][Defer] Index migration not zero-downtime — `DROP INDEX` without `IF EXISTS` (fails on re-run) + `CREATE INDEX` without `CONCURRENTLY` (write-blocking lock + a window with no supporting index on the hot vector RBAC path during deploy) [packages/shared/src/db/migrations/0004_rapid_quicksilver.sql] — deferred, drizzle-kit-generated (story mandates never hand-editing it); operational concern.
+
+### dismissed (verified false positives / spec-mandated)
+
+- `authors` INNER JOIN on `message_ids[1]` undercounts vs `resources` (Blind+Edge) — spec-mandated anchor attribution (D3 dev-notes) + data invariant (`message_ids` is `notNull`, length-1, anchor always resolves in `discord_messages`) means the drop path does not occur with real pipeline data.
+- `weekStart` is a rolling 168h instant, not a calendar week (Blind) — exactly what D3 ratifies (`created_at >= now() - interval '7 days'`).
+- `readPct` shows 100% at 99.5% via `Math.round` (Blind+Edge) — standard rounding, not a defect; the only harmful half (the >100 crash) is covered by the clamp patch above.
+- Edge Case Hunter's "readPct can never exceed 100" verified-handled claim — correct only within a single snapshot; refuted for the non-transactional concurrent case (see the clamp patch).
+
+### Re-run (bmad-code-review, extra scrutiny — post-patch diff)
+
+3 layers @ Opus re-ran on the patched diff. **Acceptance Auditor: PASS again** — all 4 patches + both decisions correctly applied, no AC/D violations, no regressions. Blind + Edge converged on 4 refinements, **all to the round-1 patches themselves** (their Medium `authors`-basis and window findings were already dismissed/deferred in round 1 and are unchanged). New patch set RP1–RP4:
+
+- [x] [Review][Patch] (applied) RP1 — Thread the 30-day `queries` window through the service (single clock) — P4 used Postgres `now()` while every other window (`weekStart`, `fromDate`) is computed from the injected `now` param; two clocks in one response + not deterministically testable. Compute `queriesFrom` in the service and pass it as a SQL param, matching the `weekStart` pattern. [packages/backend/src/application/services/statsService.ts + statsRepository.ts port + .drizzle.ts]
+- [x] [Review][Patch] (applied) RP2 — Clamp `readCount` to `totalCount`, not just `readPct` — P1 clamped the derived pct but still ships the contradictory raw pair (`{readCount:5, totalCount:4}` = "5 of 4 read"). Bound `readCount = Math.min(readCount, totalCount)` and derive `readPct` from it (makes the `Math.min(100,…)` redundant). Flagged by both Blind (F4) and Edge (#2). [packages/backend/src/application/services/statsService.ts:70]
+- [x] [Review][Patch] (applied) RP3 — Fix the stale port doc — `countUserAgentQueries`'s JSDoc in the port still says "All-time count…" while the impl now windows to 30 days; the AD-2 port contract contradicts the code. (Folds into RP1's port-signature rewrite.) [packages/backend/src/domain/repositories/statsRepository.ts]
+- [x] [Review][Patch] (applied) RP4 — Add a test that proves the 30-day cutoff EXCLUDES an old message — round-1 P4 added the filter but no test seeds a >30-day-old message, so the suite passes with or without the predicate (invisible regression risk, Blind F3). Add a deterministic service-level window assert (via injected `now`) + an integration seed of an old message. [statsService.test.ts + stats.integration.test.ts]
+
+Re-run dismissed/unchanged: `authors` INNER-JOIN basis mismatch (Medium, Blind F1 — spec-mandated anchor attribution + length-1 notNull invariant; hard-deleted-anchor path doesn't occur with soft-delete model); rolling weekStart vs calendar activity (ratified D3); migration no trailing newline (generated file). Carried defers (no upper time bound; migration not zero-downtime) unchanged.

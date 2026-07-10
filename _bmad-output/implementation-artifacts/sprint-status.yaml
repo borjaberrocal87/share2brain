@@ -1,4 +1,11 @@
 # generated: 2026-06-30
+# last_updated: 2026-07-10 (story 9-1 review → DONE + re-run, bmad-code-review): 3 layers @ Opus x2,
+# Auditor PASS both rounds (6/6 ACs + D1–D10). 2 decisions: queries KPI → 30d (was all-time); "Top 5
+# usuarios" → own story via bmad-correct-course (FOLLOW-UP; data gap: no author display name). Round 1:
+# 4 patches (readPct clamp; scoped→emptyScope; superRefine pins KPI order; queries 30d). Re-run found
+# 4 refinements of those patches (RP1 30d window single-clock via service; RP2 clamp readCount not just
+# readPct; RP3 port doc; RP4 verify 30d cutoff excludes old msg) — all applied. 2 deferred, dismissed.
+# Re-gate x2: lint 0 / 863 unit+web / build clean / 127 integration.
 # last_updated: 2026-07-10 (story 9-1 in-progress → review, bmad-dev-story): shared StatsResponse
 # contract (37 tests) + composite index idx_embeddings_channel_created (D2) + backend RBAC-scoped
 # GET /api/stats (domain port + Drizzle adapter, every channel-scoped query embeds
@@ -348,7 +355,7 @@ development_status:
   # over existing data (no new ingestion, no new table). Moderate. AD-12 RATIFIED:
   # every aggregation filters by allowedChannelIds inside the SQL. Single GET /api/stats.
   epic-9: in-progress
-  9-1-shared-backend-contrato-stats-endpoint-agregacion-rbac-scoped: review
+  9-1-shared-backend-contrato-stats-endpoint-agregacion-rbac-scoped: done
   9-2-web-statsview-tercera-entrada-nav: backlog
   9-3-e2e-extender-harness-visual-estadisticas: backlog
   epic-9-retrospective: optional
