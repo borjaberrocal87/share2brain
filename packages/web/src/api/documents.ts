@@ -1,8 +1,8 @@
 // Tiny browser-safe documents client for the SPA. Talks to the same-origin
-// /api/documents endpoint. Imports types/schemas ONLY from @hivly/shared/schemas —
+// /api/documents endpoint. Imports types/schemas ONLY from @share2brain/shared/schemas —
 // never the root barrel or /db, which pull `pg` into the bundle (ESLint
 // no-restricted-imports enforces this, AD-3). Mirrors api/search.ts.
-import { DocumentsResponseSchema, type DocumentsResponse } from '@hivly/shared/schemas';
+import { DocumentsResponseSchema, type DocumentsResponse } from '@share2brain/shared/schemas';
 
 export interface FetchDocumentsParams {
   page: number;

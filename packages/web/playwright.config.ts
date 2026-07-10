@@ -32,10 +32,10 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   // Two servers: the test backend (seeded on boot) and the built SPA behind vite
   // preview (its preview.proxy points /api + /health at the test backend). Preview
-  // inherits HIVLY_API_PROXY_TARGET from `env` so it proxies to :3100.
+  // inherits SHARE2BRAIN_API_PROXY_TARGET from `env` so it proxies to :3100.
   webServer: [
     {
-      command: 'npm run e2e:server -w @hivly/backend',
+      command: 'npm run e2e:server -w @share2brain/backend',
       url: `${BACKEND_ORIGIN}/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
@@ -44,11 +44,11 @@ export default defineConfig({
     {
       // `--port` pins `vite preview` to WEB_PORT explicitly — otherwise it only
       // matches WEB_ORIGIN by coincidence (Vite's own preview default is 4173).
-      command: `npm run build -w @hivly/web && npm run preview -w @hivly/web -- --port ${WEB_PORT}`,
+      command: `npm run build -w @share2brain/web && npm run preview -w @share2brain/web -- --port ${WEB_PORT}`,
       url: WEB_ORIGIN,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
-      env: { HIVLY_API_PROXY_TARGET: BACKEND_ORIGIN },
+      env: { SHARE2BRAIN_API_PROXY_TARGET: BACKEND_ORIGIN },
     },
   ],
 });

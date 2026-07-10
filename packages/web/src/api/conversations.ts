@@ -1,6 +1,6 @@
 // Tiny browser-safe conversations client for the SPA (Story 5.3). Talks to the
 // same-origin /api/conversations LIST endpoint (Story 5.2 read side). Imports
-// types/schemas ONLY from @hivly/shared/schemas — never the root barrel or /db,
+// types/schemas ONLY from @share2brain/shared/schemas — never the root barrel or /db,
 // which pull `pg` into the bundle (ESLint no-restricted-imports enforces this,
 // AD-3). Mirrors api/documents.ts.
 //
@@ -13,7 +13,7 @@ import {
   ConversationsResponseSchema,
   type ConversationDetail,
   type ConversationsResponse,
-} from '@hivly/shared/schemas';
+} from '@share2brain/shared/schemas';
 
 /** A page of the caller's own conversation summaries (title derived server-side,
  * ordered updated_at DESC). */

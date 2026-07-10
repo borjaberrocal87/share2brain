@@ -42,10 +42,10 @@ const CITATION_LINK = 'https://example.com/e2e/configurar-canales-indexados';
 // overlay lists and 5.4 loads). Title is DERIVED from the first user message.
 const SEEDED_TITLE = '¿Cómo configuro las notificaciones externas?';
 const SEEDED_ANSWER =
-  'Las notificaciones externas se configuran en Hivly.config.yml bajo la sección notifications.';
+  'Las notificaciones externas se configuran en Share2Brain.config.yml bajo la sección notifications.';
 // The harness fakeChatModel (test-helpers.ts) streams a fixed token list for a
 // NEW turn, so a freshly-sent message's agent bubble ends at exactly this text.
-const FAKE_ANSWER = 'Hola desde Hivly.';
+const FAKE_ANSWER = 'Hola desde Share2Brain.';
 
 test.describe('Story 5.3 — Chat widget (FAB + panel shell)', () => {
   test('FAB geometry + amber shadow + hexagon clip-path (AC1)', async ({ page }, testInfo) => {
@@ -178,7 +178,7 @@ test.describe('Story 5.4 — Chat messages + streaming', () => {
     await expect(inputRow).toHaveCSS('border-color', ACCENT_INK);
 
     // Footer privacy string.
-    await expect(page.getByText(/tools de hivly\.config\.yml/)).toBeVisible();
+    await expect(page.getByText(/tools de share2brain\.config\.yml/)).toBeVisible();
 
     // Typing enables the send button: amber (#F5A623) bg, pointer cursor.
     await page.getByTestId('chat-input').fill('¿Qué es RBAC?');
@@ -233,12 +233,12 @@ test.describe('Story 5.4 — Chat messages + streaming', () => {
   }, testInfo) => {
     await gotoChat(page);
 
-    await page.getByTestId('chat-input').fill('¿Cómo configuro Hivly?');
+    await page.getByTestId('chat-input').fill('¿Cómo configuro Share2Brain?');
     await page.getByTestId('chat-send').click();
 
     // The user bubble echoes the sent text; the agent bubble accumulates the
-    // fake model's fixed tokens to exactly "Hola desde Hivly.".
-    await expect(page.getByTestId('chat-msg-user')).toContainText('¿Cómo configuro Hivly?');
+    // fake model's fixed tokens to exactly "Hola desde Share2Brain.".
+    await expect(page.getByTestId('chat-msg-user')).toContainText('¿Cómo configuro Share2Brain?');
     await expect(page.getByTestId('chat-msg-agent')).toContainText(FAKE_ANSWER);
 
     // The retrieve step (fake embedder + seeded member embeddings) yields ≥1

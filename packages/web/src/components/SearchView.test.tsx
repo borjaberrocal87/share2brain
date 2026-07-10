@@ -4,7 +4,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { SearchFragment } from '@hivly/shared/schemas';
+import type { SearchFragment } from '@share2brain/shared/schemas';
 
 import * as channelsApi from '../api/channels';
 import * as searchApi from '../api/search';

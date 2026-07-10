@@ -5,7 +5,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ConversationDetail, ConversationsResponse, SSEFrame } from '@hivly/shared/schemas';
+import type { ConversationDetail, ConversationsResponse, SSEFrame } from '@share2brain/shared/schemas';
 
 import * as chatApi from '../api/chat';
 import * as conversationsApi from '../api/conversations';
@@ -290,7 +290,7 @@ describe('ChatWidget — composer (5.4)', () => {
     renderWidget();
     openPanel();
 
-    expect(screen.getByText(/tools de hivly\.config\.yml/)).toBeTruthy();
+    expect(screen.getByText(/tools de share2brain\.config\.yml/)).toBeTruthy();
   });
 
   it('should send on Enter and NOT send on Shift+Enter', () => {
@@ -457,7 +457,7 @@ describe('ChatWidget — history load (5.4)', () => {
       {
         id: '550e8400-e29b-41d4-a716-446655440002',
         role: 'assistant',
-        content: 'Se configuran en Hivly.config.yml.',
+        content: 'Se configuran en Share2Brain.config.yml.',
         citations: [
           {
             title: 'Deploying with Docker Compose',
@@ -500,7 +500,7 @@ describe('ChatWidget — history load (5.4)', () => {
       '¿Cómo configuro las notificaciones?',
     );
     expect(screen.getByTestId('chat-msg-agent').textContent).toContain(
-      'Se configuran en Hivly.config.yml.',
+      'Se configuran en Share2Brain.config.yml.',
     );
     const chip = screen.getByTestId('chat-citation') as HTMLAnchorElement;
     expect(chip.textContent).toContain('Deploying with Docker Compose');

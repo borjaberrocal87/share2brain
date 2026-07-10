@@ -55,7 +55,7 @@ describe('useTheme', () => {
     });
 
     expect(document.documentElement.getAttribute('data-kh')).toBe('light');
-    expect(localStorage.getItem('hivly-theme')).toBe('light');
+    expect(localStorage.getItem('share2brain-theme')).toBe('light');
     expect(result.current.theme).toBe('light');
 
     act(() => {
@@ -63,7 +63,7 @@ describe('useTheme', () => {
     });
 
     expect(document.documentElement.getAttribute('data-kh')).toBe('dark');
-    expect(localStorage.getItem('hivly-theme')).toBe('dark');
+    expect(localStorage.getItem('share2brain-theme')).toBe('dark');
     expect(result.current.theme).toBe('dark');
   });
 });

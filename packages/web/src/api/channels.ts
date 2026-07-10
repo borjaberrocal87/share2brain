@@ -1,8 +1,8 @@
 // Tiny browser-safe channels client for the SPA. Talks to the same-origin
-// /api/channels endpoint. Imports types/schemas ONLY from @hivly/shared/schemas —
+// /api/channels endpoint. Imports types/schemas ONLY from @share2brain/shared/schemas —
 // never the root barrel or /db, which pull `pg` into the bundle (ESLint
 // no-restricted-imports enforces this, AD-3). Mirrors api/search.ts.
-import { ChannelsResponseSchema, type Channel } from '@hivly/shared/schemas';
+import { ChannelsResponseSchema, type Channel } from '@share2brain/shared/schemas';
 
 /** Channels the current session's Discord roles may access (RBAC-scoped server-side). */
 export async function fetchChannels(): Promise<Channel[]> {

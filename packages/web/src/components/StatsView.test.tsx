@@ -7,7 +7,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { StatsResponse } from '@hivly/shared/schemas';
+import type { StatsResponse } from '@share2brain/shared/schemas';
 
 import * as statsApi from '../api/stats';
 import { StatsView } from './StatsView';

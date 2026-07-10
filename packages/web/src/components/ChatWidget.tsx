@@ -25,7 +25,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent, ReactElement, ReactNode } from 'react';
 
-import type { CitationType, ConversationSummary } from '@hivly/shared/schemas';
+import type { CitationType, ConversationSummary } from '@share2brain/shared/schemas';
 
 import { streamChat } from '../api/chat';
 import { fetchConversation, fetchConversations } from '../api/conversations';
@@ -499,7 +499,7 @@ export function ChatWidget({ user }: ChatWidgetProps): ReactElement {
               color: 'var(--text-primary)',
             }}
           >
-            Hivly
+            Share2Brain
           </div>
           <div
             style={{
@@ -796,7 +796,7 @@ export function ChatWidget({ user }: ChatWidgetProps): ReactElement {
           <span aria-hidden="true" style={{ display: 'flex' }}>
             <LockIcon size={11} />
           </span>
-          Respuestas con fuente verificable · tools de hivly.config.yml
+          Respuestas con fuente verificable · tools de share2brain.config.yml
         </div>
       </div>
     </div>
@@ -895,7 +895,7 @@ function AgentHexAvatar(): ReactElement {
 function AgentBubble({ message }: { message: ChatMessage }): ReactElement {
   return (
     <MessageRow avatar={<AgentHexAvatar />}>
-      <div style={NAME_LABEL_STYLE}>Hivly</div>
+      <div style={NAME_LABEL_STYLE}>Share2Brain</div>
       <div data-testid="chat-msg-agent" style={MESSAGE_TEXT_STYLE}>
         {message.content}
         {message.streaming && (

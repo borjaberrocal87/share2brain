@@ -1,9 +1,9 @@
 /*
- * Hivly design-system foundation (Story 2.1).
+ * Share2Brain design-system foundation (Story 2.1).
  *
  * Single global stylesheet: base reset, design tokens (dark + light themes),
  * and the six kh-* keyframes. Values are copied verbatim from the authoritative
- * design prototype docs/context/design/KeepHive Web.dc.html.
+ * design prototype docs/context/design/Share2Brain Web.dc.html.
  *
  * Theming: the root element carries data-kh="dark" (default) or data-kh="light";
  * every UI color is read through a CSS custom property below. Do NOT hardcode UI

@@ -1,5 +1,5 @@
 // Tiny browser-safe read-status client for the SPA. Talks to the same-origin
-// /api/read-status endpoints. Imports types/schemas ONLY from @hivly/shared/schemas —
+// /api/read-status endpoints. Imports types/schemas ONLY from @share2brain/shared/schemas —
 // never the root barrel or /db, which pull `pg` into the bundle (ESLint
 // no-restricted-imports enforces this, AD-3). Mirrors api/search.ts.
 import {
@@ -7,7 +7,7 @@ import {
   UnreadCountResponseSchema,
   type MarkAllResponse,
   type UnreadCountResponse,
-} from '@hivly/shared/schemas';
+} from '@share2brain/shared/schemas';
 
 /** Mark a single fragment as read for the current user. Throws on failure (caller reverts optimistically). */
 export async function markRead(embeddingId: string): Promise<void> {

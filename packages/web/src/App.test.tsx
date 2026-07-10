@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { DocumentFragment, DocumentsResponse, UnreadCountResponse } from '@hivly/shared/schemas';
+import type { DocumentFragment, DocumentsResponse, UnreadCountResponse } from '@share2brain/shared/schemas';
 
 import { App } from './App';
 import * as authApi from './api/auth';
@@ -72,8 +72,8 @@ describe('App session flow', () => {
     // Initials derived from the username ("ada lovelace" → "AL").
     expect(screen.getByText('AL')).toBeTruthy();
     // Community name (build default) renders in the header banner (unambiguous:
-    // "Hivly" also appears as the sidebar wordmark).
-    expect(within(screen.getByRole('banner')).getByText('Hivly')).toBeTruthy();
+    // "Share2Brain" also appears as the sidebar wordmark).
+    expect(within(screen.getByRole('banner')).getByText('Share2Brain')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Continuar con Discord/i })).toBeNull();
   });
 

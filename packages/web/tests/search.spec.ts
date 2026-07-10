@@ -16,7 +16,7 @@ const TEXT_TERTIARY = 'rgb(154, 163, 178)'; // --text-tertiary #9AA3B2
 const TEXT_MUTED = 'rgb(124, 132, 148)'; // --text-muted #7C8494
 const BORDER_STRONG = 'rgb(42, 49, 61)'; // --border-strong #2A313D
 
-// The top result card (query 'hivly', similarity 1.0) is the #general one-hot(0)
+// The top result card (query 'share2brain', similarity 1.0) is the #general one-hot(0)
 // fragment e2e-msg-g1 — its title/description/link are the exact seed values.
 const TOP_TITLE = 'Cómo configurar los canales a indexar';
 const TOP_RESOURCE_LINK = 'https://example.com/e2e/configurar-canales-indexados';
@@ -43,7 +43,7 @@ test.describe('Story 4.3 — Búsqueda (retroactive visual verification)', () =>
 
     // 4.3-AC3/AC4 — type a query (250ms debounce; rely on auto-retry) and inspect
     // the first result card (top similarity = the #general one-hot fragment).
-    await input.fill('hivly');
+    await input.fill('share2brain');
     const card = page.locator('.kh-result-card').first();
     await expect(card).toBeVisible();
 
@@ -92,7 +92,7 @@ test.describe('Story 4.3 — Búsqueda (retroactive visual verification)', () =>
     // way to reach 0 results, since search has no similarity threshold.
     await loginAs(page, 'e2e-empty');
 
-    await page.locator('.kh-search-input').fill('hivly');
+    await page.locator('.kh-search-input').fill('share2brain');
 
     const empty = page.getByTestId('search-empty-state');
     await expect(empty).toBeVisible();
@@ -121,7 +121,7 @@ test.describe('Story 7.6 — SearchView resource title + link', () => {
   }, testInfo) => {
     await loginAs(page, 'e2e-member');
 
-    await page.locator('.kh-search-input').fill('hivly');
+    await page.locator('.kh-search-input').fill('share2brain');
     const card = page.locator('.kh-result-card').first();
     await expect(card).toBeVisible();
 

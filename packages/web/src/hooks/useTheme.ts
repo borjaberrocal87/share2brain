@@ -2,13 +2,13 @@
 // index.html already set <html data-kh> before first paint (FOUC-free), so this
 // hook just reads that back as its initial state and owns the runtime toggle.
 // toggleTheme flips dark<->light, writes the attribute, and persists the choice
-// to localStorage('hivly-theme'). localStorage access is wrapped in try/catch
+// to localStorage('share2brain-theme'). localStorage access is wrapped in try/catch
 // because private-mode Safari throws.
 import { useCallback, useState } from 'react';
 
 export type Theme = 'dark' | 'light';
 
-const STORAGE_KEY = 'hivly-theme';
+const STORAGE_KEY = 'share2brain-theme';
 
 function readInitialTheme(): Theme {
   // The inline script has already stamped data-kh; trust it. Default to dark if

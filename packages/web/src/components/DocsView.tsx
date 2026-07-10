@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
 
-import type { Channel, DocumentFragment, UnreadCountResponse } from '@hivly/shared/schemas';
+import type { Channel, DocumentFragment, UnreadCountResponse } from '@share2brain/shared/schemas';
 
 import { fetchChannels } from '../api/channels';
 import { fetchDocuments } from '../api/documents';

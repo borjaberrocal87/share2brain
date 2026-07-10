@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
 
-import type { Channel, SearchFragment } from '@hivly/shared/schemas';
+import type { Channel, SearchFragment } from '@share2brain/shared/schemas';
 
 import { fetchChannels } from '../api/channels';
 import { search } from '../api/search';

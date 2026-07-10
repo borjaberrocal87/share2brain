@@ -82,7 +82,7 @@ export function Sidebar({ activeScreen, onNavigate, unreadCount = 0 }: SidebarPr
             letterSpacing: '-0.01em',
           }}
         >
-          Hivly
+          Share2Brain
         </div>
       </div>
 
@@ -137,7 +137,7 @@ export function Sidebar({ activeScreen, onNavigate, unreadCount = 0 }: SidebarPr
               color: 'var(--text-tertiary)',
             }}
           >
-            hivly.config.yml
+            share2brain.config.yml
           </span>
         </div>
 

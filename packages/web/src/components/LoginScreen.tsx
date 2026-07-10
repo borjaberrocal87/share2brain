@@ -73,7 +73,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps): ReactElement {
             margin: '22px 0 0',
           }}
         >
-          Hivly
+          Share2Brain
         </h1>
 
         <div

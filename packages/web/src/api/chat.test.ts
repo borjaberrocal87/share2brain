@@ -5,7 +5,7 @@
 // response.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { SSEFrame } from '@hivly/shared/schemas';
+import type { SSEFrame } from '@share2brain/shared/schemas';
 
 import { ChatStreamError, streamChat } from './chat';
 

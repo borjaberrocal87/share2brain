@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
 
-import type { StatsActivityPoint, StatsChannel, StatsCoverage, StatsKpi, StatsResponse, StatsTopUser } from '@hivly/shared/schemas';
+import type { StatsActivityPoint, StatsChannel, StatsCoverage, StatsKpi, StatsResponse, StatsTopUser } from '@share2brain/shared/schemas';
 
 import { fetchStats } from '../api/stats';
 

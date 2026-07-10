@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
 
-import type { AuthMeResponse, UnreadCountResponse } from '@hivly/shared/schemas';
+import type { AuthMeResponse, UnreadCountResponse } from '@share2brain/shared/schemas';
 
 import { fetchMe, logout as apiLogout, LOGIN_URL } from './api/auth';
 import { fetchUnreadCount } from './api/readStatus';
@@ -28,7 +28,7 @@ type AuthState = 'loading' | 'anon' | 'authed';
 // Community name is build-time config (AD-3: the static SPA can't read the server
 // YAML). Real message stats arrive in Epic 4 — keep a neutral placeholder, not
 // fake numbers.
-const COMMUNITY_NAME = import.meta.env.VITE_COMMUNITY_NAME ?? 'Hivly';
+const COMMUNITY_NAME = import.meta.env.VITE_COMMUNITY_NAME ?? 'Share2Brain';
 const STATS_LINE = 'indexación de conocimiento · pgvector';
 
 export function App(): ReactElement {

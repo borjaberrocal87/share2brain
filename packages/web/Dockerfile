@@ -1,5 +1,5 @@
 # nginx image serving the built SPA. Build context MUST be the repo root:
-# @hivly/web depends on @hivly/shared (raw source) and the root lockfile for
+# @share2brain/web depends on @share2brain/shared (raw source) and the root lockfile for
 # `npm ci`. Stage 1 builds dist with Vite; the final stage bakes dist + the
 # root nginx.conf into nginx:1.27-alpine, so the compose `nginx` service serves
 # the SPA at / with no separate web service or shared volume (7 services total).
@@ -19,7 +19,7 @@ RUN npm ci
 COPY tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 COPY packages/web ./packages/web
-RUN npm run build -w @hivly/web
+RUN npm run build -w @share2brain/web
 
 # --- final image ------------------------------------------------------------
 FROM nginx:1.27-alpine

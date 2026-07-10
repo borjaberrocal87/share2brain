@@ -1,4 +1,4 @@
-// @hivly/web — static React SPA (AD-3: Vite build, no SSR, no Node server).
+// @share2brain/web — static React SPA (AD-3: Vite build, no SSR, no Node server).
 // Story 2.2 mounts the full app shell: login, sidebar, header, client-side nav,
 // and the persistent theme toggle. The theme is applied to <html data-kh> by a
 // blocking inline script in index.html BEFORE first paint (FOUC-free, AC6), so
