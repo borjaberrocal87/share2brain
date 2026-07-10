@@ -15,9 +15,12 @@
 //     the only way to get 0 results) and /api/stats returns all-zero figures.
 //   - `e2e-role-none` (Story 9.3 D3 RBAC canary) owns `e2e-ch-secreto`, held by
 //     NO fake-OAuth identity — its message/embedding must NEVER surface in any
-//     member-scoped figure (AD-12 in-SQL RBAC). Only `e2e-msg-r1`/`e2e-msg-r2`
-//     carry `author_name` (D2, mirrors the post-9.4 no-backfill reality); the
-//     rest resolve via COALESCE fallback to the raw `author_id`.
+//     member-scoped figure (AD-12 in-SQL RBAC). Among the member-visible
+//     messages only `e2e-msg-r1`/`e2e-msg-r2` carry `author_name` (D2, mirrors
+//     the post-9.4 no-backfill reality) while g1/g2/g3 resolve via COALESCE
+//     fallback to the raw `author_id`; the out-of-scope canary `e2e-msg-s1`
+//     also carries one ('Eve Intrusa') deliberately, so the leak check is
+//     meaningful.
 import { sql, type Database } from '@hivly/shared/db';
 
 // Must match the migrated column width `vector(1536)` and the fake query embedder
