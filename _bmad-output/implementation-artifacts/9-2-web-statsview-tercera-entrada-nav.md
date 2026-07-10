@@ -4,7 +4,7 @@ baseline_commit: 10e071f2fe6bc76c162ee3c08657175d159d523a
 
 # Story 9.2: web — StatsView + 3ª entrada de nav
 
-Status: review
+Status: done
 
 ## Story
 
@@ -190,6 +190,7 @@ Endpoint: `GET /api/stats`, no params/body. Errors: 401 `{ error, code: 'AUTH_RE
 
 - 2026-07-10 — Story created via `bmad-create-story` (ultimate context engine analysis completed — comprehensive developer guide created). Sources: epics.md §Épico 9, both 2026-07-10 SCPs, 9.1/9.5 story intelligence, full `isStats` design extraction, `packages/web` pattern analysis. Fresh-context validation applied 2 critical fixes (UX-DR24 not UX-DR23 — number taken by "Animaciones del sistema"; 4 KPI icon SVG paths embedded verbatim so the 467KB mock never needs re-parsing), 3 enhancements (frontend-standards "Four→Five primary views" intro line; stale Sidebar/AppLayout header comments added to Task 2; global.css raw-hex policy comment update for the D3/D4 sanctioned literals) and 1 reference widening (statsService JSDoc :35-43).
 - 2026-07-10 — Story implemented via `bmad-dev-story` on `feat/9-2-web-statsview` (off `main` @ `10e071f`): StatsView + 3rd nav entry shipped exactly per plan (D1–D6 honored verbatim). Gate green: lint 0 / 892 unit+web (+10) / build clean (5 pkgs) / 16 existing e2e chromium unchanged. Docs synced (epics.md UX-DR5/6 + new UX-DR24, TECHNICAL-DESIGN.md §5.5, frontend-standards.md, global.css raw-hex comment). Status → review.
+- 2026-07-10 — Code review via `bmad-code-review` (3 adversarial layers @ Opus). Acceptance Auditor: 0 AC/D violations (AC1–AC8 + D1–D6 verified against real source). Triage: 0 decision-needed, 1 patch (applied), 3 defer (Low, → deferred-work.md), 5 dismissed (2 Blind FPs refuted at source: `unread` clamp via `readCount=Math.min(readCount,totalCount)`, top-users order superRefine-pinned; "Reintentá." = ratified SearchView pattern; date-key & donut-title non-issues). Patch: activity per-bar tooltip → `toLocaleString('es')` for consistency with the total. Gate re-run green (lint 0 / web unit 119 / build 5 pkgs). Status → done.
 
 ## Dev Agent Record
 
@@ -209,6 +210,22 @@ None — no blocking failures. One environment hiccup during Task 8 manual smoke
 - Manual smoke (Task 8) confirmed real-data rendering in both dark and light themes via the deterministic e2e backend + fake-OAuth (header, 4 KPI cards with icons/values/subs, 14-bar activity chart with the today gradient bar, donut + legend, channel bars, Top-5 section) — see Debug Log for the environment hiccups encountered and why no screenshot artifact was preserved. The 16 pre-existing Playwright specs pass unchanged with the 3rd nav item present.
 - D4 avatar/initials helpers (`avatarColor`, `statsInitials`) are defined locally in `StatsView.tsx`, NOT in `lib/authorColor.ts`/`lib/initials.ts` — those existing libs use a different 8-color palette and a whitespace-only split rule (used by Search/Docs author avatars), while D4 mandates a distinct 6-color mock-verbatim palette and an `[_- ]`-split initials rule specific to this view. Reusing the existing libs would have silently violated D4.
 - No new dependency added; `packages/web/package.json` diff is empty (AC5 verified).
+
+### Review Findings
+
+Code review 2026-07-10 (`bmad-code-review`) — 3 adversarial layers @ Opus (Blind Hunter / Edge Case Hunter / Acceptance Auditor). **Acceptance Auditor: 0 AC/D violations** — AC1–AC8 + D1–D6 all verified faithful against real source (contract `schemas/stats.ts`, service literals `statsService.ts:87-112`, tokens, sibling patterns). Triage: 0 decision-needed, 1 patch, 3 defer, 5 dismissed.
+
+- [x] [Review][Patch] Activity per-bar tooltip is not locale-formatted [`packages/web/src/components/StatsView.tsx:249`] — FIXED: `title={`${point.count.toLocaleString('es')} recursos`}`; gate re-run green (lint 0 / web unit 119 / build 5 pkgs). — `title={`${point.count} recursos`}` uses the raw number while the adjacent activity-total and every other count use `toLocaleString('es')`. A daily count ≥1000 reads "1234 recursos" in the tooltip vs "1.234" everywhere else. LOW, cosmetic. Spec-defensible (D5's enumeration omits the tooltip, D2 pins it as `{count} recursos`) — discretionary consistency fix, applying `toLocaleString('es')` still satisfies D2.
+- [x] [Review][Defer] No overflow/truncation on `authorName` / `channelName` spans [`StatsView.tsx:302,454`] — deferred, visual-AC domain owned by 9.3. Long unbroken names / raw-snowflake channel names have `minWidth:0` on the container but no `overflow/textOverflow/whiteSpace` on the child span, so they can wrap or push the count. Cosmetic; the design spec does not mandate ellipsis (no hover/tooltip in this screen), so the fix is not spec-unambiguous.
+- [x] [Review][Defer] `statsInitials` degrades on separator-only / emoji names [`StatsView.tsx:51-55`] — deferred, cosmetic + rare inputs. Separator-only name (`"___"`) → `parts=[]` → falls back to `slice(0,2)`="__"; a two-part emoji name (`"🎉_dev"`) → `"🎉".charAt(0)` yields a lone high surrogate → avatar shows `�`. `authorName` is schema-`min(1)` so never empty; the realistic degradation (snowflake → 2 leading digits) is D4-ratified and correct. Fix, if promoted: `Array.from()` for surrogate-safe first-chars + a `?` fallback — but D4 pins the exact algorithm, so not unambiguous.
+- [x] [Review][Defer] Unit-test coverage gaps vs enumerated boundaries [`StatsView.test.tsx`] — deferred, 9.3's Playwright harness owns computed-visual coverage. Uncovered: single-part *alphabetic* initials (`.slice(0,2)` on letters), emoji/unicode names, `coverage.readPct===100` donut, a non-empty channel row with `count===0` (0%-width fill), the real ZodError parse-failure path (error test throws a generic `Error`), and any nav→`StatsView` mount assertion (no `App.test.tsx` change shipped; spec deferred nav coverage to App tests / 9.3). State-machine coverage (loading/error/empty-scope/abort) IS present.
+
+**Dismissed (5, verified false-positives / spec-sanctioned):**
+1. Error copy "Reintentá." offers no retry affordance (Blind, Medium) — AC7 pins the exact string + "SearchView pattern"; `SearchView.tsx:178` and `DocsView.tsx:260` both say "Reintentá" with no dedicated retry button (retry = re-search / re-filter / re-nav). Product-wide ratified pattern, not this story's defect. *(surfaced to Borja as a cross-view UX observation)*
+2. `unread = totalCount - readCount` can go negative (Blind, Low) — refuted: service ships `coverage.readCount = Math.min(readCount, totalCount)` (`statsService.ts:84,119`); `unread ≥ 0` guaranteed upstream.
+3. Top-users bar assumes API pre-sorted by count DESC (Blind, Low) — refuted: `topUsers` order is `superRefine`-pinned `count DESC, authorId ASC` in the contract, so `topUsers[0]` IS the max; spec mandates the view rely on API order and never re-sort.
+4. `activity` React key `point.date` relies on schema-unenforced date distinctness (Edge, Low) — defensive/hypothetical; the service zero-fills 14 distinct UTC days, keys are unique. Reachable only via an upstream regression the contract is the safety net for.
+5. Donut title "Cobertura de lectura" is a dev-chosen literal (Auditor, info) — spec-consistent (AC2 calls it the "read-coverage donut"), semantically correct; the design spec pins only the subtitle, not the `<h3>`. Not a violation.
 
 ### File List
 
