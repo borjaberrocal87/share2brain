@@ -38,6 +38,15 @@ export const StatsCoverageSchema = z.object({
 
 export type StatsCoverage = z.infer<typeof StatsCoverageSchema>;
 
+/** One row of the top-5-most-active-users block, ordered `count DESC, authorId ASC` (D3). */
+export const StatsTopUserSchema = z.object({
+  authorId: z.string().min(1),
+  authorName: z.string().min(1),
+  count: z.number().int().min(1),
+});
+
+export type StatsTopUser = z.infer<typeof StatsTopUserSchema>;
+
 /** The 4 KPIs in their fixed, contractual order (D3). Consumers may index positionally. */
 export const KPI_ORDER = ['resources', 'channels', 'authors', 'queries'] as const;
 
@@ -64,6 +73,28 @@ export const StatsResponseSchema = z.object({
   activity: z.array(StatsActivityPointSchema).length(14),
   channels: z.array(StatsChannelSchema),
   coverage: StatsCoverageSchema,
+  // `.max(5)` + `superRefine` pin the `count DESC, authorId ASC` ordering (D3): the
+  // service is the sole producer, but the contract (AD-6) is 9.2's safety net, same
+  // precedent as the KPI order pin above (P3).
+  topUsers: z
+    .array(StatsTopUserSchema)
+    .max(5)
+    .superRefine((rows, ctx) => {
+      for (let i = 1; i < rows.length; i++) {
+        const prev = rows[i - 1];
+        const curr = rows[i];
+        if (!prev || !curr) continue;
+        const outOfOrder =
+          curr.count > prev.count || (curr.count === prev.count && curr.authorId <= prev.authorId);
+        if (outOfOrder) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [i],
+            message: `Expected topUsers[${i}] to sort after topUsers[${i - 1}] by count DESC, authorId ASC`,
+          });
+        }
+      }
+    }),
 });
 
 export type StatsResponse = z.infer<typeof StatsResponseSchema>;

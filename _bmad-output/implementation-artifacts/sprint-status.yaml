@@ -1,4 +1,57 @@
 # generated: 2026-06-30
+# last_updated: 2026-07-10 (story 9-5 review → done, bmad-code-review): 3 adversarial layers @ Opus
+# (Blind Hunter / Edge Case Hunter / Acceptance Auditor). Auditor 0 AC/D/AD violations — AC1–AC6 +
+# D1–D7 all verified faithful vs source/schema/seed math (3+2+1+1+1+1=9 reconciles with resources KPI);
+# Edge Hunter called the diff clean. Triage: 0 decision-needed, 2 patch (both applied), 3 defer (Low),
+# 7 dismissed. Patches: (1) Completion Notes test-delta miscount +12/9+3 → +13/11+2 (headline 882
+# correct); (2) reworded the "same COALESCE chain" comment in embeddingSearch/documentRepository to
+# state anchor-row vs topUsers latest-across-messages resolution. Defers → deferred-work.md: SQL-vs-JS
+# ordering-collation coupling in the topUsers superRefine (unreachable for numeric snowflakes),
+# created_at-tie non-determinism in the latest-name array_agg pick (cosmetic; +d.id DESC if revisited),
+# tier-3 author_id "never ''" asserted-not-enforced (theoretical, mirrors 9.4 deferred Low). Dismissed =
+# LEFT JOIN users fan-out FP (idx_users_discord_id UNIQUE, verified schema.ts:100), integration-rows-not-
+# in-diff FP (base seed, math verified), ORDER BY count alias (ratified getChannelCounts convention),
+# superRefine <= intentional per D3, OpenAPI can't express ordering, unit-test naming (coverage adequate
+# via paired test), deleted-exclusion over whole message_ids (consistent-by-design with authors KPI).
+# Re-gate after comment-only SQL patches: lint 0 / build clean (5 pkgs); unit/integration inert (SQL
+# semantics byte-identical, PG ignores -- comments). Re-run (2nd pass, extra scrutiny at Borja's
+# request): Auditor re-confirmed 0 AC/D/AD violations + both patches truthful; review converged with
+# +2 new Low defers (tier-2 u.username='' asymmetry folded into the COALESCE-tiers defer; documents-repo
+# /blank-fallback coverage gap beyond AC5 scope, downgraded from Blind's Medium via Edge source-verify)
+# + 3 dismissed (redundant D5 empty-scope guard nit, 2 dup defers). Story stays done. UNCOMMITTED status
+# flip + 2 review patches on feat/9-5-stats-top-users (5 code commits already landed, PR #57 open).
+# Next: bmad-checkpoint-preview or bmad-dev-story (9-2 render, 9-3 e2e).
+# || (prior) story 9-5 in-progress → review, bmad-dev-story): topUsers block in
+# StatsResponse shipped on feat/9-5-stats-top-users. shared StatsTopUserSchema + required
+# topUsers key (count DESC/authorId ASC superRefine) + backend getTopUsers port/Drizzle
+# adapter (D1 array_agg…FILTER latest-non-blank-name pick, NULLIF('') hardened, D4 LIMIT 5) +
+# statsService wiring (D5 empty-scope gated) + D6 authorName COALESCE stub upgrade in
+# embeddingSearchRepository/documentRepository (ragRetriever needed zero changes). Integration
+# seed plan executed exactly: 9 new stats.integration.test.ts rows prove all 3 COALESCE tiers +
+# latest-name pick + ordering + LIMIT-5 truncation + RBAC/deleted/cross-channel exclusions in
+# one exact toEqual; 4 existing absolute asserts updated (resources 3→9, authors 3→6,
+# channels[0].count 3→9, coverage totalCount 3→9/readPct 33→11); activity/queries asserts
+# verified unchanged. embeddingSearchRepository integration stub flipped to a real seeded name.
+# Docs synced (api-spec.yml StatsTopUser + required topUsers, TECHNICAL-DESIGN §11). No DDL, no
+# migration, no new dependency, no web/bot/workers change, no e2e run (scoped out — COALESCE
+# inert on the e2e seed). Gate green: lint 0 / 882 unit+web (+12) / build clean (5 pkgs) / 128
+# integration (+1, 20 files). NOT committed to a PR yet. Next: commit + PR + bmad-code-review.
+# last_updated: 2026-07-10 (story 9-5 ready-for-dev → in-progress, bmad-dev-story): starting
+# implementation on branch feat/9-5-stats-top-users.
+# last_updated: 2026-07-10 (story 9-5 backlog → ready-for-dev, bmad-create-story): topUsers block in
+# StatsResponse + RBAC-scoped Top-5 query (shared+backend, NO DDL/migration/index). D1: name pick =
+# latest scoped non-blank author_name via (array_agg(NULLIF(name,'')) ORDER BY d.created_at DESC
+# FILTER)[1] → u.username → author_id (SCP's bare COALESCE under-specified under GROUP BY; NULLIF
+# because the create path has no runtime '' guard — one '' row must not 500 via authorName.min(1)).
+# D3: required key, .max(5), count.min(1), order count DESC/authorId ASC pinned via superRefine
+# (P3 precedent). D6: search/documents authorName stub upgrade RIDES HERE (9.4 Dev Notes reserved
+# it verbatim); ragRetriever/citations inherit via composition; e2e byte-identical (seed degrades
+# to author_id). Integration seed plan proves 3 COALESCE tiers + latest-pick + LIMIT-5 truncation
+# (6th author) + RBAC/deleted/cross-channel exclusions; new embeddings seeded 20d-ago so only 4
+# absolute asserts change (resources 9, authors 6, channel count 9, coverage {1,9,11}); seedMessage
+# gains authorName+createdAt params; memberOAuth username must differ from discordId (tier-2
+# discrimination). Fresh-context validation: 1 critical (createdAt param) + 2 enhancements applied.
+# Branch feat/9-5-stats-top-users off 5e0621b. Next: bmad-dev-story 9-5, then (9-2, 9-3).
 # last_updated: 2026-07-10 (story 9-4 backlog → ready-for-dev, bmad-create-story): nullable
 # discord_messages.author_name (schema.ts + drizzle 0005) + bot capture. Topology finding: bot
 # INSERTs discord_messages directly on create (persistMessage tx) → create-capture = one slice
@@ -375,7 +428,7 @@ development_status:
   # (binding): 9-4 -> 9-5 -> (9-2 render, 9-3 e2e). author_name captured in the Bot, nullable +
   # COALESCE(author_name, users.username, author_id) fallback (no backfill). No new FR (FR24/FR25).
   9-4-bot-shared-captura-author-name-discord-messages: done
-  9-5-shared-backend-bloque-topusers-stats: backlog
+  9-5-shared-backend-bloque-topusers-stats: done
   epic-9-retrospective: optional
 
   # ── Operational backlog (post-roadmap) — no epic; see operational-backlog.md ─

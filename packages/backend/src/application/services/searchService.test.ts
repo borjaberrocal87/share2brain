@@ -70,7 +70,7 @@ describe('searchService.search', () => {
       channelId: ROW.channelId,
       channelName: ROW.channelName,
       authorId: ROW.authorId,
-      authorName: ROW.authorName, // D2: equals authorId
+      authorName: ROW.authorName, // repo-resolved (9.5-D1); the fake row is opaque to the service
       createdAt: ROW.createdAt,
       similarity: ROW.similarity,
       messageId: ROW.messageId,

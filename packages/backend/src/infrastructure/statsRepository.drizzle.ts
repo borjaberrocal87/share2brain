@@ -10,7 +10,11 @@ import type {
   ChannelCount,
   ScopedKpiCounts,
   StatsRepository,
+  TopUserRow,
 } from '../domain/repositories/statsRepository.js';
+
+/** D4 — the ONLY place the top-users limit is a number; JSDoc + `.max(5)` are the other two. */
+const TOP_USERS_LIMIT = 5;
 
 export function createDrizzleStatsRepository(db: Database): StatsRepository {
   return {
@@ -145,6 +149,47 @@ export function createDrizzleStatsRepository(db: Database): StatsRepository {
 
       const row = result.rows[0] as Record<string, unknown> | undefined;
       return Number(row?.queries ?? 0);
+    },
+
+    async getTopUsers(allowedChannelIds: string[]): Promise<TopUserRow[]> {
+      if (allowedChannelIds.length === 0) return [];
+
+      const result = await db.execute(sql`
+        SELECT
+          d.author_id AS "authorId",
+          COALESCE(
+            -- D1: latest display name captured among the user's SCOPED, non-deleted
+            -- anchor rows (9.4-D4 "newer name is newer truth"); never a denied
+            -- channel's capture. NULLIF: the create path has no runtime '' guard
+            -- (9.4 deferred Low) — a blank must fall through the chain, not 500 the
+            -- endpoint via authorName.min(1).
+            (array_agg(NULLIF(d.author_name, '') ORDER BY d.created_at DESC)
+               FILTER (WHERE NULLIF(d.author_name, '') IS NOT NULL))[1],
+            u.username,      -- tier 2: OAuth-known authors (idx_users_discord_id unique)
+            d.author_id      -- tier 3: notNull snowflake — never NULL, never ''
+          ) AS "authorName",
+          count(*)::int AS "count"
+        FROM embeddings e
+        JOIN discord_messages d ON d.id = e.message_ids[1]
+        LEFT JOIN users u ON u.discord_id = d.author_id
+        WHERE ${inArray(sql`e.channel_id`, allowedChannelIds)}
+          AND NOT EXISTS (
+            SELECT 1 FROM discord_messages dd
+            WHERE dd.id = ANY(e.message_ids) AND dd.deleted_at IS NOT NULL
+          )
+        GROUP BY d.author_id, u.username
+        ORDER BY count DESC, d.author_id ASC
+        LIMIT ${TOP_USERS_LIMIT}
+      `);
+
+      return result.rows.map((raw): TopUserRow => {
+        const row = raw as Record<string, unknown>;
+        return {
+          authorId: String(row.authorId),
+          authorName: String(row.authorName),
+          count: Number(row.count),
+        };
+      });
     },
   };
 }

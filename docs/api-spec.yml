@@ -161,13 +161,15 @@ paths:
   /api/stats:
     get:
       tags: [stats]
-      summary: Aggregate knowledge KPIs, 14-day activity, per-channel volume, and personal read coverage (RBAC-scoped)
+      summary: Aggregate knowledge KPIs, 14-day activity, per-channel volume, top 5 users, and personal read coverage (RBAC-scoped)
       description: >
         Every channel-scoped aggregation is filtered by the caller's
         allowedChannelIds inside the SQL (not a post-filter, AD-12); a denied
-        channel never surfaces, not even its existence in channels[]. The
-        per-user queries KPI has no channel_id and always reflects the
-        caller's own agent usage (Story 9.1).
+        channel never surfaces, not even its existence in channels[] or
+        topUsers[]. The per-user queries KPI has no channel_id and always
+        reflects the caller's own agent usage (Story 9.1). topUsers is the
+        top 5 most active authors by scoped resource count, with display
+        names resolved via author_name → username → author_id (Story 9.5).
       responses:
         "200":
           description: RBAC-scoped stats
@@ -446,15 +448,25 @@ components:
         totalCount: { type: integer, minimum: 0 }
         readPct: { type: integer, minimum: 0, maximum: 100 }
 
+    StatsTopUser:
+      description: One row of the top-5-most-active-users block, ordered count DESC, authorId ASC (schemas/stats.ts, Story 9.5)
+      type: object
+      required: [authorId, authorName, count]
+      properties:
+        authorId: { type: string, minLength: 1 }
+        authorName: { type: string, minLength: 1 }
+        count: { type: integer, minimum: 1 }
+
     StatsResponse:
       description: GET /api/stats (schemas/stats.ts)
       type: object
-      required: [kpis, activity, channels, coverage]
+      required: [kpis, activity, channels, coverage, topUsers]
       properties:
         kpis: { type: array, items: { $ref: "#/components/schemas/StatsKpi" }, minItems: 4, maxItems: 4 }
         activity: { type: array, items: { $ref: "#/components/schemas/StatsActivityPoint" }, minItems: 14, maxItems: 14 }
         channels: { type: array, items: { $ref: "#/components/schemas/StatsChannel" } }
         coverage: { $ref: "#/components/schemas/StatsCoverage" }
+        topUsers: { type: array, items: { $ref: "#/components/schemas/StatsTopUser" }, maxItems: 5 }
 
   responses:
     BadRequest:

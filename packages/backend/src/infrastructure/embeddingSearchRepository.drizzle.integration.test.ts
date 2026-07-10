@@ -31,10 +31,15 @@ describe('EmbeddingSearchRepository (integration, real pgvector)', () => {
   const CH_ALLOWED = `chan-allowed-${suffix}`;
   const CH_DENIED = `chan-denied-${suffix}`;
 
-  async function seedMessage(id: string, channelId: string, deleted = false): Promise<void> {
+  async function seedMessage(
+    id: string,
+    channelId: string,
+    deleted = false,
+    authorName?: string,
+  ): Promise<void> {
     await clients.db.execute(sql`
-      insert into discord_messages (id, channel_id, guild_id, author_id, content, created_at, updated_at, deleted_at)
-      values (${id}, ${channelId}, 'itest-guild', ${`author-${id}`}, 'msg content', now(), now(),
+      insert into discord_messages (id, channel_id, guild_id, author_id, author_name, content, created_at, updated_at, deleted_at)
+      values (${id}, ${channelId}, 'itest-guild', ${`author-${id}`}, ${authorName ?? null}, 'msg content', now(), now(),
               ${deleted ? sql`now()` : sql`null`})
     `);
   }
@@ -66,8 +71,9 @@ describe('EmbeddingSearchRepository (integration, real pgvector)', () => {
              (${CH_DENIED}, 'Denied Channel', ARRAY['owner']::text[])
     `);
 
-    // Anchor messages (message_ids[0]) for each chunk.
-    await seedMessage(`${suffix}-a`, CH_ALLOWED);
+    // Anchor messages (message_ids[0]) for each chunk. `-a` gets a captured display
+    // name so the projected `authorName` (9.5-D1) can be asserted as real, not stubbed.
+    await seedMessage(`${suffix}-a`, CH_ALLOWED, false, 'Ada Lovelace');
     await seedMessage(`${suffix}-b`, CH_ALLOWED);
     await seedMessage(`${suffix}-c`, CH_DENIED);
     // fragD's group: a clean anchor + a soft-deleted sibling (proves exclude-if-ANY
@@ -158,7 +164,7 @@ describe('EmbeddingSearchRepository (integration, real pgvector)', () => {
     expect(top.channelId).toBe(CH_ALLOWED);
     expect(top.channelName).toBe('Allowed Channel');
     expect(top.authorId).toBe(`author-${suffix}-a`);
-    expect(top.authorName).toBe(top.authorId); // D2: no display name yet
+    expect(top.authorName).toBe('Ada Lovelace'); // 9.5-D1: real captured display name
     expect(typeof top.createdAt).toBe('string');
     expect(() => new Date(top.createdAt).toISOString()).not.toThrow();
   });

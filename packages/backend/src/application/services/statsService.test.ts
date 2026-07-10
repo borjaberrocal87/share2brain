@@ -8,6 +8,7 @@ import type {
   ChannelCount,
   ScopedKpiCounts,
   StatsRepository,
+  TopUserRow,
 } from '../../domain/repositories/statsRepository.js';
 import { createStatsService } from './statsService.js';
 
@@ -20,6 +21,7 @@ function fakeRepo(overrides: Partial<StatsRepository> = {}): StatsRepository {
     getChannelCounts: vi.fn(async (): Promise<ChannelCount[]> => []),
     getCoverageReadCount: vi.fn(async () => 0),
     countUserAgentQueries: vi.fn(async () => 0),
+    getTopUsers: vi.fn(async (): Promise<TopUserRow[]> => []),
     ...overrides,
   };
 }
@@ -54,6 +56,7 @@ describe('statsService.getStats', () => {
     expect(statsRepo.getActivity).not.toHaveBeenCalled();
     expect(statsRepo.getChannelCounts).not.toHaveBeenCalled();
     expect(statsRepo.getCoverageReadCount).not.toHaveBeenCalled();
+    expect(statsRepo.getTopUsers).not.toHaveBeenCalled();
     // Windowed to 30 days before the injected `now` (UTC), computed service-side so the
     // whole response is single-clock (RP4 — proves the 30-day cutoff, not Postgres now()).
     expect(statsRepo.countUserAgentQueries).toHaveBeenCalledWith(
@@ -70,6 +73,7 @@ describe('statsService.getStats', () => {
     expect(result.activity).toEqual(WINDOW_DAYS.map((date) => ({ date, count: 0 })));
     expect(result.channels).toEqual([]);
     expect(result.coverage).toEqual({ readCount: 0, totalCount: 0, readPct: 0 });
+    expect(result.topUsers).toEqual([]);
   });
 
   it('should zero-fill exactly 14 dates ending at UTC today, oldest first, with missing days at 0', async () => {
@@ -169,6 +173,31 @@ describe('statsService.getStats', () => {
     const statsRepo = fakeRepo({
       getChannelCounts: vi.fn(async (): Promise<ChannelCount[]> => [
         { channelId: '', channelName: 'bad', count: 1 },
+      ]),
+    });
+    const service = createStatsService({ statsRepo });
+
+    await expect(service.getStats('user-1', ['chan-1'], NOW)).rejects.toThrow();
+  });
+
+  it('should pass topUsers through unchanged (D4 — SQL already orders/limits)', async () => {
+    const rows: TopUserRow[] = [
+      { authorId: 'a1', authorName: 'Ada', count: 5 },
+      { authorId: 'a2', authorName: 'Bea', count: 3 },
+    ];
+    const statsRepo = fakeRepo({ getTopUsers: vi.fn(async () => rows) });
+    const service = createStatsService({ statsRepo });
+
+    const result = await service.getStats('user-1', ['chan-1'], NOW);
+
+    expect(result.topUsers).toEqual(rows);
+  });
+
+  it('should throw when getTopUsers returns misordered rows (AD-6 superRefine guard)', async () => {
+    const statsRepo = fakeRepo({
+      getTopUsers: vi.fn(async (): Promise<TopUserRow[]> => [
+        { authorId: 'a1', authorName: 'Ada', count: 1 },
+        { authorId: 'a2', authorName: 'Bea', count: 2 },
       ]),
     });
     const service = createStatsService({ statsRepo });

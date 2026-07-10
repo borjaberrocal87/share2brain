@@ -825,7 +825,7 @@ Todos los endpoints bajo `/api/*` requieren sesión válida excepto `/api/auth/*
 | `GET` | `/api/auth/roles` | Roles del usuario + canales accesibles |
 | `GET` | `/api/search?q=...` | Búsqueda semántica con filtro RBAC |
 | `GET` | `/api/documents` | Listado paginado de fragmentos |
-| `GET` | `/api/stats` | KPIs de conocimiento, actividad 14 días, volumen por canal, cobertura de lectura (RBAC-scoped) |
+| `GET` | `/api/stats` | KPIs de conocimiento, actividad 14 días, volumen por canal, top 5 usuarios, cobertura de lectura (RBAC-scoped) |
 | `POST` | `/api/chat` | Chat con el agente (respuesta SSE) |
 | `GET` | `/api/conversations` | Lista conversaciones del usuario |
 | `GET` | `/api/conversations/:id` | Conversación con mensajes |
