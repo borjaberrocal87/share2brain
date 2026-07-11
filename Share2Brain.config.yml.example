@@ -97,10 +97,16 @@ access_control:
   enabled: true
   default_policy: "deny"
   role_cache_ttl: 300   # seconds (user_roles_cache TTL)
+  # NEW — guest access for demos. OFF by default (never auth-bypass in prod).
+  guest_access:
+    enabled: false            # operator sets true only for the demo
+    role: "guest"             # synthetic role; add it to allowed_roles of demo channels
+    username: "Invitado"      # display name in the UI
+    session_ttl_minutes: 120  # short-lived demo session
   channel_permissions:
     - channel_id: "1234567890"
       name: "general"
-      allowed_roles: ["admin", "mod", "member"]
+      allowed_roles: ["admin", "mod", "member", "guest"]  # + guest for demo
 
 # --- Read tracking ------------------------------------------------------------
 read_tracking:

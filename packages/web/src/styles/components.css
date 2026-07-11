@@ -26,6 +26,25 @@
   outline-offset: 2px;
 }
 
+/* Guest login button (Story 2.5). Base border + color live HERE (not inline) so
+   they can be overridden on :hover — an inline `border` shorthand would outrank
+   the hover rule (cascade gotcha, Epic 4 retro Action Item #4). */
+.kh-guest-btn {
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.kh-guest-btn:hover {
+  border-color: var(--accent-ink);
+  color: var(--accent-ink);
+}
+.kh-guest-btn:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}
+
 /* Sidebar nav items. Base + inactive hover; the active modifier must beat :hover,
    hence the paired selector. Active/inactive text color is set here too so the
    component only toggles a class. */

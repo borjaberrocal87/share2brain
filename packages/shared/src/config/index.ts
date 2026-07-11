@@ -87,6 +87,19 @@ export const Share2BrainConfigSchema = z.object({
     default_policy: z.enum(['deny', 'allow']),
     role_cache_ttl: z.number(),
     channel_permissions: z.array(ChannelPermissionSchema),
+    // Guest access for demos (Historia 2.5). The whole block is OPTIONAL and OFF
+    // by default — a config omitting it stays valid (same rationale as `streams`/
+    // `notifications`). NO `.default()` anywhere: the backend consumer
+    // (resolveGuestAccessConfig) supplies per-field defaults (role/username/TTL),
+    // so only `enabled` is required WHEN the block is present (an explicit block
+    // without `enabled` is a config error — fail loud per AD-8). Never mixes
+    // secrets: guest access needs none.
+    guest_access: z.object({
+      enabled: z.boolean(),
+      role: z.string().min(1).optional(),
+      username: z.string().min(1).optional(),
+      session_ttl_minutes: z.number().int().positive().optional(),
+    }).optional(),
   }),
   read_tracking: z.object({
     enabled: z.boolean(),

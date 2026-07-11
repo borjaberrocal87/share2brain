@@ -35,6 +35,15 @@ export function createConversationController(deps: {
       // The route is behind requireAuth, so req.session.userId is guaranteed.
       const userId = req.session.userId as string;
 
+      // Story 2.5: every guest shares the single sentinel user id, so listing
+      // conversations by user_id would leak one guest's history to another. Guest
+      // chat stays ephemeral — it persists (FK) but is not listable. Return an empty
+      // page instead of querying the shared history.
+      if (req.session.isGuest === true) {
+        res.status(200).json({ results: [], page: parsed.data.page, limit: parsed.data.limit, total: 0 });
+        return;
+      }
+
       try {
         const payload = await conversationService.listConversations(
           userId,
@@ -57,6 +66,14 @@ export function createConversationController(deps: {
       }
 
       const userId = req.session.userId as string;
+
+      // Story 2.5: guests cannot retrieve a conversation by id either — the shared
+      // sentinel identity means "owned by the guest user" is not "owned by THIS
+      // guest". 404 (existence-hiding, D9) keeps guest chat ephemeral per session.
+      if (req.session.isGuest === true) {
+        res.status(404).json({ error: 'Conversación no encontrada', code: CONVERSATIONS_ERROR.NOT_FOUND });
+        return;
+      }
 
       try {
         const detail = await conversationService.getConversation(userId, parsed.data.conversationId);

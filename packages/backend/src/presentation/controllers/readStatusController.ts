@@ -35,9 +35,15 @@ export function createReadStatusController(deps: {
 
       const userId = req.session.userId as string;
       const allowedChannelIds = req.allowedChannelIds ?? [];
+      const isGuest = req.session.isGuest === true;
 
       try {
-        const result = await readStatusService.markRead(userId, parsed.data.embeddingId, allowedChannelIds);
+        const result = await readStatusService.markRead(
+          userId,
+          parsed.data.embeddingId,
+          allowedChannelIds,
+          isGuest,
+        );
         if (!result.ok) {
           res.status(404).json({ error: 'Fragmento no encontrado', code: READ_STATUS_ERROR.NOT_FOUND });
           return;
@@ -59,9 +65,10 @@ export function createReadStatusController(deps: {
       }
 
       const userId = req.session.userId as string;
+      const isGuest = req.session.isGuest === true;
 
       try {
-        await readStatusService.unmarkRead(userId, parsed.data.embeddingId);
+        await readStatusService.unmarkRead(userId, parsed.data.embeddingId, isGuest);
         res.status(200).json({});
       } catch (err) {
         console.error('[read-status] unmarkRead failed:', err instanceof Error ? err.message : String(err));
@@ -78,9 +85,15 @@ export function createReadStatusController(deps: {
 
       const userId = req.session.userId as string;
       const allowedChannelIds = req.allowedChannelIds ?? [];
+      const isGuest = req.session.isGuest === true;
 
       try {
-        const result = await readStatusService.markAll(userId, parsed.data.channelId, allowedChannelIds);
+        const result = await readStatusService.markAll(
+          userId,
+          parsed.data.channelId,
+          allowedChannelIds,
+          isGuest,
+        );
         if (!result.ok) {
           res.status(403).json({ error: 'Sin acceso al canal', code: READ_STATUS_ERROR.FORBIDDEN });
           return;

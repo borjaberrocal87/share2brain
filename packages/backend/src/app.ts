@@ -97,6 +97,15 @@ export interface AppOptions {
    */
   rateLimit?: { api: RateLimitTierOptions; auth: RateLimitTierOptions; chat: RateLimitTierOptions };
   /**
+   * Guest access (Story 2.5). OPTIONAL — PRESENCE = enabled (precedent: `oauth?`,
+   * `rateLimit?`). Only `main.ts` (guest.enabled branch) and the e2e server inject
+   * it; `buildTestAppOptions` omits it, so every existing test and the default e2e
+   * path see guest access disabled (POST/GET /api/auth/guest → 404). `userId` is
+   * the id RETURNED by seedGuestUser (never assumed); `username` is NOT here — it
+   * only feeds the seed, and `/me` reads the name from the seeded row.
+   */
+  guestAccess?: { role: string; sessionTtlMinutes: number; userId: string };
+  /**
    * Logger for the ragRetriever's per-row skip-and-warn (Story 7.4, F2). Only
    * `main.ts` injects the real structured logger; tests/e2e default to a no-op
    * so a malformed fixture row doesn't spam test output.
@@ -182,6 +191,8 @@ export function createApp(db: Database, redis: RedisClient, opts: AppOptions): E
     discord: { clientId: opts.discord.clientId, redirectUri: opts.discord.redirectUri },
     frontendUrl: opts.frontendUrl,
     cookieSecure: opts.cookieSecure,
+    // Story 2.5: presence enables the two guest endpoints (omitted → they 404).
+    guestAccess: opts.guestAccess,
   });
 
   // The auth router handles its own auth semantics (public login/callback,

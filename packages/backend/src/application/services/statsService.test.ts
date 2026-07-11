@@ -46,6 +46,25 @@ const WINDOW_DAYS = [
 ];
 
 describe('statsService.getStats', () => {
+  it('should zero the per-user aggregates for a guest without calling those ports (2.5)', async () => {
+    const statsRepo = fakeRepo({
+      getScopedKpiCounts: vi.fn(async () => ({ resources: 10, resourcesThisWeek: 2, channels: 1, authors: 3 })),
+      getCoverageReadCount: vi.fn(async () => 8),
+      countUserAgentQueries: vi.fn(async () => 42),
+    });
+    const service = createStatsService({ statsRepo });
+
+    // isGuest = true: the shared sentinel would otherwise sum every guest's activity.
+    const result = await service.getStats('guest-sentinel', ['chan-1'], NOW, true);
+
+    expect(statsRepo.getCoverageReadCount).not.toHaveBeenCalled();
+    expect(statsRepo.countUserAgentQueries).not.toHaveBeenCalled();
+    expect(result.coverage.readCount).toBe(0);
+    expect(result.kpis.find((k) => k.key === 'queries')?.value).toBe(0);
+    // Channel-scoped KPIs are unaffected (RBAC still bounds them).
+    expect(result.kpis.find((k) => k.key === 'resources')?.value).toBe(10);
+  });
+
   it('should not call channel-scoped port methods when the scope is empty, but still calls countUserAgentQueries (D6)', async () => {
     const statsRepo = fakeRepo({ countUserAgentQueries: vi.fn(async () => 5) });
     const service = createStatsService({ statsRepo });

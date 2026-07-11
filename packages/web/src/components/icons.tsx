@@ -187,6 +187,27 @@ export function StatsIcon({ size = 20 }: IconProps): ReactElement {
   );
 }
 
+// Person glyph — the guest-login button + the "Modo invitado" pill (Story 2.5).
+// Stroke-based like the nav/UI icons; path verbatim from the design mock.
+export function UserIcon({ size = 20 }: IconProps): ReactElement {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
 // Chat/message glyph — the FAB launcher icon (25px) and the history-row icon
 // (15px). Story 5.3; path verbatim from Share2Brain Web.dc.html.
 export function ChatIcon({ size = 20 }: IconProps): ReactElement {

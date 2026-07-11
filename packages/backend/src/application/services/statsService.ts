@@ -39,15 +39,21 @@ export interface StatsService {
    * 0, activity is 14 zero days, channels is `[]`, topUsers is `[]`, coverage
    * is `0/0/0` — while the per-user `queries` KPI still runs. `now` defaults to the wall clock;
    * tests pass a fixed value for a deterministic window.
+   *
+   * `isGuest` (Story 2.5 review): all guests share one sentinel `userId`, so the two
+   * PER-USER aggregates (coverage read-count, "your queries") would otherwise sum
+   * every guest's activity. For a guest both report 0 — ephemeral, no cross-guest
+   * bleed. Channel-scoped figures (KPIs/activity/channels/topUsers) are unaffected
+   * (RBAC already bounds them to the guest's channels).
    */
-  getStats(userId: string, allowedChannelIds: string[], now?: Date): Promise<StatsResponse>;
+  getStats(userId: string, allowedChannelIds: string[], now?: Date, isGuest?: boolean): Promise<StatsResponse>;
 }
 
 export function createStatsService(deps: { statsRepo: StatsRepository }): StatsService {
   const { statsRepo } = deps;
 
   return {
-    async getStats(userId, allowedChannelIds, now = new Date()): Promise<StatsResponse> {
+    async getStats(userId, allowedChannelIds, now = new Date(), isGuest = false): Promise<StatsResponse> {
       const windowDays = buildWindowDays(now);
       const fromDate = `${windowDays[0]}T00:00:00.000Z`;
       const weekStart = new Date(now.getTime() - WEEKLY_DELTA_DAYS * 24 * 60 * 60 * 1000).toISOString();
@@ -67,8 +73,11 @@ export function createStatsService(deps: { statsRepo: StatsRepository }): StatsS
           : statsRepo.getScopedKpiCounts(allowedChannelIds, weekStart),
         emptyScope ? Promise.resolve([]) : statsRepo.getActivity(allowedChannelIds, fromDate),
         emptyScope ? Promise.resolve([]) : statsRepo.getChannelCounts(allowedChannelIds),
-        emptyScope ? Promise.resolve(0) : statsRepo.getCoverageReadCount(userId, allowedChannelIds),
-        statsRepo.countUserAgentQueries(userId, queriesFrom), // D6: always runs, no channel scope
+        // Per-user aggregates: 0 for a guest (shared sentinel would sum all guests).
+        emptyScope || isGuest
+          ? Promise.resolve(0)
+          : statsRepo.getCoverageReadCount(userId, allowedChannelIds),
+        isGuest ? Promise.resolve(0) : statsRepo.countUserAgentQueries(userId, queriesFrom), // D6: always runs, no channel scope
         emptyScope ? Promise.resolve([]) : statsRepo.getTopUsers(allowedChannelIds), // D5: channel-scoped
       ]);
 

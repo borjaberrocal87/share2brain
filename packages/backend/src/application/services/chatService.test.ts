@@ -157,6 +157,41 @@ describe('createChatService().resolveConversation', () => {
       ChatOwnershipError,
     );
   });
+
+  // Story 2.5 (review): guest sessions share one sentinel userId, so DB ownership
+  // is not a per-session boundary — the guestScope allowlist is.
+  it('should return a guest conversation that IS in the session allowlist', async () => {
+    const repo = fakeConversationRepo([mkConversation('conv-g', 'guest-sentinel')]);
+    const service = createChatService({ agent: fakeAgent([]), conversationRepo: repo });
+
+    const conversation = await service.resolveConversation('guest-sentinel', 'conv-g', {
+      allowedConversationIds: ['conv-g'],
+    });
+
+    expect(conversation).toEqual(mkConversation('conv-g', 'guest-sentinel'));
+  });
+
+  it('should throw ChatOwnershipError for a guest resuming an id OUTSIDE its session allowlist, even though the sentinel owns it', async () => {
+    // The row is owned by the shared guest user (getOwnedConversation would return
+    // it), but this session did not create it → out of scope → pre-stream 404.
+    const repo = fakeConversationRepo([mkConversation('conv-other-guest', 'guest-sentinel')]);
+    const service = createChatService({ agent: fakeAgent([]), conversationRepo: repo });
+
+    await expect(
+      service.resolveConversation('guest-sentinel', 'conv-other-guest', { allowedConversationIds: [] }),
+    ).rejects.toThrow(ChatOwnershipError);
+  });
+
+  it('should create a fresh conversation for a guest with no conversationId (allowlist irrelevant)', async () => {
+    const repo = fakeConversationRepo();
+    const service = createChatService({ agent: fakeAgent([]), conversationRepo: repo });
+
+    const conversation = await service.resolveConversation('guest-sentinel', undefined, {
+      allowedConversationIds: [],
+    });
+
+    expect(conversation.userId).toBe('guest-sentinel');
+  });
 });
 
 describe('createChatService().streamChat', () => {

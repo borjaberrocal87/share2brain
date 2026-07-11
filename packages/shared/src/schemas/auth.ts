@@ -10,9 +10,25 @@ export const AuthMeResponseSchema = z.object({
   username: z.string(),
   avatar: z.string().nullable(),
   guildId: z.string().min(1), // Discord guild snowflake; empty would break "ver en Discord" links.
+  // Story 2.5: present and `true` ONLY for guest sessions; absent for regular
+  // users (never `false`). The web checks `user.isGuest === true`.
+  isGuest: z.boolean().optional(),
 });
 
 export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>;
+
+/**
+ * GET /api/auth/guest — guest-access availability probe (Story 2.5). A disabled
+ * deployment answers 404, so the ONLY 200 body is `{ enabled: true }` — the
+ * `z.literal(true)` makes `{ enabled: false }` an invalid body, guaranteeing the
+ * server never signals "guest exists but is off". The SPA treats any non-200 as
+ * "hidden".
+ */
+export const GuestAvailabilityResponseSchema = z.object({
+  enabled: z.literal(true),
+});
+
+export type GuestAvailabilityResponse = z.infer<typeof GuestAvailabilityResponseSchema>;
 
 /**
  * GET /api/auth/roles — the authenticated user's Discord roles and the channel
@@ -34,6 +50,7 @@ export const AUTH_ERROR = {
   OAUTH_CALLBACK_FAILED: 'OAUTH_CALLBACK_FAILED',
   LOGOUT_FAILED: 'LOGOUT_FAILED',
   RBAC_EXPANSION_FAILED: 'RBAC_EXPANSION_FAILED',
+  GUEST_ACCESS_DISABLED: 'GUEST_ACCESS_DISABLED',
   INTERNAL: 'INTERNAL',
 } as const;
 

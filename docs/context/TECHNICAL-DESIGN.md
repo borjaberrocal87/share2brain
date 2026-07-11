@@ -317,6 +317,7 @@ fetch/LLM/embed) es por `link`.
 1. loadConfig()
 2. Conectar a PostgreSQL (Drizzle) y Redis (node-redis)
 3. Upsert channel_permissions desde config.access_control.channel_permissions
+3b. Si access_control.guest_access.enabled: upsert de la fila `users` invitado (sentinel discord_id="guest")
 4. Inicializar express-session con connect-redis (usando la misma instancia node-redis que se abrió en el paso 2)
 5. Registrar middleware: auth, RBAC expansion, rate-limit
 6. Registrar routes
@@ -780,6 +781,7 @@ La sesión almacena solo lo imprescindible:
 interface Session {
   userId: string          // UUID del usuario en la tabla users
   discordRoles: string[]  // Role IDs del usuario en el guild
+  isGuest?: boolean       // true solo en sesiones de invitado (Historia 2.5); ausente en el resto
 }
 ```
 
@@ -810,6 +812,29 @@ access_control:
 
 Al arrancar el Backend, `channel_permissions` se carga via upsert desde el YAML. No hay panel de administración — todo es código.
 
+### Acceso de invitado (demo)
+
+Para demos sin credenciales de Discord, el Backend expone un acceso de invitado **config-gated y OFF por defecto** (Historia 2.5). No es una ruta de auth-bypass: crea una sesión Redis real, limitada por RBAC.
+
+- **Gate:** `access_control.guest_access` (bloque opcional, `enabled: false` por defecto). Con el flag apagado — o el bloque ausente — `GET`/`POST /api/auth/guest` responden `404 { error: "Not found", code: "GUEST_ACCESS_DISABLED" }` y la SPA oculta el enlace de invitado (el `GET` es una sonda de disponibilidad).
+- **Seed al arrancar:** solo si `enabled`, se hace upsert de una fila `users` invitado (sentinel `discord_id = "guest"`, `username` = `guest_access.username`) antes de aceptar requests, para satisfacer la FK `conversations.user_id` del chat de invitado.
+- **Rol sintético:** `guest_access.role` (p.ej. `"guest"`) es solo un string que `channel_permissions.allowed_roles` puede listar; RBAC lo expande como cualquier rol (AD-12 intacto). Sin canal que lo liste → `allowedChannelIds = []` (deny).
+- **Chat de invitado efímero (aislamiento):** todas las sesiones de invitado comparten la fila centinela única (`userId` = `<guestUserId>`). Como las conversaciones se aíslan por propiedad (`user_id`), exponer o reanudar por id filtraría las conversaciones de un invitado a otro. Aislamiento por sesión (sin DDL):
+  - `GET /api/conversations` → `{ results: [], total: 0 }` y `GET /api/conversations/:id` → `404` en sesiones de invitado (nunca listan/recuperan el historial compartido).
+  - `POST /api/chat` solo reanuda un `conversationId` que **esta** sesión de invitado creó: la sesión Redis mantiene un allowlist `guestConversationIds` y `resolveConversation` rechaza (`404` pre-stream) cualquier id fuera de él. Multi-turno dentro de la sesión intacto; sin reanudación entre invitados o entre sesiones.
+  - El chat sigue persistiendo (satisface la FK, D9) — solo se bloquea el listado/recuperación/reanudación cruzada. La SPA oculta el botón "Historial" en modo invitado.
+  - **read-status y stats efímeros:** las escrituras de read-status (`mark`/`unmark`/`mark-all`) son no-op para invitados, así que el centinela no acumula filas leídas y `unreadCount` devuelve todo-no-leído para cualquier sesión de invitado (sin filtrar el estado de otro invitado). Los dos agregados por-usuario de `/api/stats` (cobertura leída y "tus consultas") se reportan `0` para invitados. Todo lo acotado por canal (RBAC) es idéntico. Regla general: **cualquier superficie keyed por `userId` se aísla o se neutraliza en modo invitado**, porque la identidad de invitado es compartida.
+
+Mini-flujo (bypassa Discord por completo):
+
+```
+Browser → POST /api/auth/guest
+        → sesión Redis { userId: <guestUserId>, discordRoles: [guest_access.role], isGuest: true }
+          con TTL corto (guest_access.session_ttl_minutes)
+        → cookie httpOnly `sid`
+        → RBAC expande el rol guest contra channel_permissions en cada request
+```
+
 ---
 
 ## 11. API REST
@@ -822,7 +847,9 @@ Todos los endpoints bajo `/api/*` requieren sesión válida excepto `/api/auth/*
 | `GET` | `/api/auth/login` | Inicia flujo OAuth2 Discord |
 | `GET` | `/api/auth/callback` | Callback OAuth2 |
 | `POST` | `/api/auth/logout` | Cierra sesión (borra key Redis) |
-| `GET` | `/api/auth/me` | Usuario autenticado actual |
+| `GET` | `/api/auth/guest` | Sonda de disponibilidad del acceso de invitado (200 `{ enabled: true }` / 404 cuando OFF) |
+| `POST` | `/api/auth/guest` | Crea sesión de invitado (200 + cookie `sid`; 404 `GUEST_ACCESS_DISABLED` cuando OFF) |
+| `GET` | `/api/auth/me` | Usuario autenticado actual (incluye `isGuest: true` en sesiones de invitado) |
 | `GET` | `/api/auth/roles` | Roles del usuario + canales accesibles |
 | `GET` | `/api/search?q=...` | Búsqueda semántica con filtro RBAC |
 | `GET` | `/api/documents` | Listado paginado de fragmentos |
@@ -971,10 +998,16 @@ access_control:
   enabled: true
   default_policy: "deny"
   role_cache_ttl: 300
+  # NEW — guest access for demos. OFF by default (never auth-bypass in prod).
+  guest_access:
+    enabled: false            # operator sets true only for the demo
+    role: "guest"             # synthetic role; add it to allowed_roles of demo channels
+    username: "Invitado"      # display name in the UI
+    session_ttl_minutes: 120  # short-lived demo session
   channel_permissions:
     - channel_id: "1234567890"
       name: "general"
-      allowed_roles: ["admin", "mod", "member"]
+      allowed_roles: ["admin", "mod", "member", "guest"]  # + guest for demo
 
 read_tracking:
   enabled: true

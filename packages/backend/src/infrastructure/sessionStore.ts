@@ -15,6 +15,15 @@ declare module 'express-session' {
     userId: string;
     discordRoles: string[];
     oauthState?: string;
+    // Story 2.5: set `true` on guest sessions created via POST /api/auth/guest.
+    // The payload is otherwise identical — still a real Redis session with TTL.
+    isGuest?: boolean;
+    // Story 2.5 (review): the conversation ids created BY THIS guest session. All
+    // guests share one sentinel `userId`, so DB ownership can't tell one guest's
+    // conversation from another's — this per-session allowlist is what lets a guest
+    // resume only its own current-session conversations (ephemeral, no cross-guest
+    // resume via POST /api/chat). Unused for OAuth sessions.
+    guestConversationIds?: string[];
   }
 }
 

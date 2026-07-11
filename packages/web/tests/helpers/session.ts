@@ -39,3 +39,18 @@ export async function loginAs(page: Page, code: LoginCode = 'e2e-member'): Promi
   await page.goto('/');
   await expect(page.getByRole('button', { name: /Búsqueda/ })).toBeVisible();
 }
+
+/**
+ * Log in as a GUEST (Story 2.5) via the real POST /api/auth/guest endpoint (guest
+ * access is enabled in the harness only). Mirrors {@link loginAs}: shared cookie
+ * jar, dark-theme init script, then land on the authenticated shell.
+ */
+export async function loginAsGuest(page: Page): Promise<void> {
+  const res = await page.request.post('/api/auth/guest', { maxRedirects: 0 });
+  expect(res.status()).toBe(200);
+
+  await page.addInitScript(() => localStorage.setItem('share2brain-theme', 'dark'));
+
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: /Búsqueda/ })).toBeVisible();
+}

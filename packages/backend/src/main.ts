@@ -12,6 +12,7 @@ import { createDrizzleChannelPermissionRepository } from './infrastructure/chann
 import { createLangchainChatModel } from './infrastructure/chatModel.langchain.js';
 import { createLangchainQueryEmbedder } from './infrastructure/queryEmbedder.langchain.js';
 import { materializeChannelPermissions } from './infrastructure/materializeChannelPermissions.js';
+import { resolveGuestAccessConfig, seedGuestUser } from './infrastructure/guestAccess.js';
 import { createGracefulShutdown } from './lifecycle.js';
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -90,6 +91,20 @@ async function main(): Promise<void> {
     config.access_control.channel_permissions,
   );
 
+  // Story 2.5: guest access is config-gated (OFF by default). Only when enabled do
+  // we seed the sentinel guest `users` row (before listen — first DB queries, so a
+  // seed failure aborts startup, same policy as the permissions upsert above) and
+  // build the guestAccess option from the RETURNED id. When disabled, OMIT the key
+  // entirely — presence = enabled, and an unconditional pass would enable guest
+  // access in production with the flag OFF (main.ts has no automated coverage).
+  const guest = resolveGuestAccessConfig(config.access_control);
+  let guestAccess: { role: string; sessionTtlMinutes: number; userId: string } | undefined;
+  if (guest.enabled) {
+    const { id } = await seedGuestUser(db, guest.username);
+    guestAccess = { role: guest.role, sessionTtlMinutes: guest.sessionTtlMinutes, userId: id };
+    logger.info('guest access enabled', { role: guest.role, sessionTtlMinutes: guest.sessionTtlMinutes });
+  }
+
   // Build the query embedder from validated config (the LangChain provider stays
   // behind this adapter). No network I/O at construction. GET /api/search uses it.
   const queryEmbedder = createLangchainQueryEmbedder(config.embeddings);
@@ -115,6 +130,9 @@ async function main(): Promise<void> {
     chatModel,
     logger,
     agentMemoryWindow: config.agent.memory_window,
+    // Story 2.5: presence = enabled. Spread so the key is genuinely absent when
+    // guest access is off (never `guestAccess: undefined`).
+    ...(guestAccess ? { guestAccess } : {}),
     // AC-2 (Story 6.4, note #4): only main.ts injects this — buildTestAppOptions
     // and the e2e harness omit it, so tests/e2e never see a 429.
     rateLimit: {

@@ -29,9 +29,21 @@ export function createChatController(deps: { chatService: ChatService }): ChatCo
       // to an empty scope defensively — the agent treats it as deny-by-default.
       const allowedChannelIds = req.allowedChannelIds ?? [];
 
+      // Story 2.5 (review): guests share one sentinel userId, so pass the per-session
+      // conversation allowlist — a guest may only resume conversations THIS session
+      // created (ephemeral; no cross-guest/cross-session resume). Absent for OAuth.
+      const isGuest = req.session.isGuest === true;
+      const guestScope = isGuest
+        ? { allowedConversationIds: req.session.guestConversationIds ?? [] }
+        : undefined;
+
       let conversation;
       try {
-        conversation = await chatService.resolveConversation(userId, parsed.data.conversationId);
+        conversation = await chatService.resolveConversation(
+          userId,
+          parsed.data.conversationId,
+          guestScope,
+        );
       } catch (err) {
         if (err instanceof ChatOwnershipError) {
           res.status(404).json({ error: 'Conversación no encontrada', code: CHAT_ERROR.NOT_FOUND });
@@ -43,6 +55,30 @@ export function createChatController(deps: { chatService: ChatService }): ChatCo
         );
         res.status(500).json({ error: 'Internal error', code: CHAT_ERROR.INTERNAL });
         return;
+      }
+
+      // A guest that just STARTED a conversation (no client id) must have it recorded
+      // in the session so a later turn in this session can resume it. Persist before
+      // any SSE header is sent (still the pre-stream phase, D8); a save failure only
+      // costs this conversation's resumability, never the current turn — log and go on.
+      if (isGuest && !parsed.data.conversationId) {
+        // Fresh array (never mutate the one handed to resolveConversation as
+        // guestScope) so the allowlist snapshot and the session state stay distinct.
+        req.session.guestConversationIds = [
+          ...(req.session.guestConversationIds ?? []),
+          conversation.id,
+        ];
+        await new Promise<void>((resolve) => {
+          req.session.save((err: unknown) => {
+            if (err) {
+              console.error(
+                '[chat] guest session save failed:',
+                err instanceof Error ? err.message : String(err),
+              );
+            }
+            resolve();
+          });
+        });
       }
 
       // Nothing above sends a header — every earlier branch returns JSON. From

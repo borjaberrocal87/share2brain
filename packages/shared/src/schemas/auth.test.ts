@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { AUTH_ERROR, AuthMeResponseSchema, AuthRolesResponseSchema } from './auth.js';
+import {
+  AUTH_ERROR,
+  AuthMeResponseSchema,
+  AuthRolesResponseSchema,
+  GuestAvailabilityResponseSchema,
+} from './auth.js';
 
 describe('AuthMeResponseSchema', () => {
   it('should parse a valid profile when avatar is present', () => {
@@ -55,6 +60,43 @@ describe('AuthMeResponseSchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  // Story 2.5: isGuest is optional-when-true — a regular profile (absent) and a
+  // guest profile (present true) must both round-trip.
+  it('should parse a profile without isGuest (regular user)', () => {
+    const result = AuthMeResponseSchema.safeParse({
+      id: '550e8400-e29b-41d4-a716-446655440000',
+      discordId: '123456789012345678',
+      username: 'ada',
+      avatar: null,
+      guildId: '111222333444555666',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.isGuest).toBeUndefined();
+  });
+
+  it('should parse a guest profile with isGuest: true', () => {
+    const result = AuthMeResponseSchema.safeParse({
+      id: '00000000-0000-4000-a000-000000000001',
+      discordId: 'guest',
+      username: 'Invitado',
+      avatar: null,
+      guildId: '111222333444555666',
+      isGuest: true,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.isGuest).toBe(true);
+  });
+});
+
+describe('GuestAvailabilityResponseSchema', () => {
+  it('should accept { enabled: true }', () => {
+    expect(GuestAvailabilityResponseSchema.safeParse({ enabled: true }).success).toBe(true);
+  });
+
+  it('should reject { enabled: false } (disabled is expressed by the 404, never this body)', () => {
+    expect(GuestAvailabilityResponseSchema.safeParse({ enabled: false }).success).toBe(false);
+  });
 });
 
 describe('AuthRolesResponseSchema', () => {
@@ -90,6 +132,7 @@ describe('AUTH_ERROR', () => {
     expect(AUTH_ERROR.OAUTH_CALLBACK_FAILED).toBe('OAUTH_CALLBACK_FAILED');
     expect(AUTH_ERROR.LOGOUT_FAILED).toBe('LOGOUT_FAILED');
     expect(AUTH_ERROR.RBAC_EXPANSION_FAILED).toBe('RBAC_EXPANSION_FAILED');
+    expect(AUTH_ERROR.GUEST_ACCESS_DISABLED).toBe('GUEST_ACCESS_DISABLED');
     expect(AUTH_ERROR.INTERNAL).toBe('INTERNAL');
   });
 });

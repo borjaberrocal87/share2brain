@@ -34,6 +34,8 @@ The system uses **two** configuration files (never mix them):
 - `Share2Brain.config.yml` — behavior configuration (channels, models, RBAC, knowledge tuning, rate limits). Validated by `loadConfig()` in `@share2brain/shared`.
 - `.env` — secrets only (Discord tokens, LLM API keys, DB/Redis URLs, `SENTRY_DSN`).
 
+Guest demo access (`access_control.guest_access`, OFF by default) is a pure YAML flag — no secret involved. It creates a real RBAC-limited session for demos and is distinct from the fake-OAuth e2e harness described below.
+
 ```bash
 cp Share2Brain.config.yml.example Share2Brain.config.yml
 cp .env.example .env

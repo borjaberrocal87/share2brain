@@ -162,6 +162,62 @@ describe('loadConfig', () => {
     expect(() => loadConfig(path)).toThrow(/trim_interval_ms|streams/);
   });
 
+  // Story 2.5 — access_control.guest_access is an OPTIONAL block, OFF by default;
+  // per-field defaults (role/username/TTL) are resolved by the backend consumer,
+  // never here (no `.default()`). It nests under access_control (2-space indent).
+  const withGuestBlock = (guestYaml: string): string =>
+    VALID_YAML.replace('  role_cache_ttl: 300\n', `  role_cache_ttl: 300\n${guestYaml}`);
+
+  it('should leave access_control.guest_access undefined when the block is absent', () => {
+    const path = writeFixture('guest-absent.yml', VALID_YAML);
+
+    const config = loadConfig(path);
+
+    expect(config.access_control.guest_access).toBeUndefined();
+  });
+
+  it('should parse a minimal guest_access block (only enabled) with optional fields undefined', () => {
+    const yaml = withGuestBlock('  guest_access:\n    enabled: true\n');
+    const path = writeFixture('guest-minimal.yml', yaml);
+
+    const config = loadConfig(path);
+
+    expect(config.access_control.guest_access).toEqual({ enabled: true });
+    expect(config.access_control.guest_access?.role).toBeUndefined();
+    expect(config.access_control.guest_access?.username).toBeUndefined();
+    expect(config.access_control.guest_access?.session_ttl_minutes).toBeUndefined();
+  });
+
+  it('should parse a full guest_access block', () => {
+    const yaml = withGuestBlock(
+      '  guest_access:\n    enabled: true\n    role: "guest"\n    username: "Invitado"\n    session_ttl_minutes: 120\n',
+    );
+    const path = writeFixture('guest-full.yml', yaml);
+
+    const config = loadConfig(path);
+
+    expect(config.access_control.guest_access).toEqual({
+      enabled: true,
+      role: 'guest',
+      username: 'Invitado',
+      session_ttl_minutes: 120,
+    });
+  });
+
+  it('should reject a non-boolean guest_access.enabled', () => {
+    const yaml = withGuestBlock('  guest_access:\n    enabled: "yes"\n');
+    const path = writeFixture('guest-bad-enabled.yml', yaml);
+
+    expect(() => loadConfig(path)).toThrow(/guest_access|enabled/);
+  });
+
+  it('should reject a non-positive guest_access.session_ttl_minutes', () => {
+    const yaml = withGuestBlock('  guest_access:\n    enabled: true\n    session_ttl_minutes: 0\n');
+    const path = writeFixture('guest-bad-ttl.yml', yaml);
+
+    expect(() => loadConfig(path)).toThrow(/session_ttl_minutes|guest_access/);
+  });
+
   it('should interpolate ${ENV_VAR} placeholders from process.env', () => {
     const previous = process.env.DISCORD_GUILD_ID;
     process.env.DISCORD_GUILD_ID = '999999999999999999';

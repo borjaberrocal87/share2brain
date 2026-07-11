@@ -22,6 +22,8 @@ interface AppLayoutProps {
   theme: Theme;
   onToggleTheme: () => void;
   onLogout: () => void;
+  /** Guest-mode flag (Story 2.5) — drives the header "Modo invitado" pill + "Salir". */
+  isGuest: boolean;
   guildId: string;
   /** Total unread count across all allowed channels — drives the sidebar badge (AC7). */
   unreadCount: number;
@@ -54,6 +56,7 @@ export function AppLayout({
   theme,
   onToggleTheme,
   onLogout,
+  isGuest,
   guildId,
   unreadCount,
   unreadCounts,
@@ -71,6 +74,7 @@ export function AppLayout({
           theme={theme}
           onToggleTheme={onToggleTheme}
           onLogout={onLogout}
+          isGuest={isGuest}
         />
 
         {activeScreen === 'search' ? (

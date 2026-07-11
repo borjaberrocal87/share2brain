@@ -65,6 +65,7 @@ Mapped by the OAuth `code` (`packages/backend/src/e2e/seed.ts`):
 |---|---|---|
 | `e2e-member` (default) | `e2e-ch-general` (3), `e2e-ch-random` (2) | 5 embeddings, similarity spread 1.0/0.8/0.6/0.5/0.3; 2 pre-read → mixed read/unread + sidebar badge; `/api/stats` → kpis 5/2/2/1, coverage 2/5/40%, topUsers Ada Lovelace(3)/Linus Torvalds(2) |
 | `e2e-empty` | `e2e-ch-void` (0) | no embeddings → reaches the search / all-read empty states; `/api/stats` returns all-zero figures |
+| **guest** (`loginAsGuest`, Story 2.5) | `e2e-ch-general` (3) only | role `e2e-role-guest`, mapped to `e2e-ch-general` ALONE — sees #general's 3 resources, never #random's docs and never the `#secreto` canary. Guest access is enabled in the harness only (`e2e/server.ts`); seeded guest `users` row `discord_id='guest'`, username "Invitado" |
 
 There is also an **invisible** RBAC canary trio (Story 9.3 D3), held by
 `e2e-role-none` — no fake-OAuth identity ever carries that role: channel
@@ -87,8 +88,17 @@ via the empty-scope identity.
 ## Spec discovery order (invariant)
 
 Playwright discovers spec files **alphabetically** and runs with `workers: 1`, so
-they execute in name order: `analytics.spec.ts` → `chat.spec.ts` →
-`docs.spec.ts` → `interactions.spec.ts` → `search.spec.ts`.
+they execute in name order: `analytics.spec.ts` → `auth-guest.spec.ts` →
+`chat.spec.ts` → `docs.spec.ts` → `interactions.spec.ts` → `search.spec.ts`.
+
+`auth-guest.spec.ts` (Story 2.5) sorts **second** — after `analytics`, before the
+mutating `chat`/`docs` specs — and is **strictly non-mutating** (guest login only;
+no chat message, no doc-row mark-read, no mark-all). Guest login creates a guest
+Redis session under the seeded guest user (`discord_id='guest'`), which touches no
+seed data the later specs assert (no conversation under the member; the read/unread
+mix is untouched; the extra `e2e-role-guest` on `e2e-ch-general` does not change
+member aggregates). A future *mutating* guest test must move after the seed-
+dependent specs or reseed.
 
 `analytics.spec.ts` (Story 9.3) sorts **first** on purpose: its assertions bind
 to seed-fresh per-user figures (`queries: 1`, `coverage: 2/5/40%`) that

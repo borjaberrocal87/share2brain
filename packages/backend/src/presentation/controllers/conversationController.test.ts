@@ -33,6 +33,11 @@ function fakeReq(query: Record<string, unknown>, params: Record<string, unknown>
   return { query, params, session: { userId: 'user-1' } } as unknown as Request;
 }
 
+/** A guest session (Story 2.5): shared sentinel id + isGuest flag. */
+function fakeGuestReq(query: Record<string, unknown>, params: Record<string, unknown> = {}): Request {
+  return { query, params, session: { userId: 'guest-user', isGuest: true } } as unknown as Request;
+}
+
 const stubService = (impl: Partial<ConversationService>): ConversationService => ({
   listConversations: vi.fn(),
   getConversation: vi.fn(),
@@ -77,6 +82,19 @@ describe('conversationController.list', () => {
     expect(res.statusCode).toBe(500);
     expect(res.body).toEqual({ error: 'Internal error', code: 'INTERNAL' });
     expect(JSON.stringify(res.body)).not.toContain('secret internal detail');
+  });
+
+  it('should return an empty page for a guest WITHOUT querying the shared history (2.5)', async () => {
+    const listConversations = vi.fn();
+    const controller = createConversationController({ conversationService: stubService({ listConversations }) });
+    const res = fakeRes();
+
+    await controller.list(fakeGuestReq({}), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ results: [], page: 1, limit: 20, total: 0 });
+    // The isolation is server-side: the shared history is never even queried.
+    expect(listConversations).not.toHaveBeenCalled();
   });
 });
 
@@ -135,5 +153,17 @@ describe('conversationController.getById', () => {
     expect(res.statusCode).toBe(500);
     expect(res.body).toEqual({ error: 'Internal error', code: 'INTERNAL' });
     expect(JSON.stringify(res.body)).not.toContain('secret internal detail');
+  });
+
+  it('should 404 for a guest even on a well-formed id, WITHOUT querying the service (2.5)', async () => {
+    const getConversation = vi.fn();
+    const controller = createConversationController({ conversationService: stubService({ getConversation }) });
+    const res = fakeRes();
+
+    await controller.getById(fakeGuestReq({}, { conversationId: VALID_ID }), res);
+
+    expect(res.statusCode).toBe(404);
+    expect(res.body).toEqual({ error: 'Conversación no encontrada', code: 'NOT_FOUND' });
+    expect(getConversation).not.toHaveBeenCalled();
   });
 });

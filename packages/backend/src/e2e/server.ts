@@ -17,6 +17,7 @@ if (process.env.NODE_ENV === 'production') {
 
 import { createApp } from '../app.js';
 import type { DiscordOAuthClient } from '../domain/repositories/discordOAuthClient.js';
+import { seedGuestUser } from '../infrastructure/guestAccess.js';
 import { buildTestAppOptions, fakeQueryEmbedder, openTestClients } from '../test-helpers.js';
 import { resetAndSeed } from './seed.js';
 
@@ -54,6 +55,13 @@ async function main(): Promise<void> {
       `${summary.conversations} conversations`,
   );
 
+  // Story 2.5: enable guest access in the HARNESS ONLY (the prod path stays
+  // config-gated in main.ts; buildTestAppOptions still omits it). `e2e-role-guest`
+  // is mapped to `e2e-ch-general` alone in the seed, so the guest sees #general's
+  // resources but neither #random's docs nor the #secreto canary. This is the same
+  // real endpoint with the option set — NO new bypass surface.
+  const { id: guestUserId } = await seedGuestUser(clients.db, 'Invitado');
+
   const app = createApp(
     clients.db,
     clients.redis,
@@ -62,6 +70,7 @@ async function main(): Promise<void> {
       queryEmbedder: fakeQueryEmbedder(),
       frontendUrl: E2E_WEB_ORIGIN,
       allowedOrigins: [E2E_WEB_ORIGIN],
+      guestAccess: { role: 'e2e-role-guest', sessionTtlMinutes: 120, userId: guestUserId },
     }),
   );
 

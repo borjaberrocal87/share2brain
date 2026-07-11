@@ -95,3 +95,45 @@ describe('readStatusService.unreadCount', () => {
     expect(result).toEqual({ 'chan-1': 4 });
   });
 });
+
+// Story 2.5 (review): the shared sentinel userId means persisting guest read-status
+// would bleed across guests. Guest writes are no-ops (isolation) while the read
+// contract (visibility 404 / forbidden) is preserved; the sentinel then holds no
+// read rows, so unreadCount is all-unread for guests with no branch.
+describe('readStatusService — guest ephemerality (2.5)', () => {
+  it('should NOT persist markRead for a guest, but still honor the visibility 404', async () => {
+    const visible = fakeRepo({ findVisibleEmbeddingChannel: vi.fn(async () => 'chan-1') });
+    const svcVisible = createReadStatusService({ readStatusRepo: visible });
+    const okResult = await svcVisible.markRead('guest-sentinel', 'emb-1', ['chan-1'], true);
+    expect(okResult).toEqual({ ok: true });
+    expect(visible.markRead).not.toHaveBeenCalled();
+
+    const invisible = fakeRepo({ findVisibleEmbeddingChannel: vi.fn(async () => null) });
+    const svcInvisible = createReadStatusService({ readStatusRepo: invisible });
+    const notFound = await svcInvisible.markRead('guest-sentinel', 'emb-x', ['chan-1'], true);
+    expect(notFound).toEqual({ ok: false, reason: 'not-found' });
+    expect(invisible.markRead).not.toHaveBeenCalled();
+  });
+
+  it('should no-op unmarkRead for a guest', async () => {
+    const readStatusRepo = fakeRepo();
+    const service = createReadStatusService({ readStatusRepo });
+
+    await service.unmarkRead('guest-sentinel', 'emb-1', true);
+
+    expect(readStatusRepo.unmarkRead).not.toHaveBeenCalled();
+  });
+
+  it('should return markedCount 0 and persist nothing for a guest markAll, but keep the forbidden check', async () => {
+    const repo = fakeRepo({ markAllInChannels: vi.fn(async () => 7) });
+    const service = createReadStatusService({ readStatusRepo: repo });
+
+    const ok = await service.markAll('guest-sentinel', undefined, ['chan-1', 'chan-2'], true);
+    expect(ok).toEqual({ ok: true, response: { markedCount: 0 } });
+    expect(repo.markAllInChannels).not.toHaveBeenCalled();
+
+    const forbidden = await service.markAll('guest-sentinel', 'chan-denied', ['chan-1'], true);
+    expect(forbidden).toEqual({ ok: false, reason: 'forbidden' });
+    expect(repo.markAllInChannels).not.toHaveBeenCalled();
+  });
+});

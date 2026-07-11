@@ -13,7 +13,15 @@ import * as readStatusApi from './api/readStatus';
 // fetchMe/logout without touching the network. LOGIN_URL keeps its real value.
 vi.mock('./api/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/auth')>();
-  return { ...actual, fetchMe: vi.fn(), logout: vi.fn() };
+  return {
+    ...actual,
+    fetchMe: vi.fn(),
+    logout: vi.fn(),
+    // Story 2.5: LoginScreen fires this probe on mount — stub it (unstubbed → a
+    // real fetch in jsdom → noise/failures).
+    fetchGuestAvailability: vi.fn(),
+    loginAsGuest: vi.fn(),
+  };
 });
 
 // Story 4.4: the unread map is fetched once auth resolves, owned above the
@@ -25,6 +33,8 @@ vi.mock('./api/channels', () => ({ fetchChannels: vi.fn() }));
 
 const fetchMe = vi.mocked(authApi.fetchMe);
 const logout = vi.mocked(authApi.logout);
+const fetchGuestAvailability = vi.mocked(authApi.fetchGuestAvailability);
+const loginAsGuest = vi.mocked(authApi.loginAsGuest);
 const fetchUnreadCount = vi.mocked(readStatusApi.fetchUnreadCount);
 const markRead = vi.mocked(readStatusApi.markRead);
 const fetchDocuments = vi.mocked(documentsApi.fetchDocuments);
@@ -40,6 +50,16 @@ const PROFILE = {
   guildId: '111222333444555666',
 };
 
+// Story 2.5: guest profile variant returned by loginAsGuest / a guest /me.
+const GUEST_PROFILE = {
+  id: '00000000-0000-4000-a000-000000000001',
+  discordId: 'guest',
+  username: 'Invitado',
+  avatar: null,
+  guildId: '111222333444555666',
+  isGuest: true,
+};
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -49,6 +69,9 @@ fetchUnreadCount.mockResolvedValue({});
 fetchChannels.mockResolvedValue([]);
 fetchDocuments.mockResolvedValue(emptyDocs);
 markRead.mockResolvedValue();
+// Default: guest access disabled, so existing anon tests never render the button
+// and never hit a real fetch. Guest-specific tests override per-case.
+fetchGuestAvailability.mockResolvedValue(false);
 
 describe('App session flow', () => {
   it('should show the login screen when the session check returns 401 (anon)', async () => {
@@ -205,5 +228,66 @@ describe('App session flow', () => {
     const nav = screen.getByRole('button', { name: /Documentos/i });
     expect(within(nav).queryByText('1')).toBeTruthy();
     expect(within(nav).queryByText('99')).toBeNull();
+  });
+
+  // Story 2.5 — guest access.
+  it('should NOT render the guest button when guest access is disabled (anon)', async () => {
+    fetchMe.mockResolvedValue(null);
+    fetchGuestAvailability.mockResolvedValue(false);
+
+    render(<App />);
+    await screen.findByRole('button', { name: /Continuar con Discord/i });
+
+    expect(screen.queryByTestId('guest-login-btn')).toBeNull();
+  });
+
+  it('should render the guest button when guest access is enabled (anon)', async () => {
+    fetchMe.mockResolvedValue(null);
+    fetchGuestAvailability.mockResolvedValue(true);
+
+    render(<App />);
+
+    expect(await screen.findByTestId('guest-login-btn')).toBeTruthy();
+  });
+
+  it('should enter the guest shell (badge + identity + "Salir") when the guest button is clicked', async () => {
+    fetchMe.mockResolvedValue(null);
+    fetchGuestAvailability.mockResolvedValue(true);
+    loginAsGuest.mockResolvedValue(GUEST_PROFILE);
+
+    render(<App />);
+    fireEvent.click(await screen.findByTestId('guest-login-btn'));
+
+    // Guest-mode badge + guest identity render in the authenticated shell.
+    expect(await screen.findByTestId('guest-mode-badge')).toBeTruthy();
+    expect(within(screen.getByRole('banner')).getByText('Invitado')).toBeTruthy();
+    expect(screen.getByText('IN')).toBeTruthy();
+    // Icon-only logout button's accessible name flips to "Salir".
+    expect(screen.getByRole('button', { name: /Salir/i })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Continuar con Discord/i })).toBeNull();
+  });
+
+  it('should stay on the login screen when guest login fails', async () => {
+    fetchMe.mockResolvedValue(null);
+    fetchGuestAvailability.mockResolvedValue(true);
+    loginAsGuest.mockRejectedValue(new Error('boom'));
+
+    render(<App />);
+    fireEvent.click(await screen.findByTestId('guest-login-btn'));
+
+    await waitFor(() => expect(loginAsGuest).toHaveBeenCalledOnce());
+    expect(await screen.findByRole('button', { name: /Continuar con Discord/i })).toBeTruthy();
+    expect(screen.queryByTestId('guest-mode-badge')).toBeNull();
+  });
+
+  it('should NOT render the guest badge for a regular (non-guest) session and keep "Cerrar sesión"', async () => {
+    fetchMe.mockResolvedValue(PROFILE);
+
+    render(<App />);
+    await screen.findByText('ada lovelace');
+
+    expect(screen.queryByTestId('guest-mode-badge')).toBeNull();
+    expect(screen.getByRole('button', { name: /Cerrar sesión/i })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Salir/i })).toBeNull();
   });
 });

@@ -72,6 +72,65 @@ paths:
       responses:
         "204": { description: Session destroyed }
 
+  /api/auth/guest:
+    get:
+      tags: [auth]
+      summary: Guest access availability probe (config-gated, OFF by default)
+      description: >
+        Availability signal for the SPA login link. When guest access is disabled
+        (the default) this returns 404 — it NEVER returns { enabled: false }, so a
+        disabled deployment leaks no existence signal (matches the z.literal(true)
+        contract in packages/shared/src/schemas/auth.ts).
+      security: []
+      responses:
+        "200":
+          description: Guest access is enabled
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [enabled]
+                properties:
+                  enabled: { type: boolean, example: true }
+        "404":
+          description: Guest access disabled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example: { error: Not found, code: GUEST_ACCESS_DISABLED }
+    post:
+      tags: [auth]
+      summary: Create a guest session (config-gated, OFF by default)
+      description: >
+        Creates a real, RBAC-limited Redis session { userId, discordRoles:
+        [guestRole], isGuest: true } with a short TTL and sets the httpOnly `sid`
+        cookie. Not an auth bypass. Returns 404 when guest access is disabled.
+      security: []
+      responses:
+        "200":
+          description: Guest session created (Set-Cookie sid)
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: httpOnly session cookie `sid`
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  discordId: { type: string }
+                  username: { type: string }
+                  avatar: { type: string, nullable: true }
+                  guildId: { type: string }
+                  isGuest: { type: boolean, example: true }
+        "404":
+          description: Guest access disabled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+              example: { error: Not found, code: GUEST_ACCESS_DISABLED }
+
   /api/auth/me:
     get:
       tags: [auth]
@@ -89,6 +148,7 @@ paths:
                   username: { type: string }
                   avatar: { type: string, nullable: true }
                   guildId: { type: string }
+                  isGuest: { type: boolean, description: "Present and true only for guest sessions" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/auth/roles:

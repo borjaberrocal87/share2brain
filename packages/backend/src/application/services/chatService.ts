@@ -25,10 +25,17 @@ export interface ChatService {
    * (D8): create a new one when `conversationId` is absent/null, or return the
    * existing one when it is owned by `userId`. Throws {@link ChatOwnershipError}
    * when `conversationId` is given but unknown/not owned.
+   *
+   * `guestScope` (Story 2.5 review): present only for guest sessions. All guests
+   * share one sentinel `userId`, so `getOwnedConversation` cannot distinguish one
+   * guest's conversation from another's — resume is instead gated on the caller's
+   * per-session allowlist. A `conversationId` outside it throws
+   * {@link ChatOwnershipError} (→ pre-stream 404), keeping guest chat ephemeral.
    */
   resolveConversation(
     userId: string,
     conversationId: string | null | undefined,
+    guestScope?: { allowedConversationIds: readonly string[] },
   ): Promise<Conversation>;
 
   /**
@@ -53,9 +60,16 @@ export function createChatService(deps: {
   const { agent, conversationRepo } = deps;
 
   return {
-    async resolveConversation(userId, conversationId): Promise<Conversation> {
+    async resolveConversation(userId, conversationId, guestScope): Promise<Conversation> {
       if (!conversationId) {
         return conversationRepo.createConversation(userId);
+      }
+      // Story 2.5 (review): for a guest, DB ownership is not a per-session boundary
+      // (shared sentinel userId) — the session allowlist is. A conversationId that
+      // this guest session didn't create is out of scope, even though the row is
+      // "owned" by the guest user. Same 404 as an unknown/unowned id (no signal).
+      if (guestScope && !guestScope.allowedConversationIds.includes(conversationId)) {
+        throw new ChatOwnershipError('Conversation not in the guest session scope');
       }
       const conversation = await conversationRepo.getOwnedConversation(conversationId, userId);
       if (!conversation) {

@@ -3,7 +3,7 @@
 // ErrorSchema shape. Raw Discord/DB errors are never leaked to the client.
 import { randomBytes } from 'node:crypto';
 
-import { AUTH_ERROR } from '@share2brain/shared/schemas';
+import { AUTH_ERROR, GuestAvailabilityResponseSchema } from '@share2brain/shared/schemas';
 import type { Request, Response } from 'express';
 
 import type { AuthService } from '../../application/services/authService.js';
@@ -19,6 +19,8 @@ export interface AuthController {
   me(req: Request, res: Response): Promise<void>;
   roles(req: Request, res: Response): Promise<void>;
   logout(req: Request, res: Response): void;
+  guestAvailability(req: Request, res: Response): void;
+  guestLogin(req: Request, res: Response): Promise<void>;
 }
 
 export function createAuthController(deps: {
@@ -27,8 +29,14 @@ export function createAuthController(deps: {
   discord: { clientId: string; redirectUri: string };
   frontendUrl: string;
   cookieSecure: boolean;
+  /**
+   * Guest access (Story 2.5). PRESENCE = enabled — when absent the two guest
+   * endpoints 404, so an app built without it (buildTestAppOptions, the e2e
+   * server's default, main.ts with the flag off) has guest access disabled.
+   */
+  guestAccess?: { role: string; sessionTtlMinutes: number; userId: string };
 }): AuthController {
-  const { authService, rbacService, discord, frontendUrl, cookieSecure } = deps;
+  const { authService, rbacService, discord, frontendUrl, cookieSecure, guestAccess } = deps;
 
   return {
     login(req, res) {
@@ -118,7 +126,11 @@ export function createAuthController(deps: {
           res.status(401).json({ error: 'Unauthorized', code: AUTH_ERROR.AUTH_REQUIRED });
           return;
         }
-        res.status(200).json(profile);
+        // Story 2.5: surface the guest flag only when the session is a guest one
+        // (absent otherwise — the schema field is optional, never `false`, D6).
+        res
+          .status(200)
+          .json(req.session.isGuest === true ? { ...profile, isGuest: true } : profile);
       } catch (err) {
         console.error('[auth] /me failed:', err instanceof Error ? err.message : String(err));
         res.status(500).json({ error: 'Internal error', code: AUTH_ERROR.INTERNAL });
@@ -161,6 +173,65 @@ export function createAuthController(deps: {
         res.clearCookie('sid', cookieOpts);
         res.status(200).json({ ok: true });
       });
+    },
+
+    guestAvailability(_req, res) {
+      // D1: link-visibility probe. Disabled → the same existence-hiding 404 as the
+      // POST (never `{ enabled: false }`); enabled → the literal-true body.
+      if (!guestAccess) {
+        res.status(404).json({ error: 'Not found', code: AUTH_ERROR.GUEST_ACCESS_DISABLED });
+        return;
+      }
+      res.status(200).json(GuestAvailabilityResponseSchema.parse({ enabled: true }));
+    },
+
+    async guestLogin(req, res) {
+      if (!guestAccess) {
+        res.status(404).json({ error: 'Not found', code: AUTH_ERROR.GUEST_ACCESS_DISABLED });
+        return;
+      }
+      try {
+        // Resolve the guest profile BEFORE touching the session (review P-1). The
+        // OAuth callback likewise resolves handleCallback before regenerate: no
+        // session must be established until we know the guest row exists, or a
+        // missing-seed 500 would leave a valid, RBAC-scoped session cookie behind.
+        const me = await authService.getMe(guestAccess.userId);
+        if (me === null) {
+          // The seed invariant is broken (guest row missing) — no session, 500.
+          console.error('[auth] guest login failed: seeded guest user not found');
+          res.status(500).json({ error: 'Internal error', code: AUTH_ERROR.INTERNAL });
+          return;
+        }
+        // Only now establish the session, mirroring the OAuth callback's
+        // establishment (P1 anti-fixation): regenerate → set fields → explicit save
+        // → respond.
+        req.session.regenerate((regenErr: unknown) => {
+          if (regenErr) {
+            console.error('[auth] guest session regenerate failed:', regenErr instanceof Error ? regenErr.message : String(regenErr));
+            res.status(500).json({ error: 'Internal error', code: AUTH_ERROR.INTERNAL });
+            return;
+          }
+          req.session.userId = guestAccess.userId;
+          req.session.discordRoles = [guestAccess.role];
+          req.session.isGuest = true;
+          // D7: per-session TTL. connect-redis@9 derives the Redis EX from
+          // sess.cookie.expires (which express-session computes from maxAge) and it
+          // WINS over the store-level ttl — so the cookie and the Redis key expire
+          // together with the short demo TTL, no store/config change needed.
+          req.session.cookie.maxAge = guestAccess.sessionTtlMinutes * 60_000;
+          req.session.save((saveErr: unknown) => {
+            if (saveErr) {
+              console.error('[auth] guest session save failed:', saveErr instanceof Error ? saveErr.message : String(saveErr));
+              res.status(500).json({ error: 'Internal error', code: AUTH_ERROR.INTERNAL });
+              return;
+            }
+            res.status(200).json({ ...me, isGuest: true });
+          });
+        });
+      } catch (err) {
+        console.error('[auth] guest login failed:', err instanceof Error ? err.message : String(err));
+        res.status(500).json({ error: 'Internal error', code: AUTH_ERROR.INTERNAL });
+      }
     },
   };
 }

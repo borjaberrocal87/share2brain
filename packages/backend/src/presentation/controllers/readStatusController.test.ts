@@ -112,7 +112,8 @@ describe('readStatusController.unmarkRead', () => {
     await controller.unmarkRead(fakeReq({ params: { embeddingId: VALID_UUID } }), res);
 
     expect(res.statusCode).toBe(200);
-    expect(readStatusService.unmarkRead).toHaveBeenCalledWith('user-1', VALID_UUID);
+    // Third arg is the guest flag (false for a normal member session).
+    expect(readStatusService.unmarkRead).toHaveBeenCalledWith('user-1', VALID_UUID, false);
   });
 });
 

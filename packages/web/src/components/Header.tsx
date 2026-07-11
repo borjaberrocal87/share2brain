@@ -4,7 +4,7 @@
 // light) and a moon while light is active. UI copy Spanish verbatim.
 import type { CSSProperties, ReactElement } from 'react';
 
-import { DiscordIcon, LogoutIcon, MoonIcon, SunIcon } from './icons';
+import { DiscordIcon, LogoutIcon, MoonIcon, SunIcon, UserIcon } from './icons';
 import type { Theme } from '../hooks/useTheme';
 
 interface HeaderProps {
@@ -14,6 +14,8 @@ interface HeaderProps {
   theme: Theme;
   onToggleTheme: () => void;
   onLogout: () => void;
+  /** Guest-mode flag (Story 2.5): show the "Modo invitado" pill + label logout "Salir". */
+  isGuest: boolean;
 }
 
 const headerStyle: CSSProperties = {
@@ -48,6 +50,7 @@ export function Header({
   theme,
   onToggleTheme,
   onLogout,
+  isGuest,
 }: HeaderProps): ReactElement {
   return (
     <header style={headerStyle}>
@@ -96,6 +99,25 @@ export function Header({
           <span style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>indexando en vivo</span>
         </div>
 
+        {isGuest && (
+          <div
+            data-testid="guest-mode-badge"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '5px 11px',
+              border: '1px solid var(--border)',
+              borderRadius: 999,
+              background: 'var(--surface)',
+              color: 'var(--accent-ink)',
+            }}
+          >
+            <UserIcon size={12} />
+            <span style={{ fontSize: 11.5 }}>Modo invitado</span>
+          </div>
+        )}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <span
             style={{
@@ -130,8 +152,8 @@ export function Header({
             type="button"
             className="kh-icon-btn kh-logout-btn"
             onClick={onLogout}
-            title="Cerrar sesión"
-            aria-label="Cerrar sesión"
+            title={isGuest ? 'Salir' : 'Cerrar sesión'}
+            aria-label={isGuest ? 'Salir' : 'Cerrar sesión'}
             style={iconBtnStyle}
           >
             <LogoutIcon size={15} />

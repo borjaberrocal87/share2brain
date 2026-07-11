@@ -3,14 +3,18 @@
 // The button calls `onLogin` (full-page navigation to Discord OAuth2).
 // UI copy is Spanish verbatim from the prototype; identifiers/comments English
 // (see story Dev Notes -> Language rule).
+import { useEffect, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
 
-import { DiscordIcon, LockIcon } from './icons';
+import { fetchGuestAvailability } from '../api/auth';
+import { DiscordIcon, LockIcon, UserIcon } from './icons';
 import { Hexagon } from './Hexagon';
 
 interface LoginScreenProps {
   /** Start the Discord login (full-page navigation). */
   onLogin: () => void;
+  /** Start a guest session (Story 2.5, in-SPA — no full-page reload). */
+  onGuest: () => void;
 }
 
 // The four decorative hexagons are flat-tint clip-path shapes (NOT the brand
@@ -50,7 +54,24 @@ const cardStyle: CSSProperties = {
   textAlign: 'center',
 };
 
-export function LoginScreen({ onLogin }: LoginScreenProps): ReactElement {
+export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElement {
+  // Views own their data-fetching: probe guest availability on mount. Default
+  // false so the link never flashes when disabled; a probe rejection stays hidden.
+  const [showGuest, setShowGuest] = useState(false);
+  useEffect(() => {
+    let active = true;
+    fetchGuestAvailability()
+      .then((enabled) => {
+        if (active) setShowGuest(enabled);
+      })
+      .catch(() => {
+        // A probe failure must never break the Discord path — stay hidden.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <div style={screenStyle}>
       {DECOR_HEXAGONS.map((hex, i) => (
@@ -141,6 +162,58 @@ export function LoginScreen({ onLogin }: LoginScreenProps): ReactElement {
           <LockIcon size={13} />
           Solo miembros del guild pueden acceder
         </div>
+
+        {showGuest && (
+          <>
+            <div
+              style={{
+                marginTop: 22,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                width: '100%',
+              }}
+            >
+              <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              <span
+                style={{
+                  fontFamily: "'IBM Plex Mono', monospace",
+                  fontSize: 10.5,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: 'var(--text-subtle)',
+                }}
+              >
+                o para la demo
+              </span>
+              <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            </div>
+
+            <button
+              type="button"
+              data-testid="guest-login-btn"
+              className="kh-guest-btn"
+              onClick={onGuest}
+              style={{
+                marginTop: 22,
+                width: '100%',
+                height: 48,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                borderRadius: 12,
+                background: 'transparent',
+                cursor: 'pointer',
+                fontSize: 14.5,
+                fontWeight: 600,
+              }}
+            >
+              <UserIcon size={18} />
+              <span>Entrar como invitado</span>
+            </button>
+          </>
+        )}
 
         <div
           style={{

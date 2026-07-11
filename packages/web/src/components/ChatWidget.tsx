@@ -51,6 +51,12 @@ interface ChatMessage {
 interface ChatWidgetProps {
   /** The signed-in user, for the user-bubble avatar (UX-DR19, D4). */
   user: { name: string; initials: string };
+  /**
+   * Guest mode (Story 2.5). All guests share one sentinel identity, so the
+   * conversation history is server-side isolated (list empty, detail 404). Hide
+   * the "Historial" button too — a guest has no navigable history.
+   */
+  isGuest?: boolean;
 }
 
 const AMBER = '#F5A623';
@@ -93,7 +99,7 @@ const ACTIVE_ROW_STYLE: CSSProperties = {
   color: 'var(--accent-ink)',
 };
 
-export function ChatWidget({ user }: ChatWidgetProps): ReactElement {
+export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactElement {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -519,17 +525,22 @@ export function ChatWidget({ user }: ChatWidgetProps): ReactElement {
           </div>
         </div>
 
-        <button
-          ref={historyBtnRef}
-          type="button"
-          className="kh-chat-header-btn"
-          aria-label="Historial de conversaciones"
-          title="Historial"
-          onClick={toggleHistory}
-          style={headerBtnStyle}
-        >
-          <HistoryIcon size={16} />
-        </button>
+        {/* Story 2.5: guests share one identity, so there is no per-guest history
+            to browse — hide the button entirely (the list/detail endpoints are also
+            server-side isolated for guests). */}
+        {!isGuest && (
+          <button
+            ref={historyBtnRef}
+            type="button"
+            className="kh-chat-header-btn"
+            aria-label="Historial de conversaciones"
+            title="Historial"
+            onClick={toggleHistory}
+            style={headerBtnStyle}
+          >
+            <HistoryIcon size={16} />
+          </button>
+        )}
         <button
           type="button"
           className="kh-chat-header-btn"

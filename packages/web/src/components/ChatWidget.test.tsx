@@ -135,6 +135,16 @@ describe('ChatWidget — shell (5.3)', () => {
     expect(await screen.findByTestId('chat-history-empty')).toBeTruthy();
   });
 
+  it('should hide the history button in guest mode (shared identity → no per-guest history, 2.5)', () => {
+    render(<ChatWidget user={USER} isGuest />);
+    openPanel();
+
+    // The history button is gone, but the rest of the header is intact.
+    expect(screen.queryByRole('button', { name: 'Historial de conversaciones' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Nueva conversación' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Cerrar chat' })).toBeTruthy();
+  });
+
   it('should render conversation titles and relative times when the history is populated', async () => {
     fetchConversations.mockResolvedValue(
       conversationsResponse([

@@ -44,7 +44,7 @@ function unitVector(first: number): number[] {
 interface ChannelSpec {
   channelId: string;
   name: string;
-  allowedRole: string;
+  allowedRoles: string[];
 }
 
 interface MessageSpec {
@@ -72,11 +72,13 @@ interface EmbeddingSpec {
 // `e2e-ch-secreto` (Story 9.3 D3) is a RBAC canary: allowed_roles holds a role
 // no fake-OAuth identity ever carries, so the member must NEVER see it or its
 // content in any /api/stats figure (AD-12 in-SQL scoping).
+// Story 2.5: `e2e-role-guest` is added to `e2e-ch-general` ONLY — the guest sees
+// #general's resources but NOT #random's docs and NEVER the #secreto canary.
 const CHANNELS: ChannelSpec[] = [
-  { channelId: 'e2e-ch-general', name: 'general', allowedRole: 'e2e-role-member' },
-  { channelId: 'e2e-ch-random', name: 'random', allowedRole: 'e2e-role-member' },
-  { channelId: 'e2e-ch-void', name: 'sin-datos', allowedRole: 'e2e-role-empty' },
-  { channelId: 'e2e-ch-secreto', name: 'secreto', allowedRole: 'e2e-role-none' },
+  { channelId: 'e2e-ch-general', name: 'general', allowedRoles: ['e2e-role-member', 'e2e-role-guest'] },
+  { channelId: 'e2e-ch-random', name: 'random', allowedRoles: ['e2e-role-member'] },
+  { channelId: 'e2e-ch-void', name: 'sin-datos', allowedRoles: ['e2e-role-empty'] },
+  { channelId: 'e2e-ch-secreto', name: 'secreto', allowedRoles: ['e2e-role-none'] },
 ];
 
 // Story 9.3 D3: one clock shared by the canary message + its embedding, so
@@ -187,7 +189,10 @@ export async function resetAndSeed(db: Database): Promise<SeedSummary> {
   for (const c of CHANNELS) {
     await db.execute(sql`
       insert into channel_permissions (channel_id, name, allowed_roles)
-      values (${c.channelId}, ${c.name}, ARRAY[${c.allowedRole}]::text[])
+      values (${c.channelId}, ${c.name}, ARRAY[${sql.join(
+        c.allowedRoles.map((r) => sql`${r}`),
+        sql`, `,
+      )}]::text[])
     `);
   }
 

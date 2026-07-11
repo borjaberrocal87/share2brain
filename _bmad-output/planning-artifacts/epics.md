@@ -451,6 +451,45 @@ para que los canales privados del guild permanezcan protegidos.
 
 ---
 
+### Historia 2.5: Acceso de invitado para demos (config-gated)
+
+Como Operador que presenta una demo,
+quiero un acceso de invitado en la pantalla de login que no requiera Discord,
+para mostrar la aplicación sin credenciales, manteniendo RBAC y la seguridad de producción.
+
+**Criterios de Aceptación:**
+
+**Dado** `config.access_control.guest_access.enabled: false` (valor por defecto)
+**Cuando** se llama `POST /api/auth/guest`
+**Entonces** retorna HTTP 404 `{ error: "Not found", code: "GUEST_ACCESS_DISABLED" }`
+**Y** la pantalla de login NO muestra el enlace de invitado
+
+**Dado** `config.access_control.guest_access.enabled: true`
+**Cuando** el Backend arranca
+**Entonces** hace upsert de una fila `users` de invitado (discord_id sentinela `"guest"`, username configurable) ANTES de aceptar requests
+**Y** el rol sintético `guest_access.role` está disponible para la expansión RBAC
+
+**Dado** `guest_access.enabled: true`
+**Cuando** se llama `POST /api/auth/guest`
+**Entonces** crea una sesión Redis `{ userId: <guestUserId>, discordRoles: [config.guest_access.role], isGuest: true }` con TTL `guest_access.session_ttl_minutes`
+**Y** establece cookie httpOnly `sid` y retorna HTTP 200
+
+**Dado** una sesión de invitado válida
+**Cuando** el middleware RBAC expande roles
+**Entonces** une `[guestRole]` contra `channel_permissions` → `allowedChannelIds` = solo canales demo
+**Y** toda query vectorial (search/chat/documents/stats) queda acotada a esos canales (AD-12 intacto)
+
+**Dado** una sesión de invitado
+**Cuando** la web app llama `GET /api/auth/me`
+**Entonces** retorna el usuario invitado con `isGuest: true`
+**Y** la UI muestra un indicador visible de "Modo invitado" y el botón de logout dice "Salir"
+
+**Dado** que el usuario hace clic en el enlace de invitado del login
+**Cuando** `POST /api/auth/guest` completa
+**Entonces** la app renderiza el layout autenticado en modo invitado
+
+---
+
 ## Épico 3: Pipeline de Indexación de Conocimiento
 
 El conocimiento de los canales de Discord configurados fluye automáticamente al índice vectorial y es consultable.

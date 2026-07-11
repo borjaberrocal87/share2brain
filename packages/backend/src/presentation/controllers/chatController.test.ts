@@ -75,6 +75,25 @@ function fakeReq(body: Record<string, unknown>, allowedChannelIds?: string[]): R
   } as unknown as Request;
 }
 
+/** A guest session (Story 2.5) with a stubbed `save` and a mutable allowlist. */
+function fakeGuestReq(
+  body: Record<string, unknown>,
+  opts: { allowedChannelIds?: string[]; guestConversationIds?: string[] } = {},
+): { req: Request; session: { guestConversationIds?: string[] }; saveCount: () => number } {
+  let saves = 0;
+  const session = {
+    userId: 'guest-sentinel',
+    isGuest: true,
+    guestConversationIds: opts.guestConversationIds,
+    save(cb: (err?: unknown) => void) {
+      saves += 1;
+      cb();
+    },
+  };
+  const req = { body, allowedChannelIds: opts.allowedChannelIds, session, on: vi.fn() };
+  return { req: req as unknown as Request, session, saveCount: () => saves };
+}
+
 const stubService = (impl: Partial<ChatService>): ChatService => ({
   resolveConversation: vi.fn(),
   streamChat: vi.fn(),
@@ -169,6 +188,60 @@ describe('chatController.chat', () => {
       ['chan-1'],
       expect.any(AbortSignal),
     );
+  });
+
+  it('should thread the guest session allowlist and record a newly-created conversation id (2.5)', async () => {
+    const frames: SSEFrame[] = [{ type: 'done', conversationId: 'conv-1' }];
+    const resolveConversation = vi.fn(async () => CONV);
+    const streamChat = vi.fn(async function* () {
+      for (const frame of frames) yield frame;
+    });
+    const controller = createChatController({
+      chatService: stubService({ resolveConversation, streamChat }),
+    });
+    const res = fakeRes();
+    const { req, session, saveCount } = fakeGuestReq(
+      { message: 'hola' },
+      { allowedChannelIds: ['chan-1'], guestConversationIds: [] },
+    );
+
+    await controller.chat(req, res);
+
+    // The guest allowlist is threaded into resolveConversation as guestScope …
+    expect(resolveConversation).toHaveBeenCalledWith('guest-sentinel', undefined, {
+      allowedConversationIds: [],
+    });
+    // … and the fresh conversation id is recorded in the session (+ persisted) so a
+    // later turn in THIS session can resume it.
+    expect(session.guestConversationIds).toContain('conv-1');
+    expect(saveCount()).toBe(1);
+    expect(res.ended).toBe(true);
+  });
+
+  it('should NOT record or re-save when a guest resumes an existing conversationId (2.5)', async () => {
+    const frames: SSEFrame[] = [{ type: 'done', conversationId: 'conv-1' }];
+    const resolveConversation = vi.fn(async () => CONV);
+    const streamChat = vi.fn(async function* () {
+      for (const frame of frames) yield frame;
+    });
+    const controller = createChatController({
+      chatService: stubService({ resolveConversation, streamChat }),
+    });
+    const res = fakeRes();
+    const RESUME_ID = '550e8400-e29b-41d4-a716-446655440000';
+    const { req, session, saveCount } = fakeGuestReq(
+      { message: 'again', conversationId: RESUME_ID },
+      { allowedChannelIds: ['chan-1'], guestConversationIds: [RESUME_ID] },
+    );
+
+    await controller.chat(req, res);
+
+    expect(resolveConversation).toHaveBeenCalledWith('guest-sentinel', RESUME_ID, {
+      allowedConversationIds: [RESUME_ID],
+    });
+    expect(session.guestConversationIds).toEqual([RESUME_ID]); // unchanged
+    expect(saveCount()).toBe(0); // no re-save on resume
+    expect(res.ended).toBe(true);
   });
 
   it('should emit a terminal error frame and end the response on a mid-stream failure', async () => {

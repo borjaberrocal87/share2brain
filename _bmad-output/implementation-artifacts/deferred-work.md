@@ -225,3 +225,13 @@
 ## Deferred from: code review re-run of story-9.3 (2026-07-10, 2nd pass)
 
 - **`page.route('**/api/stats', …)` glob would miss a future query-string variant** [`packages/web/tests/analytics.spec.ts:460`] — LOW, robustness. The AC7a error-state intercept globs `**/api/stats`, which Playwright anchors at the URL end: it matches `/api/stats` (the endpoint is param-free today — verified: `fetchStats` calls it with no query string, activity/queries windows are fixed server-side) but would silently NOT match `/api/stats?days=14` if a param were ever added, letting the real backend's valid response through and failing (or misattributing) the error-state assertion. Not a current defect. Fix, if promoted: `**/api/stats*`. Source: blind (2nd pass).
+
+## Deferred from: code review of story-2.5 (2026-07-11)
+
+- **No boot-time warning when the guest role maps to zero channels** (`packages/backend/src/main.ts`) — deny-by-default is per-spec (AC4); a startup warning is an ops-ergonomics enhancement, not a defect.
+- **Public `POST /api/auth/guest` has no CSRF token (forced-guest-downgrade)** (`packages/backend/src/presentation/controllers/authController.ts:188`) — consistent with the existing unprotected `POST /api/auth/logout`; downgrade-only, demos-only. CSRF hardening across all auth POSTs is a separate concern.
+- **Disabling `guest_access` does not revoke live guest sessions** (`packages/backend/src/presentation/controllers/authController.ts:181`) — sessions are TTL-bounded (≤120 min) and the story marks TTL auto-expiry acceptable demo behavior.
+
+## Deferred from: code review of story-2.5 re-review#2 (2026-07-11)
+
+- **`guestConversationIds` unbounded growth + concurrent lost-update** (`packages/backend/src/presentation/controllers/chatController.ts`) — the per-session guest conversation allowlist has no cap and its read-modify-write is not atomic; two concurrent new-conversation POSTs on the same guest session can last-write-wins and drop an id (that conversation becomes non-resumable). Deferred: TTL-bounded (≤120 min) + chat rate limiter; fails CLOSED (loses resumability of own conversation, never grants cross-guest access); express-session's end-of-response save self-heals the transient case. Demo-scoped, no security impact.

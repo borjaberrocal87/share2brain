@@ -22,7 +22,7 @@ Only the service that owns a table writes to it (AD, State Ownership):
 | `user_roles_cache` | backend (login + OAuth2 refresh) | backend |
 | `conversations`, `messages` | backend | web (via API) |
 | `user_read_status` | backend | web (via API) |
-| `users` | backend (Discord OAuth2 login) | backend |
+| `users` | backend (Discord OAuth2 login + guest seed at startup) | backend |
 
 ## Model Descriptions
 
@@ -88,6 +88,8 @@ Application users, created on Discord OAuth2 login. Backend-owned.
 - `avatar`: avatar hash/URL
 - `created_at`: timestamp
 
+**Notes:** when `access_control.guest_access.enabled`, the Backend seeds one guest row at startup with the sentinel `discord_id = "guest"` (an explicit exception to the "snowflake for Discord entities" convention above) and a fixed UUID (`GUEST_USER_ID`). The upsert is idempotent on `discord_id`; a pre-existing guest row keeps its id (Historia 2.5).
+
 ### 4. user_roles_cache
 Cached Discord roles per user, to answer RBAC without hitting the Discord API on every request. TTL-based.
 
@@ -113,7 +115,7 @@ A user's chat conversation with the RAG agent. Backend-owned.
 
 **Fields:**
 - `id`: UUID (Primary Key)
-- `user_id`: FK → users.id
+- `user_id`: FK → users.id (guest conversations attach to the seeded guest `users` row — Historia 2.5)
 - `created_at`: timestamp
 - `updated_at`: timestamp
 

@@ -13,7 +13,7 @@ import type { ReactElement } from 'react';
 
 import type { AuthMeResponse, UnreadCountResponse } from '@share2brain/shared/schemas';
 
-import { fetchMe, logout as apiLogout, LOGIN_URL } from './api/auth';
+import { fetchMe, loginAsGuest, logout as apiLogout, LOGIN_URL } from './api/auth';
 import { fetchUnreadCount } from './api/readStatus';
 import { AppLayout } from './components/AppLayout';
 import { ChatWidget } from './components/ChatWidget';
@@ -93,6 +93,20 @@ export function App(): ReactElement {
     window.location.href = LOGIN_URL;
   }, []);
 
+  // Story 2.5: guest login is the FIRST in-SPA (no-redirect) auth transition — set
+  // user + authed directly from the POST body (AC6 "no full-page reload"). On
+  // failure stay anon (mirrors the logout-failure convention).
+  const guestLogin = useCallback(() => {
+    void loginAsGuest()
+      .then((u) => {
+        setUser(u);
+        setAuthState('authed');
+      })
+      .catch(() => {
+        console.error('[web] guest login failed');
+      });
+  }, []);
+
   const logout = useCallback(() => {
     void apiLogout()
       .then(() => {
@@ -112,13 +126,14 @@ export function App(): ReactElement {
   }
 
   if (authState === 'anon' || user === null) {
-    return <LoginScreen onLogin={login} />;
+    return <LoginScreen onLogin={login} onGuest={guestLogin} />;
   }
 
   // The chat widget is a floating sibling AFTER <AppLayout> (UX-DR5): AppLayout is
   // overflow:hidden, so a position:fixed sibling correctly overlays the whole
-  // shell. It owns its own open/history/active/message state (5.3 D1); the only
-  // prop is the user identity for the user-bubble avatar (5.4 D4).
+  // shell. It owns its own open/history/active/message state (5.3 D1); props are
+  // the user identity for the user-bubble avatar (5.4 D4) and isGuest, which hides
+  // the (server-side isolated) history for the shared guest identity (2.5).
   const userIdentity = { name: user.username, initials: initialsFromUsername(user.username) };
   return (
     <>
@@ -131,12 +146,13 @@ export function App(): ReactElement {
         theme={theme}
         onToggleTheme={toggleTheme}
         onLogout={logout}
+        isGuest={user.isGuest === true}
         guildId={user.guildId}
         unreadCount={totalUnread}
         unreadCounts={unreadCounts}
         onUnreadChange={refreshUnread}
       />
-      <ChatWidget user={userIdentity} />
+      <ChatWidget user={userIdentity} isGuest={user.isGuest === true} />
     </>
   );
 }

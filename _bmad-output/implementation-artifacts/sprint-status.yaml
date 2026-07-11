@@ -1,5 +1,30 @@
 # generated: 2026-06-30
-# last_updated: 2026-07-10 (epic-9-retrospective optional → done, bmad-retrospective): Epic 9 (Stats)
+# last_updated: 2026-07-11 (story 2-5 backlog → ready-for-dev, bmad-create-story): guest access for
+# demos, config-gated. Story file 2-5-acceso-de-invitado-para-demos.md. GET+POST /api/auth/guest
+# (404 GUEST_ACCESS_DISABLED when off; GET = availability probe D1 — no unauth config endpoint
+# exists and AC1 requires the login link HIDDEN when disabled), shared guest_access optional config
+# block (NO .default(), streams precedent D4; backend resolveGuestAccessConfig resolves defaults),
+# seedGuestUser upsert on sentinel discord_id="guest" w/ fixed v4-shaped GUEST_USER_ID but ALWAYS
+# use the returned id (D5), session isGuest via SessionData augment + per-session TTL via
+# req.session.cookie.maxAge (connect-redis v9 cookie.expires beats store ttl, verified — D7),
+# AppOptions.guestAccess presence=enabled (main.ts passes it ONLY in the enabled branch; tests/e2e
+# default disabled), guest button/divider design mock-verbatim ("o para la demo", D2), "Modo
+# invitado" pill + "Salir" have NO mock reference → live-pulse-pill mirror ratified (D3), e2e
+# auth-guest.spec.ts sorts SECOND (analytics<auth-guest<chat) and must be non-mutating (D8), guest
+# chat proven via POST /api/chat w/ fake model (D9), 404 error message AC-verbatim "Not found"
+# (D10). Historia 2.5 inserted into epics.md (pending SCP backlog action). No new FR (extends
+# FR9/FR22). Fresh-context validation: 3 critical (spec-order claim was wrong — auth-guest sorts
+# 2nd not 1st; main.ts unconditional-pass ambiguity; seed-reset guidance violated the never-widen-
+# e2e-deletes invariant) + 8 enhancements + 3 optimizations, ALL applied. Branch feat/2-5-guest-
+# access off e9dba76. Next: bmad-dev-story 2-5.
+# || (prior) last_updated: 2026-07-11 (epic-2 done → in-progress, bmad-correct-course): guest-access story 2-5
+# added → backlog (sprint-change-proposal-2026-07-11-guest-access.md). Trigger: demo needs a login
+# guest entry without Discord. Design (Borja-approved): synthetic `guest` role scoped to demo channels
+# via channel_permissions (AD-12 intact), full access incl. RAG chat via a seeded guest `users` row
+# (discord_id="guest") for the conversations FK, session gains isGuest (AD-10, still no sessions table),
+# gated by access_control.guest_access.enabled: false default (POST /api/auth/guest → 404 when off →
+# honors "never auth-bypass in production"). Scope Moderate, MVP unaffected, no existing-story re-work.
+# Next: bmad-create-story 2-5, then bmad-dev-story. || (prior) last_updated: 2026-07-10 (epic-9-retrospective optional → done, bmad-retrospective): Epic 9 (Stats)
 # closed. 5/5 stories done, all PRs merged (#54/#56/#57/#58/#59), 0 prod incidents, 0 AC violations,
 # AD-12 held end-to-end. Retro doc: epic-9-retro-2026-07-10.md. 5 action items appended (AI-1..AI-5):
 # AI-1 Blind-Hunter down-weight (3rd recurrence, open), AI-2 formalize post-roadmap addition-mode,
@@ -159,7 +184,27 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-06-30
-last_updated: 2026-07-10  # ops-3 review → done (bmad-code-review): 3 adversarial layers @ Opus 4.8,
+last_updated: 2026-07-11  # story 2-5 re-review #4 (confirmation) → CONVERGED: all 3 layers agree the
+# shared-sentinel blast radius is exhausted (every userId-keyed surface verified isolated or transitively
+# covered by the empty-sentinel invariant). Only a docs-consistency patch applied, no code change. Done.
+# || (prior) last_updated: 2026-07-11  # story 2-5 re-review #3 → done (bmad-code-review): allowlist sound; shared-guest
+# identity also bled read-status + stats (state/aggregate, not content) → FIXED ephemeral (guest read-status
+# writes no-op → all-unread; per-user stats aggregates → 0; threaded via req.session.isGuest). Anti-pattern
+# amended (RBAC/visibility branch forbidden vs ownership-isolation branch allowed). 1 defer (allowlist
+# growth/lost-update, demo-scoped). Gate green: lint 0 / 926 unit+web / build / 138 integration / 28 e2e.
+# || (prior) last_updated: 2026-07-11  # story 2-5 re-review → done (bmad-code-review, 2nd pass): all fixes confirmed;
+# NEW finding — ephemeral-guest isolation was incomplete on POST /api/chat resume (shared sentinel userId).
+# FIXED (option A): per-session guestConversationIds allowlist in the Redis session + resolveConversation
+# guestScope gate → same-session multi-turn kept, no cross-guest/cross-session resume. Gate green:
+# lint 0 / 922 unit+web / build / 137 integration / 28 e2e.
+# || (prior) last_updated: 2026-07-11  # story 2-5 review → done (bmad-code-review): 3 adversarial layers @ Opus 4.8.
+# 1 decision (cross-guest chat-history leak — all guests share the sentinel userId) FIXED in-story:
+# guest chat now ephemeral (GET /api/conversations → empty, /:id → 404, guarded on req.session.isGuest;
+# ChatWidget hides "Historial"). 2 patches FIXED (guestLogin resolves getMe before establishing the
+# session; RBAC integration asserts toEqual exact). 3 deferred (no boot warning on zero-channel guest
+# role; POST /guest no CSRF like /logout; disable doesn't revoke live TTL-bounded sessions), 8 dismissed.
+# Gate green: lint 0 / 917 unit+web (+3) / build / 136 integration (+1) / 28 e2e (+1).
+# || (prior) last_updated: 2026-07-10  # ops-3 review → done (bmad-code-review): 3 adversarial layers @ Opus 4.8,
 # 9/9 ACs PASS. All correctness-critical surfaces verified clean at source (eslint AD-2/AD-3 guards,
 # events.ts share2brain: keys, config loader, docker-compose, package-lock symlinks). Applied 4
 # doc/provenance patches: PRD example Postgres identifiers lowercased (were capital Share2Brain vs
@@ -454,11 +499,17 @@ development_status:
   epic-1-retrospective: done
 
   # ── Épico 2: Acceso y Autenticación ─────────────────────────────────────────
-  epic-2: done
+  # Re-opened 2026-07-11 via bmad-correct-course (sprint-change-proposal-2026-07-11-guest-access.md):
+  # additive guest-access story (2-5) for demos. Config-gated (guest_access.enabled: false by
+  # default → POST /api/auth/guest returns 404), synthetic `guest` role expanded via RBAC (AD-12
+  # intact), seeded guest `users` row (discord_id="guest") satisfies conversations.user_id FK for
+  # guest chat, session carries isGuest (AD-10, no sessions table). No existing story re-work.
+  epic-2: in-progress
   2-1-sistema-de-diseno-en-packages-web: done
   2-2-layout-principal-sidebar-y-pantalla-de-login: done
   2-3-backend-discord-oauth2-y-sesiones-en-redis: done
   2-4-rbac-proteccion-de-rutas-y-conexion-ui: done
+  2-5-acceso-de-invitado-para-demos: done
   epic-2-retrospective: done
 
   # ── Épico 3: Pipeline de Indexación de Conocimiento ─────────────────────────

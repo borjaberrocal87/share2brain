@@ -101,7 +101,7 @@ graph TD
 
 - **Binds:** packages/backend (middleware de autenticación), packages/shared (schema Drizzle)
 - **Prevents:** un lookup a PostgreSQL por cada request autenticado; ambigüedad sobre si la tabla `sessions` del PRD existe o no
-- **Rule:** `express-session` usa `connect-redis` como store. La cookie httpOnly contiene solo el session ID. Los datos de sesión (`{ userId, discordRoles }`) viven en Redis con TTL. La tabla `sessions` referenciada en el PRD DEBE NOT incluirse en el schema Drizzle — Redis es la única fuente de verdad de sesiones. Revocación inmediata: borrar la key Redis del session ID. `connect-redis` usa **`node-redis` (`redis`)** como cliente Redis — el cliente único del proyecto, el mismo que usan los workers para Streams. `connect-redis@9` soporta node-redis nativamente (dejó de soportar ioredis); node-redis es además el cliente recomendado para Redis 8.
+- **Rule:** `express-session` usa `connect-redis` como store. La cookie httpOnly contiene solo el session ID. Los datos de sesión (`{ userId, discordRoles }`) viven en Redis con TTL. La sesión puede incluir un flag opcional `isGuest: true` para sesiones de invitado creadas vía `POST /api/auth/guest` (Historia 2.5). El resto de la forma (`{ userId, discordRoles }`) es idéntica; sigue siendo una sesión Redis real con TTL. La tabla `sessions` referenciada en el PRD DEBE NOT incluirse en el schema Drizzle — Redis es la única fuente de verdad de sesiones. Revocación inmediata: borrar la key Redis del session ID. `connect-redis` usa **`node-redis` (`redis`)** como cliente Redis — el cliente único del proyecto, el mismo que usan los workers para Streams. `connect-redis@9` soporta node-redis nativamente (dejó de soportar ioredis); node-redis es además el cliente recomendado para Redis 8.
 
 ### AD-11 — Agent Runtime con LangGraph StateGraph
 
@@ -113,7 +113,7 @@ graph TD
 
 - **Binds:** packages/backend (endpoints `/api/search`, `POST /api/chat`, `/api/documents`, `/api/stats`, middleware de auth)
 - **Prevents:** fuga de información de canales restringidos en resultados de búsqueda semántica o en el contexto RAG del agente; que el middleware y el query layer divergan en el cómputo de canales permitidos
-- **Rule:** Toda query al índice pgvector incluye un filtro `WHERE channel_id = ANY(:allowed_channel_ids)`. La expansión `discordRoles → allowedChannelIds` ocurre en el middleware de auth de cada request, uniendo `session.discordRoles` contra la tabla `channel_permissions` (no se cachea en sesión, porque `channel_permissions` puede cambiar al reiniciar el Backend). La tabla `channel_permissions` se materializa desde `Share2Brain.config.yml` mediante upsert en el arranque del Backend, antes de aceptar requests. Ningún endpoint de búsqueda, chat o documentos ejecuta una query vectorial sin haber resuelto `allowedChannelIds` primero.
+- **Rule:** Toda query al índice pgvector incluye un filtro `WHERE channel_id = ANY(:allowed_channel_ids)`. La expansión `discordRoles → allowedChannelIds` ocurre en el middleware de auth de cada request, uniendo `session.discordRoles` contra la tabla `channel_permissions` (no se cachea en sesión, porque `channel_permissions` puede cambiar al reiniciar el Backend). La tabla `channel_permissions` se materializa desde `Share2Brain.config.yml` mediante upsert en el arranque del Backend, antes de aceptar requests. Ningún endpoint de búsqueda, chat o documentos ejecuta una query vectorial sin haber resuelto `allowedChannelIds` primero. El acceso de invitado NO es una excepción de RBAC: recibe un rol sintético (`guest_access.role`) expandido contra `channel_permissions` como cualquier otro rol. Sin canal que lo liste, `allowedChannelIds = []` (deny).
 
 ### AD-13 — Contrato de Redis Streams: keys, consumer groups y wire schema
 
@@ -290,7 +290,7 @@ share2brain/
 | `user_roles_cache` | backend (login + refresh OAuth2) | backend |
 | `conversations`, `messages` | backend | web (via API) |
 | `user_read_status` | backend | web (via API) |
-| `users` | backend (login Discord OAuth2) | backend |
+| `users` | backend (login Discord OAuth2 + guest seed) | backend |
 | Sesiones | Redis — backend via connect-redis | backend |
 
 ## Capability → Architecture Map
@@ -317,7 +317,7 @@ share2brain/
 - **Retry y dead-letter en Redis Streams (DLQ):** AD-13 fija los consumer groups y el ACK discipline. **Resuelto en Story 3.3 (Indexer):** el PEL *es* el dead-letter implícito — sin retry-max y sin `MAXLEN`; una entrada que falla queda pendiente y se re-procesa en el replay del arranque siguiente. Consecuencia aceptada a escala self-hosted: el stream crece sin límite. La política de *trimming* del stream (`MAXLEN`/`XTRIM`) queda deferred a una futura historia de retención.
 - **Framework CSS / UI components:** Tailwind + shadcn/ui vs CSS Modules — no afecta la consistencia entre servicios. Deferred al builder de packages/web.
 - **Frontend server state (data fetching):** TanStack Query vs SWR — deferred al builder de packages/web; debe respetar AD-6 (tipos inferidos de Zod).
-- **Test framework y estrategia:** Vitest para unit/integration, Playwright para e2e — asumido pero no fijado como invariante. El harness E2E (Story 4.5) arranca la SPA autenticada mediante un `DiscordOAuthClient` fake inyectado (patrón `opts.oauth` de los `*.integration.test.ts`, guarded a no-prod — nunca una ruta de auth-bypass en producción) sobre un Postgres+pgvector/Redis de test seedeado, y verifica los ACs visuales/CSS con `getComputedStyle`. Sigue siendo convención, no invariante.
+- **Test framework y estrategia:** Vitest para unit/integration, Playwright para e2e — asumido pero no fijado como invariante. El harness E2E (Story 4.5) arranca la SPA autenticada mediante un `DiscordOAuthClient` fake inyectado (patrón `opts.oauth` de los `*.integration.test.ts`, guarded a no-prod — nunca una ruta de auth-bypass en producción) sobre un Postgres+pgvector/Redis de test seedeado, y verifica los ACs visuales/CSS con `getComputedStyle`. Sigue siendo convención, no invariante. El acceso de invitado (Historia 2.5) no contradice este principio: no omite autenticación ni middleware — crea una sesión real, limitada por RBAC, y está OFF por defecto. `POST /api/auth/guest` responde 404 cuando el flag está desactivado.
 - **TLS / HTTPS en nginx:** Configuración de certificados (Let's Encrypt, cert manual) deferred a la guía de operaciones.
 - **Health checks de Compose:** Scripts de probe para cada servicio deferred al builder de docker-compose.
 - **Abstracción explícita del proveedor LLM/embeddings:** implementada en Story 3.0 — provider-factory en `shared` selecciona el adaptador de LangChain según config: LLM `ChatAnthropic`/`ChatOpenAI(baseURL)` (anthropic/openai/custom) y embeddings `OpenAIEmbeddings(baseURL)` (openai/custom). Anthropic no ofrece API de embeddings.
