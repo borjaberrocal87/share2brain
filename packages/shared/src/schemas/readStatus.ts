@@ -17,7 +17,9 @@ export type EmbeddingIdParam = z.infer<typeof EmbeddingIdParamSchema>;
  * omitted is accepted — an explicit `null` is a validation error (not a wire value).
  */
 export const MarkAllRequestSchema = z.object({
-  channelId: z.string().min(1).optional(),
+  // max(32): a Discord snowflake is ≤20 digits; cap the only otherwise-unbounded
+  // string input so an oversized body can't reach the SQL comparison (S-7).
+  channelId: z.string().min(1).max(32).optional(),
 });
 
 export type MarkAllRequest = z.infer<typeof MarkAllRequestSchema>;

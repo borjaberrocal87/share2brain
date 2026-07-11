@@ -18,7 +18,9 @@ import { isHttpUrl, LINK_REFINE_MESSAGE } from './linkRefine.js';
 export const DocumentsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).max(1_000_000).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
-  channelId: z.string().min(1).optional(),
+  // max(32): a Discord snowflake is ≤20 digits; cap this otherwise-unbounded
+  // query input so an oversized value can't reach the SQL comparison (S-7).
+  channelId: z.string().min(1).max(32).optional(),
   unreadOnly: z.stringbool().default(false),
 });
 

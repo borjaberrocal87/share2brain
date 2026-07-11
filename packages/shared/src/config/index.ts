@@ -19,17 +19,30 @@ export class ConfigError extends Error {
   }
 }
 
+/** A Discord snowflake is a numeric id — reject empty/non-numeric at load time
+ *  (S-6) so a typo fails loud instead of silently never matching in the RBAC filter. */
+const Snowflake = z.string().regex(/^\d+$/, 'must be a numeric Discord snowflake id');
+
 const ChannelSchema = z.object({
-  id: z.string(),
+  id: Snowflake,
   name: z.string(),
   enabled: z.boolean(),
 });
 
 const ChannelPermissionSchema = z.object({
-  channel_id: z.string(),
+  channel_id: Snowflake,
   name: z.string(),
   allowed_roles: z.array(z.string()),
 });
+
+/** An exact web origin (scheme://host[:port], no path/trailing slash) and never
+ *  the "*" wildcard — a "*" with credentialed session cookies (AD-10) would be a
+ *  severe CORS misconfig, so the loader rejects it (S-8, fail loud per AD-8). */
+const ExactOrigin = z
+  .string()
+  .refine((v) => v !== '*' && URL.canParse(v) && new URL(v).origin === v, {
+    message: 'must be an exact origin like "https://app.example.com" — no path, and "*" is not allowed',
+  });
 
 /** One rate-limit tier: a request budget per rolling window (Story 6.4, AC-2). */
 const RateLimitTierSchema = z.object({
@@ -40,7 +53,7 @@ const RateLimitTierSchema = z.object({
 export const Share2BrainConfigSchema = z.object({
   version: z.string(),
   discord: z.object({
-    guild_id: z.string(),
+    guild_id: Snowflake,
     channels: z.array(ChannelSchema),
     backfill: z.object({
       enabled: z.boolean(),
@@ -108,7 +121,11 @@ export const Share2BrainConfigSchema = z.object({
     auto_mark_read_on_click: z.boolean(),
   }),
   observability: z.object({
-    sentry_dsn: z.string(),
+    // Empty disables Sentry; otherwise it must be a valid URL (S-5) — a typo'd DSN
+    // should fail at load, not silently drop crash reports.
+    sentry_dsn: z.string().refine((v) => v === '' || URL.canParse(v), {
+      message: 'observability.sentry_dsn must be empty or a valid URL',
+    }),
     log_level: z.enum(['debug', 'info', 'warn', 'error']),
   }),
   security: z.object({
@@ -117,7 +134,7 @@ export const Share2BrainConfigSchema = z.object({
       auth: RateLimitTierSchema,
       chat: RateLimitTierSchema,
     }),
-    allowed_origins: z.array(z.string()),
+    allowed_origins: z.array(ExactOrigin),
     // Whether the session cookie carries the Secure flag. OPTIONAL and FAIL-CLOSED:
     // the backend treats an omitted value as `true` (secure), so a misconfigured
     // deploy can never silently ship the sid over plaintext HTTP. Dev sets it to
@@ -137,7 +154,11 @@ export const Share2BrainConfigSchema = z.object({
       chat_id: z.string(),
     }).optional(),
     slack: z.object({
-      webhook_url: z.string(),
+      // Sent to via fetch() on a crash alert — validate it's HTTPS at load (S-5),
+      // not at the moment of the crash when failing is worst.
+      webhook_url: z.string().refine((v) => /^https:\/\//.test(v), {
+        message: 'notifications.slack.webhook_url must be an HTTPS URL',
+      }),
     }).optional(),
   }).optional(),
   // Enrichment pipeline (Epic 7 pivot). REQUIRED — unlike `notifications`/`streams`,

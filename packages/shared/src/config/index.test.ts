@@ -312,6 +312,34 @@ describe('loadConfig', () => {
     expect(() => loadConfig(path)).toThrow(/agent/);
   });
 
+  it('should reject a non-numeric or empty Discord snowflake id (S-6)', () => {
+    const empty = writeFixture('gid-empty.yml', VALID_YAML.replace('"111111111111111111"', '""'));
+    expect(() => loadConfig(empty)).toThrow(/guild_id|snowflake/i);
+
+    const nonNumeric = writeFixture('cid-nan.yml', VALID_YAML.replace('id: "1234567890"', 'id: "not-a-snowflake"'));
+    expect(() => loadConfig(nonNumeric)).toThrow(/snowflake|channels/i);
+  });
+
+  it('should reject a "*" or path-bearing allowed_origin (S-8)', () => {
+    const wild = writeFixture('cors-star.yml', VALID_YAML.replace('"http://localhost:5173"', '"*"'));
+    expect(() => loadConfig(wild)).toThrow(/allowed_origins|origin/i);
+
+    const withPath = writeFixture('cors-path.yml', VALID_YAML.replace('"http://localhost:5173"', '"http://localhost:5173/app"'));
+    expect(() => loadConfig(withPath)).toThrow(/allowed_origins|origin/i);
+  });
+
+  it('should accept an empty sentry_dsn but reject a malformed one (S-5)', () => {
+    expect(loadConfig(writeFixture('sentry-empty.yml', VALID_YAML)).observability.sentry_dsn).toBe('');
+
+    const bad = writeFixture('sentry-bad.yml', VALID_YAML.replace('sentry_dsn: ""', 'sentry_dsn: "not a url"'));
+    expect(() => loadConfig(bad)).toThrow(/sentry_dsn/i);
+  });
+
+  it('should reject a non-HTTPS slack webhook_url when notifications are enabled (S-5)', () => {
+    const yaml = `${VALID_YAML}notifications:\n  enabled: true\n  provider: "slack"\n  slack:\n    webhook_url: "http://hooks.example.com/x"\n`;
+    expect(() => loadConfig(writeFixture('slack-http.yml', yaml))).toThrow(/webhook_url|HTTPS/i);
+  });
+
   it('should throw when the YAML is malformed', () => {
     const path = writeFixture('bad.yml', 'version: "1.0"\n  : : : not valid yaml :');
 
