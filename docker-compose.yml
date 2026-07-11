@@ -7,7 +7,11 @@
 # EVERY secret into EVERY container) is gone. In-container hostnames override
 # the localhost URLs (containers reach postgres/redis by service name, never
 # localhost). Behavior config is mounted read-only at /app/Share2Brain.config.yml.
-# Images are pinned — never :latest.
+# Images are pinned to a tag — never :latest. S-9: each service also sets a
+# `mem_limit` so a runaway container cannot exhaust the host. For a supply-chain
+# -hardened production deploy, additionally pin each image by digest
+# (image: name:tag@sha256:...); left as tags here so local builds track patch
+# updates without manual digest bumps.
 #
 # NOTE (M-12): loadConfig() in @share2brain/shared interpolates every ${VAR}
 # string leaf of the WHOLE Share2Brain.config.yml tree at startup, and every
@@ -28,6 +32,8 @@ services:
   # ── Data stores ────────────────────────────────────────────────────────────
   postgres:
     image: pgvector/pgvector:pg17
+    # S-9: bound memory so a runaway container can't exhaust the host.
+    mem_limit: 512m
     environment:
       POSTGRES_DB: share2brain
       POSTGRES_USER: share2brain
@@ -47,6 +53,7 @@ services:
 
   redis:
     image: redis:8-alpine
+    mem_limit: 256m
     # M-14: require a password and persist the AOF to a named volume. The
     # container reads REDIS_PASSWORD from its env so both the server and the
     # healthcheck use the same value ($$ escapes compose interpolation → the
@@ -70,6 +77,7 @@ services:
       context: .
       dockerfile: Dockerfile.migrator
     command: npx drizzle-kit migrate
+    mem_limit: 256m
     # M-12: migrator does not load Share2Brain.config.yml — DATABASE_URL only.
     environment:
       DATABASE_URL: postgres://share2brain:${POSTGRES_PASSWORD}@postgres:5432/share2brain
@@ -86,6 +94,7 @@ services:
     build:
       context: .
       dockerfile: packages/backend/Dockerfile
+    mem_limit: 512m
     # M-12: backend = its own reads (Discord OAuth login, session, CORS) + the
     # full config-interpolation set. It is the ONLY service that gets the OAuth
     # client secret / redirect and SESSION_SECRET.
@@ -132,6 +141,7 @@ services:
     build:
       context: .
       dockerfile: packages/bot/Dockerfile
+    mem_limit: 384m
     # M-12: bot = Discord bot token + guild + DB/Redis + the config set. It does
     # NOT receive the OAuth client secret/redirect or SESSION_SECRET.
     environment:
@@ -170,6 +180,7 @@ services:
     build:
       context: .
       dockerfile: packages/workers/Dockerfile
+    mem_limit: 512m
     # M-12: workers = DB/Redis + embeddings/enrichment (its real consumers) + the
     # rest of the config set. It does NOT receive any Discord bot/OAuth secret or
     # SESSION_SECRET (DISCORD_GUILD_ID is not a secret; needed for config interp).
@@ -213,6 +224,7 @@ services:
     build:
       context: .
       dockerfile: packages/web/Dockerfile
+    mem_limit: 128m
     ports:
       - "80:80"
       - "443:443"
