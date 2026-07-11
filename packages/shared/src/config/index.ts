@@ -55,9 +55,11 @@ export const Share2BrainConfigSchema = z.object({
   agent: z.object({
     provider: z.enum(['anthropic', 'openai', 'custom']),
     model: z.string().min(1, 'agent.model cannot be empty'),
-    temperature: z.number(),
-    max_iterations: z.number(),
-    memory_window: z.number(),
+    // Bounded so a typo (e.g. max_iterations: 1e9) can't drive an unbounded
+    // agentic loop or a nonsensical sampling temperature straight into LLM cost.
+    temperature: z.number().min(0).max(2),
+    max_iterations: z.number().int().positive().max(50),
+    memory_window: z.number().int().nonnegative().max(1000),
     base_url: z.string().refine(val => val === '' || /^https?:\/\//.test(val), {
       message: 'agent.base_url must be empty or a valid HTTP(S) URL',
     }).optional(),
@@ -85,7 +87,7 @@ export const Share2BrainConfigSchema = z.object({
   access_control: z.object({
     enabled: z.boolean(),
     default_policy: z.enum(['deny', 'allow']),
-    role_cache_ttl: z.number(),
+    role_cache_ttl: z.number().int().positive(),
     channel_permissions: z.array(ChannelPermissionSchema),
     // Guest access for demos (Historia 2.5). The whole block is OPTIONAL and OFF
     // by default — a config omitting it stays valid (same rationale as `streams`/
@@ -116,6 +118,12 @@ export const Share2BrainConfigSchema = z.object({
       chat: RateLimitTierSchema,
     }),
     allowed_origins: z.array(z.string()),
+    // Whether the session cookie carries the Secure flag. OPTIONAL and FAIL-CLOSED:
+    // the backend treats an omitted value as `true` (secure), so a misconfigured
+    // deploy can never silently ship the sid over plaintext HTTP. Dev sets it to
+    // `false` explicitly to allow http://localhost. Replaces the old
+    // NODE_ENV-derived default, which failed OPEN when NODE_ENV was unset.
+    cookie_secure: z.boolean().optional(),
   }),
   // External crash alerts (FR21, Story 6.4). Optional and defaults to disabled so
   // existing configs/fixtures without it remain valid. Behavior (enabled,
@@ -143,7 +151,7 @@ export const Share2BrainConfigSchema = z.object({
     llm: z.object({
       provider: z.enum(['anthropic', 'openai', 'custom']),
       model: z.string().min(1, 'enrichment.llm.model cannot be empty'),
-      temperature: z.number(),
+      temperature: z.number().min(0).max(2),
       base_url: z.string().refine(val => val === '' || /^https?:\/\//.test(val), {
         message: 'enrichment.llm.base_url must be empty or a valid HTTP(S) URL',
       }).optional(),
@@ -157,6 +165,22 @@ export const Share2BrainConfigSchema = z.object({
       allowed_schemes: z.array(z.enum(['http', 'https'])).nonempty(),
       block_private_ips: z.boolean(),
     }),
+    // Per-author + global spend caps on the outbound fetch/LLM/embeddings fan-out
+    // the Indexer performs (audit M-5: without this any Discord member can burn
+    // paid LLM quota by posting many URL-heavy messages). OPTIONAL with in-code
+    // defaults resolved by @share2brain/workers (resolveEnrichmentRateLimit), so a
+    // config omitting the block stays valid. Behavior only — no secrets. When a
+    // cap is hit the Indexer degrades to message-text-only enrichment (never drops
+    // the entry — at-least-once, AD-13).
+    rate_limit: z
+      .object({
+        enabled: z.boolean(),
+        // Max full (URL-fetching) enrichments per author per rolling hour.
+        per_author_hourly: z.number().int().positive(),
+        // Max full enrichments across all authors per rolling day (global ceiling).
+        global_daily: z.number().int().positive(),
+      })
+      .optional(),
   }),
   // Redis Streams retention (Story OPS-1). The whole block AND each field are
   // optional; resolveStreamsConfig (in @share2brain/workers) supplies per-field defaults
@@ -255,6 +279,23 @@ function interpolateEnv(raw: string): string {
   });
 }
 
+/**
+ * Interpolate ${VAR} references over the PARSED tree's string leaves only, never
+ * the raw YAML text. Interpolating raw text (the previous approach) let a secret
+ * containing YAML metacharacters (newlines, `:`, `"`, `#`) corrupt the document
+ * or inject sibling keys, and also substituted inside comments. Walking the
+ * parsed tree confines each substitution to the string value it belongs to;
+ * numbers, booleans, and keys are left untouched.
+ */
+function interpolateTree(node: unknown): unknown {
+  if (typeof node === 'string') return interpolateEnv(node);
+  if (Array.isArray(node)) return node.map(interpolateTree);
+  if (node !== null && typeof node === 'object') {
+    return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, interpolateTree(value)]));
+  }
+  return node;
+}
+
 /** Turn a ZodError into a single readable "path: message" list. */
 function formatZodError(error: z.ZodError): string {
   const details = error.issues
@@ -287,17 +328,18 @@ export function loadConfig(configPath?: string): Share2BrainConfig {
     throw new ConfigError(`Could not read config file at "${path}": ${reason}`);
   }
 
-  const interpolated = interpolateEnv(raw);
-
   let parsed: unknown;
   try {
-    parsed = parseYaml(interpolated);
+    parsed = parseYaml(raw);
   } catch (cause) {
     const reason = cause instanceof Error ? cause.message : String(cause);
     throw new ConfigError(`Malformed YAML in config file "${path}": ${reason}`);
   }
 
-  const result = Share2BrainConfigSchema.safeParse(parsed);
+  // Interpolate ${VAR} AFTER parsing, over string leaves only (see interpolateTree).
+  const interpolated = interpolateTree(parsed);
+
+  const result = Share2BrainConfigSchema.safeParse(interpolated);
   if (!result.success) {
     throw new ConfigError(formatZodError(result.error));
   }

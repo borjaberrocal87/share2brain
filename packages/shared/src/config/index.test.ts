@@ -242,6 +242,69 @@ describe('loadConfig', () => {
     expect(() => loadConfig(path)).toThrow(/SHARE2BRAIN_TEST_UNSET_VAR/);
   });
 
+  it('should confine ${VAR} interpolation to the string value, not inject YAML structure (M-6)', () => {
+    const previous = process.env.SHARE2BRAIN_TEST_EVIL;
+    // A secret whose value contains YAML metacharacters (newline + a sibling key).
+    // Interpolating the RAW text (the old approach) would have injected a new
+    // top-level key; interpolating the parsed tree keeps it a literal string.
+    process.env.SHARE2BRAIN_TEST_EVIL = 'sk-real\nallowed_origins: ["*"]';
+    try {
+      const yaml = VALID_YAML.replace('"sk-ant-test"', '"${SHARE2BRAIN_TEST_EVIL}"');
+      const path = writeFixture('evil.yml', yaml);
+
+      const config = loadConfig(path);
+
+      expect(config.agent.api_key).toBe('sk-real\nallowed_origins: ["*"]');
+      // The injected key did NOT leak into the real allowed_origins.
+      expect(config.security.allowed_origins).toEqual(['http://localhost:5173']);
+    } finally {
+      if (previous === undefined) delete process.env.SHARE2BRAIN_TEST_EVIL;
+      else process.env.SHARE2BRAIN_TEST_EVIL = previous;
+    }
+  });
+
+  it('should reject out-of-bounds numeric behavior fields (M-8)', () => {
+    const overIter = writeFixture('iter.yml', VALID_YAML.replace('max_iterations: 10', 'max_iterations: 1000000000'));
+    expect(() => loadConfig(overIter)).toThrow(/max_iterations/);
+
+    const badTemp = writeFixture('temp.yml', VALID_YAML.replace('temperature: 0.7', 'temperature: 99'));
+    expect(() => loadConfig(badTemp)).toThrow(/temperature/);
+
+    const badTtl = writeFixture('ttl.yml', VALID_YAML.replace('role_cache_ttl: 300', 'role_cache_ttl: -1'));
+    expect(() => loadConfig(badTtl)).toThrow(/role_cache_ttl/);
+  });
+
+  it('should default security.cookie_secure to undefined and parse it when present (M-2)', () => {
+    expect(loadConfig(writeFixture('nocookie.yml', VALID_YAML)).security.cookie_secure).toBeUndefined();
+
+    const yaml = VALID_YAML.replace(
+      '  allowed_origins:\n    - "http://localhost:5173"',
+      '  cookie_secure: false\n  allowed_origins:\n    - "http://localhost:5173"',
+    );
+    expect(loadConfig(writeFixture('cookie.yml', yaml)).security.cookie_secure).toBe(false);
+  });
+
+  it('should parse an optional enrichment.rate_limit block and validate it (M-5)', () => {
+    expect(loadConfig(writeFixture('norl.yml', VALID_YAML)).enrichment.rate_limit).toBeUndefined();
+
+    // Appended under the existing enrichment block (block_private_ips is its last field).
+    const withRl = VALID_YAML.replace(
+      '    block_private_ips: true\n',
+      '    block_private_ips: true\n  rate_limit:\n    enabled: true\n    per_author_hourly: 5\n    global_daily: 500\n',
+    );
+    expect(loadConfig(writeFixture('rl.yml', withRl)).enrichment.rate_limit).toEqual({
+      enabled: true,
+      per_author_hourly: 5,
+      global_daily: 500,
+    });
+
+    const badRl = VALID_YAML.replace(
+      '    block_private_ips: true\n',
+      '    block_private_ips: true\n  rate_limit:\n    enabled: true\n    per_author_hourly: 0\n    global_daily: 500\n',
+    );
+    expect(() => loadConfig(writeFixture('rlbad.yml', badRl))).toThrow(/per_author_hourly|rate_limit/);
+  });
+
   it('should throw a descriptive error when a required key is missing', () => {
     const yaml = VALID_YAML.replace(/agent:[\s\S]*?api_key: "sk-ant-test"\n/, '');
     const path = writeFixture('missing-key.yml', yaml);

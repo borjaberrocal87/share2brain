@@ -43,6 +43,13 @@
       "when": 1783669552196,
       "tag": "0005_concerned_caretaker",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783798975551,
+      "tag": "0006_audit_ondelete_indexes",
+      "breakpoints": true
     }
   ]
 }

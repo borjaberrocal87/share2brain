@@ -104,7 +104,7 @@ export const users = pgTable(
 export const userRolesCache = pgTable('user_roles_cache', {
   userId: uuid('user_id')
     .primaryKey()
-    .references(() => users.id),
+    .references(() => users.id, { onDelete: 'cascade' }),
   discordRoles: text('discord_roles').array().notNull(),
   cachedAt: timestamp('cached_at', { withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
@@ -119,26 +119,39 @@ export const channelPermissions = pgTable('channel_permissions', {
 });
 
 // 6. conversations — a user's chat conversation with the RAG agent (owner: backend).
-export const conversations = pgTable('conversations', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const conversations = pgTable(
+  'conversations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      // Deleting a user (e.g. GDPR erasure) cascades to their conversations —
+      // FKs in Postgres do NOT create indexes, hence the explicit index below.
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  // Backs GET /api/conversations (filter by user_id, newest-first) — without it
+  // that authenticated endpoint is a seq-scan, a cheap degradation vector.
+  (table) => [index('idx_conversations_user').on(table.userId, table.updatedAt.desc())],
+);
 
 // 7. messages — individual messages within a conversation, with citations (owner: backend).
-export const messages = pgTable('messages', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  conversationId: uuid('conversation_id')
-    .notNull()
-    .references(() => conversations.id),
-  role: text('role', { enum: ['user', 'assistant', 'system'] }).notNull(),
-  content: text('content').notNull(),
-  citations: jsonb('citations').$type<Citation[]>().notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const messages = pgTable(
+  'messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['user', 'assistant', 'system'] }).notNull(),
+    content: text('content').notNull(),
+    citations: jsonb('citations').$type<Citation[]>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  // Backs loading a conversation's messages in order.
+  (table) => [index('idx_messages_conversation').on(table.conversationId, table.createdAt)],
+);
 
 // 8. user_read_status — per-user read tracking over indexed fragments (owner: backend).
 export const userReadStatus = pgTable(
@@ -146,10 +159,12 @@ export const userReadStatus = pgTable(
   {
     userId: uuid('user_id')
       .notNull()
-      .references(() => users.id),
+      .references(() => users.id, { onDelete: 'cascade' }),
     embeddingId: uuid('embedding_id')
       .notNull()
-      .references(() => embeddings.id),
+      // A hard-deleted embedding (sync delete_policy: 'hard') cascades away its
+      // read-status rows instead of failing the delete on an FK violation.
+      .references(() => embeddings.id, { onDelete: 'cascade' }),
     readAt: timestamp('read_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
