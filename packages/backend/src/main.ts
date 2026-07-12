@@ -138,6 +138,10 @@ async function main(): Promise<void> {
     // Story 2.5: presence = enabled. Spread so the key is genuinely absent when
     // guest access is off (never `guestAccess: undefined`).
     ...(guestAccess ? { guestAccess } : {}),
+    // Epic 10 (Story 10.1): spread only when the block is present — an absent
+    // `ui:` block leaves uiLanguage genuinely absent, so createApp's `?? 'es'`
+    // default (D2) resolves it, exactly like guestAccess above.
+    ...(config.ui ? { uiLanguage: config.ui.language } : {}),
     // AC-2 (Story 6.4, note #4): only main.ts injects this — buildTestAppOptions
     // and the e2e harness omit it, so tests/e2e never see a 429.
     rateLimit: {

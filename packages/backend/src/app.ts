@@ -46,6 +46,7 @@ import { createDocumentController } from './presentation/controllers/documentCon
 import { createReadStatusController } from './presentation/controllers/readStatusController.js';
 import { createSearchController } from './presentation/controllers/searchController.js';
 import { createStatsController } from './presentation/controllers/statsController.js';
+import { createUiConfigController } from './presentation/controllers/uiConfigController.js';
 import { createAuthRouter } from './routes/authRoutes.js';
 import { createErrorHandler } from './routes/errorHandler.js';
 import { createChannelsRouter } from './routes/channelsRoutes.js';
@@ -55,6 +56,7 @@ import { createDocumentRouter } from './routes/documentRoutes.js';
 import { createReadStatusRouter } from './routes/readStatusRoutes.js';
 import { createSearchRouter } from './routes/searchRoutes.js';
 import { createStatsRouter } from './routes/statsRoutes.js';
+import { createUiConfigRouter } from './routes/uiConfigRoutes.js';
 
 /** Fallback turn-count window when `agentMemoryWindow` isn't injected (tests). */
 const DEFAULT_AGENT_MEMORY_WINDOW = 20;
@@ -91,6 +93,14 @@ export interface AppOptions {
   /** Turn-count window the agent's `reason` node truncates history to
    * (`config.agent.memory_window`). Defaults to DEFAULT_AGENT_MEMORY_WINDOW. */
   agentMemoryWindow?: number;
+  /**
+   * SPA UI language for GET /api/ui-config (Epic 10). Defaults to `'es'` when
+   * absent — `buildTestAppOptions` and the e2e server omit it, so both resolve
+   * to `es` (the 28 Playwright e2e + unit Spanish-literal asserts stay
+   * byte-identical). Single defaulting point (D2): resolved once below, not a
+   * separate infrastructure resolver.
+   */
+  uiLanguage?: 'es' | 'en';
   /**
    * Three-tier rate limiting (Story 6.4, AC-2). OPTIONAL and OFF by default —
    * `buildTestAppOptions` and the Playwright e2e harness omit it (they build the
@@ -218,6 +228,15 @@ export function createApp(db: Database, redis: RedisClient, opts: AppOptions): E
   // session-checked me/roles/logout) and is registered BEFORE the generic gate,
   // so it short-circuits and the gate never runs for /api/auth/* (AC2 exemption).
   app.use('/api/auth', ...authLimiters, createAuthRouter(authController));
+
+  // UI config (Epic 10, Story 10.1). Unauthenticated — the login screen needs
+  // the language before any session exists — and gate-exempt by mount ORDER,
+  // same mechanism as the auth router above (D4). Reuses the SAME apiLimiters
+  // instance (general `rl:api:` budget, NOT the auth tier — a new rateLimit()
+  // instance would create an independent budget).
+  const uiLanguage = opts.uiLanguage ?? 'es';
+  const uiConfigController = createUiConfigController({ language: uiLanguage });
+  app.use('/api/ui-config', ...apiLimiters, createUiConfigRouter(uiConfigController));
 
   // Generic gate for every OTHER /api/* request: 401 without a session, then the
   // per-request RBAC expansion attaches req.allowedChannelIds (AC2, AC3). Ordering
