@@ -72,6 +72,28 @@
   (e.g. a low-noise digest, not per-URL spam) — needs a design decision before implementation,
   not just wiring the existing crash-alert Notifier.
 
+### P2.6 — Workers dies fatally on a Redis restart and compose never revives it
+- **Why:** Observed live during PR #72 verification (2026-07-12). Recreating the `redis` container
+  killed `workers` with `[workers] fatal: Socket closed unexpectedly` (exit 1) while `bot` and
+  `backend` survived and reconnected. `docker-compose.yml` defines no `restart` policy for the app
+  services, so the consumer stayed down for ~20 minutes until manually restarted — ingest events
+  accumulate in the streams (fine, at-least-once) but nothing consumes them.
+- **Scope:** (a) make the workers' node-redis client treat a socket close as reconnectable (mirror
+  whatever bot/backend do differently), and/or (b) add `restart: unless-stopped` to the long-running
+  app services in compose. Either alone closes the outage window; both is defense in depth.
+
+### P2.7 — Nothing loads `.env` into local `npm run dev` processes
+- **Why:** Found while fixing the local-dev Redis gap (PR #72, 2026-07-12). The dev scripts are
+  plain `tsx watch src/main.ts` — no dotenv anywhere in app code, no `--env-file`, and neither
+  CONTRIBUTING nor the development guide tells the developer to export `.env` into the shell. The
+  documented local-dev flow only works if the contributor already exports the vars themselves
+  (or, as on the maintainer's machine, unauthenticated local infra happens to answer). First-time
+  contributors hit `Required environment variable X is not set` right after cloning.
+- **Scope:** decide the mechanism — `tsx watch --env-file=../../.env` in each package's `dev`
+  script (Node ≥20 native, no new dependency) vs documenting `set -a && source .env && set +a` —
+  then align CONTRIBUTING + development_guide. Small, but it is the first thing every new
+  contributor trips on after PR #72 lands.
+
 ## Future product capability (retained goal, needs a real epic)
 
 ### F1 — Execution-trace panel (agentic capabilities)
