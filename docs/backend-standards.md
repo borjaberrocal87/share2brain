@@ -739,9 +739,9 @@ export const ErrorSchema = z.object({ error: z.string(), code: z.string() })
 ## API Design Standards
 
 - **REST + SSE**: standard REST for CRUD/search; `POST /api/chat` streams via Server-Sent Events (AD-4). The client uses `fetch` streaming (not `EventSource`) so it can POST a body.
-- **Auth**: every `/api/*` route requires a valid Redis session except `/api/auth/*` and `/health`.
+- **Auth**: every `/api/*` route requires a valid Redis session except `/api/auth/*`, `/api/ui-config`, and `/health`.
 - **Shapes**: defined once in `packages/shared/src/schemas/`; validated with `.parse()`.
-- **Endpoints** (see `TECHNICAL-DESIGN.md` §11 and `api-spec.yml` for the authoritative list): auth (`/api/auth/*`), `/api/search`, `/api/documents`, `/api/chat`, `/api/conversations`, `/api/read-status/*`, `/health`.
+- **Endpoints** (see `TECHNICAL-DESIGN.md` §11 and `api-spec.yml` for the authoritative list): auth (`/api/auth/*`), `/api/ui-config`, `/api/search`, `/api/documents`, `/api/chat`, `/api/conversations`, `/api/read-status/*`, `/health`.
 
 ### SSE wire format (AD-4)
 

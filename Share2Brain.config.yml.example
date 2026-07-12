@@ -119,6 +119,13 @@ read_tracking:
   enabled: true
   auto_mark_read_on_click: true
 
+# UI language (Epic 10). Optional block; if absent -> "es".
+# Governs ONLY the SPA (literals, date/number formatting, client-side
+# error messages). The AI-generated content language remains
+# enrichment.language.
+ui:
+  language: "es"             # es | en
+
 # --- Observability ------------------------------------------------------------
 observability:
   sentry_dsn: "${SENTRY_DSN}"

@@ -13,8 +13,8 @@ info:
   description: >
     Self-hosted AI agent over a Discord community's knowledge. REST for
     CRUD/search; `POST /api/chat` streams answers via Server-Sent Events (AD-4).
-    Every `/api/*` route requires a valid Redis session except `/api/auth/*`
-    and `/health`.
+    Every `/api/*` route requires a valid Redis session except `/api/auth/*`,
+    `/api/ui-config`, and `/health`.
 
 servers:
   - url: /
