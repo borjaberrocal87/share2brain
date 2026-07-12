@@ -47,8 +47,8 @@ Typical `.env` keys:
 ```env
 # Database
 DATABASE_URL="postgresql://share2brain:share2brain@localhost:5432/share2brain"
-# Redis (streams + sessions)
-REDIS_URL="redis://localhost:6379"
+# Redis (streams + sessions) — AUTH required; password must match REDIS_PASSWORD
+REDIS_URL="redis://:<your-redis-password>@localhost:6379"
 # Discord
 DISCORD_BOT_TOKEN=...
 DISCORD_CLIENT_ID=...
