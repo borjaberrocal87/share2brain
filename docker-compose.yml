@@ -61,6 +61,10 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     command: sh -c 'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes --dir /data'
+    # Dev-only host exposure, bound to loopback (same pattern as postgres).
+    # Local `npm run dev` processes reach it as redis://:<password>@localhost:6379.
+    ports:
+      - "127.0.0.1:6379:6379"
     volumes:
       - redisdata:/data
     networks:
