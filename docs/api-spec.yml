@@ -22,6 +22,7 @@ servers:
 
 tags:
   - name: auth
+  - name: config
   - name: search
   - name: channels
   - name: documents
@@ -130,6 +131,25 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
               example: { error: Not found, code: GUEST_ACCESS_DISABLED }
+
+  /api/ui-config:
+    get:
+      tags: [config]
+      summary: UI configuration for the SPA (language)
+      description: >
+        Unauthenticated: the login screen already needs the language before any
+        session exists. Returns the deployment's UI language resolved from
+        Share2Brain.config.yml (`ui.language`, default "es" when the block is
+        absent). The SPA falls back to "es" if this call fails. General
+        rate-limit tier, not the auth tier (Epic 10).
+      security: []
+      responses:
+        "200":
+          description: UI configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UiConfigResponse"
 
   /api/auth/me:
     get:
@@ -394,6 +414,16 @@ components:
       properties:
         error: { type: string, example: Unauthorized }
         code: { type: string, example: AUTH_REQUIRED }
+
+    UiConfigResponse:
+      type: object
+      description: Mirrors the Zod UiConfigResponse in packages/shared/src/schemas/ (Epic 10)
+      required: [language]
+      properties:
+        language:
+          type: string
+          enum: [es, en]
+          example: es
 
     SSEFrame:
       description: Frame schema from packages/shared/src/schemas/sse.ts

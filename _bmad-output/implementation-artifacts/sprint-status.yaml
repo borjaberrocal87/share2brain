@@ -184,7 +184,16 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-06-30
-last_updated: 2026-07-11  # story 2-5 re-review #4 (confirmation) → CONVERGED: all 3 layers agree the
+last_updated: 2026-07-12  # epic-10 (UI i18n) added → backlog (bmad-correct-course,
+# sprint-change-proposal-2026-07-12-i18n.md): UI language via Share2Brain.config.yml ui.language
+# (optional block, absent ⇒ es; NOT .env — secrets-vs-behavior rule held), runtime GET /api/ui-config
+# (no auth, general rate-limit tier), react-i18next + static es/en JSON bundled (sync init). New FR26
+# (epics.md inventory + mapping + Épico 10 section). Docs synced: PRD §2.3/§16 (i18n de-scoped-out),
+# TECHNICAL-DESIGN §5.5/§11/§13, api-spec.yml (/api/ui-config + UiConfigResponse), frontend-standards
+# (new i18n rule). Critical guard ratified: default es keeps 28 e2e + unit Spanish-literal asserts
+# byte-identical. Housekeeping: epic-2 in-progress → done (2-5 converged 2026-07-11, epic left open).
+# Scope Moderate. Next: bmad-create-story 10-1, then bmad-dev-story (10-1 → 10-2).
+# || (prior) last_updated: 2026-07-11  # story 2-5 re-review #4 (confirmation) → CONVERGED: all 3 layers agree the
 # shared-sentinel blast radius is exhausted (every userId-keyed surface verified isolated or transitively
 # covered by the empty-sentinel invariant). Only a docs-consistency patch applied, no code change. Done.
 # || (prior) last_updated: 2026-07-11  # story 2-5 re-review #3 → done (bmad-code-review): allowlist sound; shared-guest
@@ -504,7 +513,9 @@ development_status:
   # default → POST /api/auth/guest returns 404), synthetic `guest` role expanded via RBAC (AD-12
   # intact), seeded guest `users` row (discord_id="guest") satisfies conversations.user_id FK for
   # guest chat, session carries isGuest (AD-10, no sessions table). No existing story re-work.
-  epic-2: in-progress
+  # 2026-07-12: flipped to done via bmad-correct-course housekeeping (i18n SCP §4/P6) —
+  # story 2-5 converged done on re-review #4 (2026-07-11); the epic had been left open.
+  epic-2: done
   2-1-sistema-de-diseno-en-packages-web: done
   2-2-layout-principal-sidebar-y-pantalla-de-login: done
   2-3-backend-discord-oauth2-y-sesiones-en-redis: done
@@ -586,6 +597,18 @@ development_status:
   9-4-bot-shared-captura-author-name-discord-messages: done
   9-5-shared-backend-bloque-topusers-stats: done
   epic-9-retrospective: done
+
+  # ── Épico 10: Internacionalización de la UI (i18n) ──────────────────────────
+  # Added 2026-07-12 via bmad-correct-course (sprint-change-proposal-2026-07-12-i18n.md):
+  # UI language via Share2Brain.config.yml (ui.language, optional block, absent ⇒ es),
+  # runtime GET /api/ui-config (no auth, general rate-limit tier), react-i18next +
+  # static es/en JSON resources bundled (sync init). New FR26. Layered pair
+  # (shared+backend → web), precedent 9-4/9-5. Critical guard: default es keeps the
+  # 28 e2e + unit Spanish-literal asserts byte-identical. Binding sequence: 10-1 → 10-2.
+  epic-10: backlog
+  10-1-shared-backend-config-ui-language-endpoint-ui-config: backlog
+  10-2-web-react-i18next-extraccion-literales-locales-json: backlog
+  epic-10-retrospective: optional
 
   # ── Operational backlog (post-roadmap) — no epic; see operational-backlog.md ─
   # Numbered ops-N to stay outside the epic sequence (Borja chose an explicit backlog

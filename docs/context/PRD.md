@@ -135,7 +135,7 @@ Cada operador despliega una instancia independiente que sirve a **una comunidad 
 - No reemplaza la moderación ni administra el servidor de Discord
 - No incluye tools externas vía MCP
 - No incluye modelos locales vía Ollama (fase posterior)
-- No incluye internacionalización
+- La internacionalización cubre solo la UI web (idioma por despliegue vía `ui.language`, es/en — Épico 10); no incluye traducir el contenido indexado ni las respuestas del agente (el idioma del contenido generado por IA se gobierna aparte con `enrichment.language`)
 - No indexa el contenido de attachments ni imágenes — solo el texto de los mensajes es buscable (OCR de imágenes, fase posterior)
 
 ---
@@ -1494,7 +1494,7 @@ SENTRY_DSN=
 |------|---------|
 | **MVP** | Discord bot que escucha canales y indexa, backfill con reconciliación por snowflake, sync de ediciones/borrados, web con búsqueda y chat (streaming), read tracking con batch processing, control de acceso por rol/canal (RBAC), configuración YAML, notificaciones (Telegram/Slack), `docker compose`, tests básicos (unit + integration) |
 | **v1** | Compactación de memoria avanzada, tools con confirmación UI, dashboard de métricas de uso, E2E tests completos, panel de admin web |
-| **Posterior** | MCP tools, OCR de imágenes, modelos locales vía Ollama, internacionalización, multi-tenant |
+| **Posterior** | MCP tools, OCR de imágenes, modelos locales vía Ollama, internacionalización completa (más idiomas, contenido — la i18n de la UI es/en se entrega en el Épico 10 vía react-i18next), multi-tenant |
 
 ---
 

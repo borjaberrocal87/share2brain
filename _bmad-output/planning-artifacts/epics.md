@@ -42,6 +42,7 @@ FR22: El sistema debe ser configurable íntegramente mediante `Share2Brain.confi
 FR23: El sistema debe desplegarse con `docker compose up -d`, incluyendo el servicio `migrator` one-shot que aplica migraciones Drizzle antes de que arranquen bot, workers y backend.
 FR24: La Web App debe presentar una vista de Estadísticas con KPIs de conocimiento, actividad de indexado en el tiempo, volumen por canal y cobertura de lectura personal.
 FR25: Toda estadística debe limitarse a los canales accesibles del usuario (AD-12); ninguna métrica expone datos de canales que el usuario no puede leer.
+FR26: La UI web carga sus textos desde recursos JSON de traducción (i18n). El idioma se define por despliegue en `Share2Brain.config.yml` (`ui.language`, default `es`); la SPA lo resuelve en runtime vía `GET /api/ui-config` (sin auth). Cubre literales, formato de fechas/números y mapeo de códigos de error a mensajes traducidos en el cliente. Idiomas iniciales: es, en.
 
 ### Requisitos No Funcionales
 
@@ -165,6 +166,7 @@ UX-DR24: **Estadísticas** — Vista `isStats` (3ª entrada de nav): contenedor 
 | FR23 | Épico 1 | Docker Compose 7 servicios + migrator one-shot |
 | FR24 | Épico 9 | Web App: vista Estadísticas |
 | FR25 | Épico 9 | GET /api/stats: agregaciones RBAC-scoped en-SQL |
+| FR26 | Épico 10 | i18n de la UI: `ui.language` + GET /api/ui-config + react-i18next |
 
 ## Lista de Épicos
 
@@ -1140,3 +1142,42 @@ de lectura personal. Sin ingesta nueva (agrega sobre datos existentes); sin tabl
 > (decisión D9) para no ampliar su alcance en revisión. **No añade FR nuevo** — es parte de la vista
 > de Estadísticas (FR24) y respeta FR25. Nombre real para mensajes nuevos; los antiguos degradan vía
 > `COALESCE(author_name, users.username, author_id)` (sin backfill).
+
+---
+
+## Épico 10: Internacionalización de la UI (i18n)
+
+**Goal:** El Operador puede fijar el idioma de la aplicación web (es/en) en
+`Share2Brain.config.yml` sin reconstruir imágenes. Toda la UI (literales, fechas/números,
+mensajes de error) se renderiza en el idioma configurado desde recursos JSON estáticos vía
+react-i18next.
+
+**FRs cubiertos:** FR26 (nuevo)
+
+> Aprobado via `bmad-correct-course` (2026-07-12,
+> `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-12-i18n.md`), clasificación
+> **Moderate**. Decisiones ratificadas: idioma en `Share2Brain.config.yml` (bloque opcional
+> `ui.language`, ausente ⇒ `es`) — NO en `.env` (regla secrets-vs-behavior intacta); alcance =
+> UI web completa (literales + fechas/números + mapeo cliente de códigos de error); idiomas
+> iniciales es/en; mecanismo react-i18next con JSON estáticos empaquetados. Ningún AD cambia:
+> AD-3 intacto (la SPA sigue estática; el idioma llega en runtime vía API, sin rebuild), AD-6
+> (contrato Zod `UiConfigResponse` en shared), AD-8 (config validada al boot). Sin DDL.
+> 🚩 Guardia crítica: el default `es` + init síncrono mantienen los 28 e2e y los tests
+> unitarios **byte-idénticos** (asertan literales españoles). Las ACs Gherkin completas se
+> detallan al crear cada historia vía `bmad-create-story`; este resumen lista su alcance.
+
+- **Historia 10.1 · shared + backend:** bloque opcional `ui:` en el schema Zod de config
+  (`language: 'es' | 'en'`; bloque ausente ⇒ default `es` resuelto en backend — precedente D4
+  de 2.5) + contrato `UiConfigResponse` en `packages/shared/src/schemas/` (AD-6) + endpoint
+  `GET /api/ui-config` sin auth (tier de rate-limit general, no el de auth — lección del 429 de
+  `/api/auth/me`) + `Share2Brain.config.example.yml` y docs sync (`api-spec.yml`,
+  TECHNICAL-DESIGN §11/§13).
+- **Historia 10.2 · web:** deps `i18next` + `react-i18next`; recursos
+  `packages/web/src/locales/{es,en}.json` empaquetados (import estático, init síncrono — sin
+  estado de carga ni FOUC); extracción de los ~31 literales de los 9 componentes a claves
+  namespaced por vista (`chat.historyTitle`, `common.close`, …); al boot la SPA consulta
+  `GET /api/ui-config` y fija el idioma (fallo ⇒ degrada a `es`); `toLocaleString('es')` fijo →
+  locale del idioma activo; mapeo código de error del backend → mensaje traducido
+  (`errors.<CODE>`, con el `error` crudo como fallback). Guardia: con el bloque `ui` ausente,
+  el gate completo (lint + unit + build + 28 e2e) queda verde **sin modificar ningún assert
+  existente** (AC explícito). **Depende de 10.1.** Secuencia binding: 10.1 → 10.2.

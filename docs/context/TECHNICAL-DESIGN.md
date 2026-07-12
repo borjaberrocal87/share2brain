@@ -359,6 +359,8 @@ La Web App es una **SPA estática**. No tiene servidor Node. El build de Vite pr
 | **ReadStatus** | Gestión de lectura: badges, mark-all, conteo en sidebar |
 | **Statistics** | KPIs de conocimiento, actividad de indexado (14 días), volumen por canal, cobertura de lectura personal y Top 5 usuarios más activos; 5 secciones renderizadas 100% desde `StatsResponse` (RBAC-scoped server-side, AD-12), sin dependencia de librerías de gráficos (Historia 9.2) |
 
+**Internacionalización (Épico 10):** i18n con react-i18next; recursos `es.json`/`en.json` empaquetados en el bundle (import estático, init síncrono — sin estado de carga ni FOUC). Al arrancar, la SPA consulta `GET /api/ui-config` y fija el idioma; si la llamada falla, degrada a `es`. Los códigos de error del backend (`{ error, code }`) se mapean a mensajes traducidos en el cliente (`errors.<CODE>`); el campo `error` crudo queda solo como fallback para códigos desconocidos. Fechas/números con `toLocaleString(i18n.language)`.
+
 **Contrato con el Backend:** todos los tipos de request y response se infieren de los Zod schemas de `@share2brain/shared/schemas`. Si el Backend cambia el shape de un endpoint y actualiza el schema, el compilador TypeScript rompe el frontend antes de que llegue a producción.
 
 ```typescript
@@ -839,7 +841,7 @@ Browser → POST /api/auth/guest
 
 ## 11. API REST
 
-Todos los endpoints bajo `/api/*` requieren sesión válida excepto `/api/auth/*` y `/health`.
+Todos los endpoints bajo `/api/*` requieren sesión válida excepto `/api/auth/*`, `/api/ui-config` y `/health`.
 
 | Método | Ruta | Descripción |
 |---|---|---|
@@ -851,6 +853,7 @@ Todos los endpoints bajo `/api/*` requieren sesión válida excepto `/api/auth/*
 | `POST` | `/api/auth/guest` | Crea sesión de invitado (200 + cookie `sid`; 404 `GUEST_ACCESS_DISABLED` cuando OFF) |
 | `GET` | `/api/auth/me` | Usuario autenticado actual (incluye `isGuest: true` en sesiones de invitado) |
 | `GET` | `/api/auth/roles` | Roles del usuario + canales accesibles |
+| `GET` | `/api/ui-config` | Config de UI para la SPA (`UiConfigResponse`, hoy `{ language }`). Sin auth: la pantalla de login ya necesita el idioma antes de existir sesión. Tier de rate-limit general, no el de auth (Épico 10) |
 | `GET` | `/api/search?q=...` | Búsqueda semántica con filtro RBAC |
 | `GET` | `/api/documents` | Listado paginado de fragmentos |
 | `GET` | `/api/stats` | KPIs de conocimiento, actividad 14 días, volumen por canal, top 5 usuarios, cobertura de lectura (RBAC-scoped) |
@@ -1012,6 +1015,13 @@ access_control:
 read_tracking:
   enabled: true
   auto_mark_read_on_click: true
+
+# Idioma de la UI web (Épico 10). Bloque opcional; si falta ⇒ "es".
+# Gobierna SOLO la SPA (literales, formato de fechas/números, mensajes de
+# error en cliente). El idioma del contenido generado por IA sigue siendo
+# enrichment.language.
+ui:
+  language: "es"             # es | en
 
 observability:
   sentry_dsn: "${SENTRY_DSN}"

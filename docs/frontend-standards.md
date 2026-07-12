@@ -121,6 +121,17 @@ const CitationBadge: React.FC<CitationBadgeProps> = ({ channel, author, date }) 
 - Define prop types per component; destructure props; provide sensible defaults.
 - Prefer inferred API types over duplicated interfaces.
 
+### Internationalization (i18n)
+
+- Every user-facing string in `packages/web` MUST go through react-i18next (`t('key')` / `<Trans>`). Hardcoded user-facing literals in `.tsx` are forbidden from Epic 10 onward.
+- Translation resources live as static JSON per language (`packages/web/src/locales/es.json`, `en.json`), statically imported and registered at i18n init (synchronous — no loading state).
+- Key naming: camelCase namespaced by view/component (e.g. `chat.historyTitle`, `docs.unreadToggle`, `common.close`).
+- The active language comes from `GET /api/ui-config` at boot; fall back to `es` on failure. Never read the language from `import.meta.env`.
+- Dates/numbers: use `toLocaleString(i18n.language)` — never a hardcoded locale literal.
+- Backend error codes (`{ error, code }`) map to translated messages in the client (`errors.<CODE>` keys); the raw `error` string is only the fallback for unknown codes.
+- Tests: unit tests render with the real `es` resources (default), so existing text assertions stay valid; e2e runs with the `ui` block absent (⇒ `es`) and its Spanish-literal assertions remain byte-identical.
+- The project's "English only in code" rule stays intact: keys and code in English; translated values live only in the JSON resources.
+
 ## Views & Components
 
 Five primary views (TECHNICAL-DESIGN §5.5):
@@ -181,6 +192,7 @@ Render `token` frames incrementally, `citation` frames as sources, close on `don
 - **Forms**: controlled inputs; real-time validation where useful; disable submit during submission; clear state after success.
 - **Navigation**: client-side routing; `try_files … /index.html` on nginx means all non-`/api` routes resolve to the SPA.
 - **Accessibility**: semantic HTML, `aria-label` on interactive elements, keyboard navigation, alt text for images.
+- **Language**: all user-facing copy renders through i18n keys (see Internationalization under Coding Standards); the deployment language comes from `ui.language`.
 
 ## Testing Standards
 
