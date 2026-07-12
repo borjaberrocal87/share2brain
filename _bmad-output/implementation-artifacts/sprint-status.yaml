@@ -184,7 +184,46 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-06-30
-last_updated: 2026-07-12  # epic-10 (UI i18n) added → backlog (bmad-correct-course,
+last_updated: 2026-07-12  # story 10-1 review → done (bmad-code-review): 3 adversarial layers
+# (Blind/Edge/Auditor). Auditor confirmed all 7 ACs + D1–D7 SATISFIED, no violations. 1 patch applied
+# (Task-4.3 optional hardening: catch-all router.use 404 on /api/ui-config so unmatched paths/methods
+# don't double-count the shared apiLimiters / ERR_ERL_DOUBLE_COUNT; router.use not all('*') for
+# Express-5/path-to-regexp-v8) — re-verified lint 0 / build clean / 1003 unit+web / 4 uiConfig
+# integration. Re-run after the patch confirmed the double-count fix effective + surfaced 1 new
+# patch (the catch-all's plain-text 404 → unified { error, code } JSON envelope + a POST→404 test;
+# uiConfig integration now 5/5). 2 deferred (no Cache-Control on ui-config; es/en enum duplicated
+# config↔contract), 15 dismissed across both rounds. NOT committed to a PR yet.
+# || (prior) last_updated: 2026-07-12  # story 10-1 in-progress → review (bmad-dev-story): implemented on
+# feat/10-1-ui-config off fe1f56f. Shared optional `ui` config block (no .default(), D1) +
+# UiConfigResponse contract (schemas/uiConfig.ts, barrel) + backend GET /api/ui-config mounted
+# between /api/auth and the generic gate reusing apiLimiters (general tier, D2/D4). Docs drift
+# closed (config example ui: block, api-spec.yml:16-17 + backend-standards.md:742/744 exception
+# lists). 2 out-of-scope, Borja-approved fixes for issues confirmed pre-existing via git-stash
+# A/B against fe1f56f: stale hivly DB credentials in local .env, missing CSRF header in the
+# guest-login e2e helper (Story 2.5 territory). Gate green: lint 0 / 1003+1skip unit+web (+10) /
+# build clean (5 pkgs) / 142 integration (deterministic with --no-file-parallelism — surfaced the
+# Epic 9 retro AI-5 rate-limit test-isolation race concretely, not newly introduced) / 28 e2e.
+# NOT committed to a PR yet. Next: commit + PR + bmad-code-review, then 10-2.
+# || (prior) last_updated: 2026-07-12  # story 10-1 ready-for-dev → in-progress (bmad-dev-story): starting
+# implementation on branch feat/10-1-ui-config off fe1f56f.
+# || (prior) last_updated: 2026-07-12  # story 10-1 backlog → ready-for-dev (bmad-create-story) + epic-10 → in-progress
+# (first story). Story file: 10-1-shared-backend-config-ui-language-endpoint-ui-config.md. Scope:
+# shared optional top-level `ui:` block (language es|en, NO .default() — D4 convention) +
+# UiConfigResponse in shared/schemas (barrel) + unauth GET /api/ui-config on the GENERAL api tier
+# (reuse the SAME apiLimiters instance, rl:api:, NOT the auth tier), gate-exempt by mount order
+# (between app.ts:220 auth mount and :226 generic gate). Ratified: single defaulting point =
+# createApp `opts.uiLanguage ?? 'es'` (agentMemoryWindow precedent, NOT presence=enabled); no
+# backend resolver module; handler never touches req.session; always 200 (no error branch).
+# Docs: api-spec path/schema + TD §11/§13 ALREADY landed in fe1f56f (verify, don't redo);
+# remaining = Share2Brain.config.yml.example ui block (REAL filename — epics.md bullet has it
+# wrong) + no-auth exception-list drift (api-spec.yml:16-17, backend-standards.md:742/744).
+# Factual correction baked in: /api/auth/me was NEVER re-tiered (the 429 lesson is placement-only).
+# Critical guard: buildTestAppOptions + e2e/server.ts stay uiLanguage-free ⇒ default es ⇒ 28 e2e
+# byte-identical. Fresh-context validation: 0 critical + 2 enhancements (empty `ui:` errors on Zod
+# path `ui` not `ui.language`; unmatched-method fall-through double-counts the api limiter —
+# ERR_ERL_DOUBLE_COUNT, accepted edge) + 3 optimizations, ALL applied. Next: bmad-dev-story 10-1,
+# then 10-2.
+# || (prior) last_updated: 2026-07-12  # epic-10 (UI i18n) added → backlog (bmad-correct-course,
 # sprint-change-proposal-2026-07-12-i18n.md): UI language via Share2Brain.config.yml ui.language
 # (optional block, absent ⇒ es; NOT .env — secrets-vs-behavior rule held), runtime GET /api/ui-config
 # (no auth, general rate-limit tier), react-i18next + static es/en JSON bundled (sync init). New FR26
@@ -605,8 +644,8 @@ development_status:
   # static es/en JSON resources bundled (sync init). New FR26. Layered pair
   # (shared+backend → web), precedent 9-4/9-5. Critical guard: default es keeps the
   # 28 e2e + unit Spanish-literal asserts byte-identical. Binding sequence: 10-1 → 10-2.
-  epic-10: backlog
-  10-1-shared-backend-config-ui-language-endpoint-ui-config: backlog
+  epic-10: in-progress
+  10-1-shared-backend-config-ui-language-endpoint-ui-config: done
   10-2-web-react-i18next-extraccion-literales-locales-json: backlog
   epic-10-retrospective: optional
 
