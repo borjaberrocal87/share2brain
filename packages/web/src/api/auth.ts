@@ -55,22 +55,3 @@ export async function loginAsGuest(): Promise<AuthMeResponse> {
   if (!res.ok) throw new Error(`POST /api/auth/guest failed: ${res.status}`);
   return AuthMeResponseSchema.parse(await res.json());
 }
-
-/**
- * Probe whether guest access is enabled (Story 2.5, D1). 200 → the parsed
- * `enabled` flag; ANY non-200 (404 included, or a probe failure) → `false`, so a
- * disabled deployment simply hides the guest link and a probe error never breaks
- * the Discord path.
- */
-export async function fetchGuestAvailability(): Promise<boolean> {
-  const res = await fetch('/api/auth/guest', { credentials: 'include' });
-  if (res.status !== 200) return false;
-  return GuestAvailabilityResponseSchema.parse(await res.json()).enabled;
-}
-
-/** Create a guest session and resolve the guest profile (Story 2.5, AC6). */
-export async function loginAsGuest(): Promise<AuthMeResponse> {
-  const res = await fetch('/api/auth/guest', { method: 'POST', credentials: 'include' });
-  if (!res.ok) throw new Error(`POST /api/auth/guest failed: ${res.status}`);
-  return AuthMeResponseSchema.parse(await res.json());
-}
