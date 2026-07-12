@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { DocumentFragment, DocumentsResponse, UnreadCountResponse } from '@share2brain/shared/schemas';
 
@@ -8,6 +8,7 @@ import * as authApi from './api/auth';
 import * as channelsApi from './api/channels';
 import * as documentsApi from './api/documents';
 import * as readStatusApi from './api/readStatus';
+import i18n from './i18n';
 
 // Mock the fetch client (Story 2.4): tests drive the real session flow through
 // fetchMe/logout without touching the network. LOGIN_URL keeps its real value.
@@ -289,5 +290,35 @@ describe('App session flow', () => {
     expect(screen.queryByTestId('guest-mode-badge')).toBeNull();
     expect(screen.getByRole('button', { name: /Cerrar sesión/i })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Salir/i })).toBeNull();
+  });
+});
+
+describe('App — en locale (Story 10.2, AC2)', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage('es');
+  });
+
+  it('should render the login screen in English', async () => {
+    fetchMe.mockResolvedValue(null);
+
+    render(<App />);
+
+    expect(await screen.findByRole('button', { name: /Continue with Discord/i })).toBeTruthy();
+  });
+
+  it('should render the sidebar and header in English (Sidebar/Header, AC2)', async () => {
+    fetchMe.mockResolvedValue(PROFILE);
+
+    render(<App />);
+    await screen.findByText('ada lovelace');
+
+    expect(screen.getByRole('button', { name: /Search/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Documents/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Stats/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Log out/i })).toBeTruthy();
   });
 });

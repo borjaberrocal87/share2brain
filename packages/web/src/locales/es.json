@@ -1,0 +1,132 @@
+{
+  "common": {
+    "all": "todos",
+    "exampleQuestion": "¿Cómo configuro los canales a indexar?"
+  },
+  "app": {
+    "statsLine": "indexación de conocimiento · pgvector",
+    "loadingAriaLabel": "Cargando"
+  },
+  "login": {
+    "tagline": "Agente de conocimiento · self-hosted",
+    "description": "El conocimiento de tu comunidad de Discord, indexado y consultable. Iniciá sesión para buscar y chatear con el agente.",
+    "continueWithDiscord": "Continuar con Discord",
+    "membersOnly": "Solo miembros del guild pueden acceder",
+    "orForDemo": "o para la demo",
+    "guestLogin": "Entrar como invitado"
+  },
+  "sidebar": {
+    "nav": {
+      "search": "Búsqueda",
+      "docs": "Documentos",
+      "stats": "Estadísticas"
+    }
+  },
+  "header": {
+    "liveIndexing": "indexando en vivo",
+    "guestMode": "Modo invitado",
+    "themeToLight": "Cambiar a tema claro",
+    "themeToDark": "Cambiar a tema oscuro",
+    "logout": "Cerrar sesión",
+    "guestLogout": "Salir"
+  },
+  "chat": {
+    "openAriaLabel": "Abrir chat con el agente",
+    "panelAriaLabel": "Chat con el agente",
+    "tagline": "Agente de conocimiento",
+    "historyTitle": "Historial de conversaciones",
+    "historyButtonTitle": "Historial",
+    "newConversation": "Nueva conversación",
+    "closeAriaLabel": "Cerrar chat",
+    "closeTitle": "Cerrar",
+    "historyLoading": "Cargando conversaciones…",
+    "historyError": "No se pudo cargar el historial. Reintentá.",
+    "historyEmpty": "Todavía no tenés conversaciones guardadas.",
+    "emptyStateTitle": "Preguntá lo que quieras",
+    "emptyStateDescription": "El agente responde con RAG sobre el conocimiento de la comunidad y cita sus fuentes.",
+    "suggestions": {
+      "backfill": "¿Qué es el backfill histórico?",
+      "rbac": "¿Cómo funciona el filtrado RBAC?"
+    },
+    "composerPlaceholder": "Preguntá al agente…",
+    "inputAriaLabel": "Escribí tu mensaje",
+    "sendAriaLabel": "Enviar mensaje",
+    "privacyFooter": "Respuestas con fuente verificable · tools de share2brain.config.yml",
+    "you": "Vos",
+    "genericError": "No se pudo completar la respuesta. Intentá de nuevo.",
+    "historyLoadError": "No se pudo cargar la conversación. Intentá de nuevo.",
+    "sources": "Fuentes"
+  },
+  "docs": {
+    "title": "Documentos indexados",
+    "description": "Cada recurso es un link compartido en la comunidad, enriquecido con título y descripción por IA. El punto ámbar marca los recursos sin leer — tocá una fila para marcarla como leída.",
+    "markAllRead": "Marcar todas como leídas",
+    "unreadToggle": "Sin leer · {{count}}",
+    "loadError": "No se pudieron cargar los documentos. Reintentá.",
+    "emptyStateTitle": "¡Estás al día! No te quedan fuentes sin leer.",
+    "emptyStateDescription": "Quitá el filtro \"Sin leer\" para ver todo el conocimiento indexado.",
+    "columns": {
+      "title": "título",
+      "description": "descripción",
+      "link": "link",
+      "channel": "canal",
+      "author": "autor",
+      "indexed": "indexado"
+    },
+    "showing": "mostrando {{shown}} de {{total}}",
+    "loadMore": "Cargar más",
+    "newBadge": "Nuevo",
+    "viewResourceAriaLabel": "Ver recurso",
+    "viewResourceTitle": "Ver recurso"
+  },
+  "search": {
+    "title": "Búsqueda de conocimiento",
+    "description": "Búsqueda semántica sobre los mensajes indexados de Discord. Cada resultado cita su fuente original.",
+    "loading": "Buscando…",
+    "error": "No se pudo completar la búsqueda. Reintentá.",
+    "resultsCount_one": "{{count}} resultados",
+    "resultsCount_other": "{{count}} resultados",
+    "orderedBySimilarity": "ordenado por similitud",
+    "emptyStateTitle": "Sin coincidencias en el conocimiento indexado.",
+    "emptyStateDescription": "Probá con otros términos o consultá al agente en el chat.",
+    "viewResource": "ver recurso",
+    "viewOnDiscord": "ver en Discord"
+  },
+  "stats": {
+    "title": "Estadísticas",
+    "description": "El pulso del conocimiento de la comunidad: qué se indexa, quién participa y cuánto se consulta al agente.",
+    "loading": "Cargando estadísticas…",
+    "error": "No se pudieron cargar las estadísticas. Reintentá.",
+    "activityTitle": "Actividad de indexado",
+    "activityTotal_one": "{{count, number}} recurso · últimos 14 días",
+    "activityTotal_other": "{{count, number}} recursos · últimos 14 días",
+    "activityBarTitle_one": "{{count, number}} recurso",
+    "activityBarTitle_other": "{{count, number}} recursos",
+    "daysAgo14": "hace 14 días",
+    "today": "hoy",
+    "channelsTitle": "Recursos por canal",
+    "channelsEmpty": "Sin datos en tus canales todavía.",
+    "coverageTitle": "Cobertura de lectura",
+    "coverageDescription": "Documentos indexados que ya revisaste.",
+    "read": "leído",
+    "legendRead": "Leídos",
+    "legendUnread": "Sin leer",
+    "coverageTotal_one": "{{count, number}} documento en total",
+    "coverageTotal_other": "{{count, number}} documentos en total",
+    "topUsersTitle": "Top 5 · usuarios más activos",
+    "topUsersEmpty": "Sin autores todavía."
+  },
+  "errors": {
+    "AUTH_REQUIRED": "Debés iniciar sesión para continuar.",
+    "GUILD_MEMBER_REQUIRED": "Necesitás ser miembro del servidor de Discord para acceder.",
+    "INVALID_OAUTH_STATE": "La sesión de inicio de sesión no es válida. Intentá de nuevo.",
+    "OAUTH_CALLBACK_FAILED": "No se pudo completar el inicio de sesión con Discord.",
+    "LOGOUT_FAILED": "No se pudo cerrar la sesión. Intentá de nuevo.",
+    "RBAC_EXPANSION_FAILED": "No se pudieron resolver tus permisos. Intentá de nuevo.",
+    "GUEST_ACCESS_DISABLED": "El acceso como invitado está desactivado.",
+    "VALIDATION_ERROR": "La solicitud no es válida.",
+    "NOT_FOUND": "No se encontró el recurso solicitado.",
+    "FORBIDDEN": "No tenés permiso para acceder a este recurso.",
+    "INTERNAL": "Ocurrió un error interno. Intentá de nuevo."
+  }
+}

@@ -2,12 +2,13 @@
 // api/channels clients (mirror App.test.tsx's vi.mock pattern) — no network, no
 // jest-dom matchers (toBeTruthy()/toBeNull(), per project testing rules).
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SearchFragment } from '@share2brain/shared/schemas';
 
 import * as channelsApi from '../api/channels';
 import * as searchApi from '../api/search';
+import i18n from '../i18n';
 import { SearchView } from './SearchView';
 
 vi.mock('../api/channels', () => ({ fetchChannels: vi.fn() }));
@@ -162,5 +163,22 @@ describe('SearchView', () => {
 
     const link = screen.getByRole('link', { name: /ver recurso/i }) as HTMLAnchorElement;
     expect(link.href).toBe(FRAGMENT_GENERAL.link);
+  });
+});
+
+describe('SearchView — en locale (Story 10.2, AC2)', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage('es');
+  });
+
+  it('should render the header title in English', () => {
+    fetchChannels.mockResolvedValue([]);
+    render(<SearchView guildId={GUILD_ID} />);
+
+    expect(screen.getByText('Knowledge search')).toBeTruthy();
   });
 });

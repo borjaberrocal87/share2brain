@@ -4,6 +4,7 @@
 // + fetch, debounced with an AbortController per the auth.ts client pattern.
 import { useEffect, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { Channel, SearchFragment } from '@share2brain/shared/schemas';
 
@@ -26,6 +27,7 @@ const containerStyle: CSSProperties = { flex: 1, overflowY: 'auto', padding: '34
 const innerStyle: CSSProperties = { maxWidth: 860, margin: '0 auto' };
 
 export function SearchView({ guildId }: SearchViewProps): ReactElement {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchFragment[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -99,11 +101,10 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
             color: 'var(--text-primary)',
           }}
         >
-          Búsqueda de conocimiento
+          {t('search.title')}
         </h2>
         <p style={{ margin: '7px 0 0', fontSize: 14, color: 'var(--text-tertiary)' }}>
-          Búsqueda semántica sobre los mensajes indexados de Discord. Cada resultado cita su
-          fuente original.
+          {t('search.description')}
         </p>
 
         <div style={{ marginTop: 22, position: 'relative' }}>
@@ -124,7 +125,7 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
             className="kh-search-input"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="¿Cómo configuro los canales a indexar?"
+            placeholder={t('common.exampleQuestion')}
             style={{
               width: '100%',
               height: 54,
@@ -143,7 +144,7 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
         </div>
 
         <div style={{ marginTop: 16, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <ChannelChip label="todos" active={activeChannelId === 'all'} onClick={() => setActiveChannelId('all')} />
+          <ChannelChip label={t('common.all')} active={activeChannelId === 'all'} onClick={() => setActiveChannelId('all')} />
           {channels.map((ch) => (
             <ChannelChip
               key={ch.id}
@@ -163,7 +164,7 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
               color: 'var(--text-muted)',
             }}
           >
-            Buscando…
+            {t('search.loading')}
           </div>
         )}
 
@@ -175,7 +176,7 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
               color: 'var(--text-tertiary)',
             }}
           >
-            No se pudo completar la búsqueda. Reintentá.
+            {t('search.error')}
           </div>
         )}
 
@@ -194,7 +195,7 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
                 color: 'var(--text-muted)',
               }}
             >
-              {visibleResults.length} resultados
+              {t('search.resultsCount', { count: visibleResults.length })}
             </span>
             <span
               style={{
@@ -203,7 +204,7 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
                 color: 'var(--text-subtle)',
               }}
             >
-              ordenado por similitud
+              {t('search.orderedBySimilarity')}
             </span>
           </div>
         )}
@@ -226,10 +227,10 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
             }}
           >
             <div style={{ fontSize: 15, color: 'var(--text-tertiary)' }}>
-              Sin coincidencias en el conocimiento indexado.
+              {t('search.emptyStateTitle')}
             </div>
             <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-subtle)' }}>
-              Probá con otros términos o consultá al agente en el chat.
+              {t('search.emptyStateDescription')}
             </div>
           </div>
         )}
@@ -279,7 +280,8 @@ function ChannelChip({
 }
 
 function ResultCard({ fragment, guildId }: { fragment: SearchFragment; guildId: string }): ReactElement {
-  const date = new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(
+  const { t, i18n } = useTranslation();
+  const date = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(
     new Date(fragment.createdAt),
   );
   const simPct = Math.round(fragment.similarity * 100);
@@ -398,7 +400,7 @@ function ResultCard({ fragment, guildId }: { fragment: SearchFragment; guildId: 
               textDecoration: 'none',
             }}
           >
-            <span>ver recurso</span>
+            <span>{t('search.viewResource')}</span>
             <ExternalLinkIcon size={13} />
           </a>
           <a
@@ -415,7 +417,7 @@ function ResultCard({ fragment, guildId }: { fragment: SearchFragment; guildId: 
               textDecoration: 'none',
             }}
           >
-            <span>ver en Discord</span>
+            <span>{t('search.viewOnDiscord')}</span>
             <ExternalLinkIcon size={13} />
           </a>
         </div>

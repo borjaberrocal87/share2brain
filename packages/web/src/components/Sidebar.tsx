@@ -3,6 +3,7 @@
 // footer. Navigation is in-app state (no router — UX-DR5); clicking an item
 // calls onNavigate. UI copy Spanish verbatim; identifiers English.
 import type { CSSProperties, ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { DocsIcon, SearchIcon, StatsIcon } from './icons';
 import { Hexagon } from './Hexagon';
@@ -63,13 +64,21 @@ const badgeStyle: CSSProperties = {
 
 const statusRowStyle: CSSProperties = { display: 'flex', justifyContent: 'space-between' };
 
-const NAV_ITEMS: { screen: Screen; label: string; icon: ReactElement }[] = [
-  { screen: 'search', label: 'Búsqueda', icon: <SearchIcon size={18} /> },
-  { screen: 'docs', label: 'Documentos', icon: <DocsIcon size={18} /> },
-  { screen: 'stats', label: 'Estadísticas', icon: <StatsIcon size={18} /> },
+// D9 trap: this is evaluated at import time, before main.tsx resolves the
+// boot language — labels are translation KEYS, resolved at render (below),
+// never plain text here.
+const NAV_ITEMS: {
+  screen: Screen;
+  labelKey: 'sidebar.nav.search' | 'sidebar.nav.docs' | 'sidebar.nav.stats';
+  icon: ReactElement;
+}[] = [
+  { screen: 'search', labelKey: 'sidebar.nav.search', icon: <SearchIcon size={18} /> },
+  { screen: 'docs', labelKey: 'sidebar.nav.docs', icon: <DocsIcon size={18} /> },
+  { screen: 'stats', labelKey: 'sidebar.nav.stats', icon: <StatsIcon size={18} /> },
 ];
 
 export function Sidebar({ activeScreen, onNavigate, unreadCount = 0 }: SidebarProps): ReactElement {
+  const { t } = useTranslation();
   return (
     <aside style={asideStyle}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '6px 8px 18px' }}>
@@ -87,7 +96,7 @@ export function Sidebar({ activeScreen, onNavigate, unreadCount = 0 }: SidebarPr
       </div>
 
       <nav style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 6 }}>
-        {NAV_ITEMS.map(({ screen, label, icon }) => {
+        {NAV_ITEMS.map(({ screen, labelKey, icon }) => {
           const active = screen === activeScreen;
           return (
             <button
@@ -99,7 +108,7 @@ export function Sidebar({ activeScreen, onNavigate, unreadCount = 0 }: SidebarPr
               style={navItemStyle}
             >
               <span style={iconSpanStyle}>{icon}</span>
-              {label}
+              {t(labelKey)}
               {screen === 'docs' && unreadCount > 0 && (
                 <span data-testid="sidebar-badge" style={badgeStyle}>
                   {unreadCount}

@@ -3,6 +3,7 @@
 // toggle, logout. The theme button shows a sun while dark is active (click ->
 // light) and a moon while light is active. UI copy Spanish verbatim.
 import type { CSSProperties, ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { DiscordIcon, LogoutIcon, MoonIcon, SunIcon, UserIcon } from './icons';
 import type { Theme } from '../hooks/useTheme';
@@ -52,6 +53,7 @@ export function Header({
   onLogout,
   isGuest,
 }: HeaderProps): ReactElement {
+  const { t } = useTranslation();
   return (
     <header style={headerStyle}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
@@ -96,7 +98,7 @@ export function Header({
               animation: 'kh-pulse 1.6s ease-in-out infinite',
             }}
           />
-          <span style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>indexando en vivo</span>
+          <span style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>{t('header.liveIndexing')}</span>
         </div>
 
         {isGuest && (
@@ -114,7 +116,7 @@ export function Header({
             }}
           >
             <UserIcon size={12} />
-            <span style={{ fontSize: 11.5 }}>Modo invitado</span>
+            <span style={{ fontSize: 11.5 }}>{t('header.guestMode')}</span>
           </div>
         )}
 
@@ -141,8 +143,8 @@ export function Header({
             type="button"
             className="kh-icon-btn"
             onClick={onToggleTheme}
-            title={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
-            aria-label={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+            title={theme === 'dark' ? t('header.themeToLight') : t('header.themeToDark')}
+            aria-label={theme === 'dark' ? t('header.themeToLight') : t('header.themeToDark')}
             style={iconBtnStyle}
           >
             {theme === 'dark' ? <SunIcon size={16} /> : <MoonIcon size={16} />}
@@ -152,8 +154,8 @@ export function Header({
             type="button"
             className="kh-icon-btn kh-logout-btn"
             onClick={onLogout}
-            title={isGuest ? 'Salir' : 'Cerrar sesión'}
-            aria-label={isGuest ? 'Salir' : 'Cerrar sesión'}
+            title={isGuest ? t('header.guestLogout') : t('header.logout')}
+            aria-label={isGuest ? t('header.guestLogout') : t('header.logout')}
             style={iconBtnStyle}
           >
             <LogoutIcon size={15} />

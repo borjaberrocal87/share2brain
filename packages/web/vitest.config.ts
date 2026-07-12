@@ -15,5 +15,9 @@ export default defineConfig({
     root: import.meta.dirname,
     environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
+    // Story 10.2 (D10): real i18next `es` resources for every test via the
+    // default instance, so useTranslation() works without a Provider and all
+    // existing Spanish-literal assertions stay unmodified.
+    setupFiles: ['./src/test-setup.ts'],
   },
 });

@@ -10,6 +10,7 @@
 // screen. Display data (community name, user) comes from real data / build config.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { AuthMeResponse, UnreadCountResponse } from '@share2brain/shared/schemas';
 
@@ -29,9 +30,9 @@ type AuthState = 'loading' | 'anon' | 'authed';
 // YAML). Real message stats arrive in Epic 4 — keep a neutral placeholder, not
 // fake numbers.
 const COMMUNITY_NAME = import.meta.env.VITE_COMMUNITY_NAME ?? 'Share2Brain';
-const STATS_LINE = 'indexación de conocimiento · pgvector';
 
 export function App(): ReactElement {
+  const { t } = useTranslation();
   const [authState, setAuthState] = useState<AuthState>('loading');
   const [user, setUser] = useState<AuthMeResponse | null>(null);
   const [screen, setScreen] = useState<Screen>('search');
@@ -141,7 +142,7 @@ export function App(): ReactElement {
         activeScreen={screen}
         onNavigate={setScreen}
         communityName={COMMUNITY_NAME}
-        statsLine={STATS_LINE}
+        statsLine={t('app.statsLine')}
         user={userIdentity}
         theme={theme}
         onToggleTheme={toggleTheme}
@@ -160,10 +161,11 @@ export function App(): ReactElement {
 // Neutral splash shown while GET /api/auth/me is in flight, so the login screen
 // never flashes before the session check resolves.
 function LoadingSplash(): ReactElement {
+  const { t } = useTranslation();
   return (
     <div
       role="status"
-      aria-label="Cargando"
+      aria-label={t('app.loadingAriaLabel')}
       style={{
         position: 'fixed',
         inset: 0,

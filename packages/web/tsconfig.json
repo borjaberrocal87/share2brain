@@ -9,6 +9,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
+    "resolveJsonModule": true,
     // `node` is needed by the Playwright specs + config under tests/ (process.env,
     // the Node-side test runner); `rootDir` is dropped so tests/ (a sibling of src)
     // is allowed in `include` — safe because the build is `tsc --noEmit`.

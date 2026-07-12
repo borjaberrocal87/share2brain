@@ -24,12 +24,14 @@
 // state (React-driven, not a CSS pseudo-class).
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent, ReactElement, ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { CitationType, ConversationSummary } from '@share2brain/shared/schemas';
 
-import { streamChat } from '../api/chat';
+import { streamChat, ChatStreamError } from '../api/chat';
 import { fetchConversation, fetchConversations } from '../api/conversations';
-import { relativeTimeEs } from '../lib/relativeTime';
+import { translateErrorCode } from '../lib/apiError';
+import { relativeTime } from '../lib/relativeTime';
 import { Hexagon, CLIP_PATH, AMBER_GRADIENT } from './Hexagon';
 import { ChatIcon, CloseIcon, ExternalLinkIcon, HistoryIcon, LockIcon, PlusIcon, SendIcon } from './icons';
 
@@ -84,11 +86,14 @@ function replaceMessage(
 }
 
 // Empty-state suggestion prompts (the prototype leaves these dynamic). Knowledge-
-// oriented, Spanish. Clicking one sends it as a message (AC5).
-const SUGGESTIONS: readonly string[] = [
-  '¿Cómo configuro los canales a indexar?',
-  '¿Qué es el backfill histórico?',
-  '¿Cómo funciona el filtrado RBAC?',
+// oriented. Clicking one sends it as a message (AC5).
+// D9 trap: this is evaluated at import time, before main.tsx resolves the boot
+// language — these are translation KEYS, resolved at render (below), never
+// plain text here.
+const SUGGESTIONS: readonly ('common.exampleQuestion' | 'chat.suggestions.backfill' | 'chat.suggestions.rbac')[] = [
+  'common.exampleQuestion',
+  'chat.suggestions.backfill',
+  'chat.suggestions.rbac',
 ];
 
 const AMBER_SHADOW = '0 14px 34px -10px rgba(245,166,35,0.65)';
@@ -100,6 +105,7 @@ const ACTIVE_ROW_STYLE: CSSProperties = {
 };
 
 export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactElement {
+  const { t, i18n } = useTranslation();
   const [chatOpen, setChatOpen] = useState(false);
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -237,7 +243,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
             content: '',
             citations: [],
             errored: true,
-            errorNote: 'No se pudo cargar la conversación. Intentá de nuevo.',
+            errorNote: t('chat.historyLoadError'),
           },
         ]);
       });
@@ -324,18 +330,28 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
               replaceMessage(prev, assistantId, (m) => ({ ...m, streaming: false })),
             );
           } else {
-            // `error` frame: mark the bubble errored and stop the cursor.
+            // `error` frame: mark the bubble errored and stop the cursor. The
+            // frame's `message` is the fallback for an unmapped code (AC5/D4).
+            const errorNote = translateErrorCode(frame.code, frame.message);
             setMessages((prev) =>
-              replaceMessage(prev, assistantId, (m) => ({ ...m, streaming: false, errored: true })),
+              replaceMessage(prev, assistantId, (m) => ({
+                ...m,
+                streaming: false,
+                errored: true,
+                errorNote,
+              })),
             );
           }
         }
       } catch (err) {
         // Unmount abort: the component is going away — leave state untouched.
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        // A pre-stream ChatStreamError or any other failure → errored bubble.
+        // A pre-stream ChatStreamError carries a `code` (AC5/D4); any other
+        // failure falls back to the generic chat error → errored bubble.
+        const fallback = t('chat.genericError');
+        const errorNote = err instanceof ChatStreamError ? translateErrorCode(err.code, fallback) : fallback;
         setMessages((prev) =>
-          replaceMessage(prev, assistantId, (m) => ({ ...m, streaming: false, errored: true })),
+          replaceMessage(prev, assistantId, (m) => ({ ...m, streaming: false, errored: true, errorNote })),
         );
       } finally {
         sendingRef.current = false;
@@ -373,7 +389,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
         type="button"
         className="kh-chat-fab"
         data-testid="chat-fab"
-        aria-label="Abrir chat con el agente"
+        aria-label={t('chat.openAriaLabel')}
         onClick={openChat}
         style={{
           position: 'fixed',
@@ -430,7 +446,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
       tabIndex={-1}
       role="dialog"
       aria-modal="true"
-      aria-label="Chat con el agente"
+      aria-label={t('chat.panelAriaLabel')}
       data-testid="chat-panel"
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
@@ -521,7 +537,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
               aria-hidden="true"
               style={{ width: 6, height: 6, borderRadius: '50%', background: '#3BA55D' }}
             />
-            Agente de conocimiento
+            {t('chat.tagline')}
           </div>
         </div>
 
@@ -533,8 +549,8 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
             ref={historyBtnRef}
             type="button"
             className="kh-chat-header-btn"
-            aria-label="Historial de conversaciones"
-            title="Historial"
+            aria-label={t('chat.historyTitle')}
+            title={t('chat.historyButtonTitle')}
             onClick={toggleHistory}
             style={headerBtnStyle}
           >
@@ -544,8 +560,8 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
         <button
           type="button"
           className="kh-chat-header-btn"
-          aria-label="Nueva conversación"
-          title="Nueva conversación"
+          aria-label={t('chat.newConversation')}
+          title={t('chat.newConversation')}
           onClick={newChat}
           style={headerBtnStyle}
         >
@@ -554,8 +570,8 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
         <button
           type="button"
           className="kh-chat-header-btn kh-chat-header-btn--danger"
-          aria-label="Cerrar chat"
-          title="Cerrar"
+          aria-label={t('chat.closeAriaLabel')}
+          title={t('chat.closeTitle')}
           onClick={closeChat}
           style={headerBtnStyle}
         >
@@ -587,7 +603,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
                 color: 'var(--text-subtle)',
               }}
             >
-              Historial de conversaciones
+              {t('chat.historyTitle')}
             </div>
             <div
               style={{
@@ -600,14 +616,14 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
               }}
             >
               {historyStatus === 'loading' && (
-                <p style={historyMessageStyle}>Cargando conversaciones…</p>
+                <p style={historyMessageStyle}>{t('chat.historyLoading')}</p>
               )}
               {historyStatus === 'error' && (
-                <p style={historyMessageStyle}>No se pudo cargar el historial. Reintentá.</p>
+                <p style={historyMessageStyle}>{t('chat.historyError')}</p>
               )}
               {historyStatus === 'idle' && conversations.length === 0 && (
                 <p data-testid="chat-history-empty" style={historyMessageStyle}>
-                  Todavía no tenés conversaciones guardadas.
+                  {t('chat.historyEmpty')}
                 </p>
               )}
               {historyStatus === 'idle' &&
@@ -638,7 +654,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
                         {c.title}
                       </span>
                       <span style={{ flexShrink: 0, fontSize: 10.5, color: 'var(--text-subtle)' }}>
-                        {relativeTimeEs(c.updatedAt)}
+                        {relativeTime(c.updatedAt, i18n.language)}
                       </span>
                     </button>
                   );
@@ -667,10 +683,10 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
                       color: 'var(--text-primary)',
                     }}
                   >
-                    Preguntá lo que quieras
+                    {t('chat.emptyStateTitle')}
                   </h3>
                   <p style={{ margin: '8px 0 0', fontSize: 14, color: 'var(--text-tertiary)' }}>
-                    El agente responde con RAG sobre el conocimiento de la comunidad y cita sus fuentes.
+                    {t('chat.emptyStateDescription')}
                   </p>
                   <div
                     style={{
@@ -683,26 +699,29 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
                       gap: 9,
                     }}
                   >
-                    {SUGGESTIONS.map((text) => (
-                      <button
-                        key={text}
-                        type="button"
-                        className="kh-chat-suggestion"
-                        data-testid="chat-suggestion"
-                        onClick={() => send(text, false)}
-                        style={{
-                          textAlign: 'left',
-                          padding: '13px 16px',
-                          borderRadius: 11,
-                          background: 'var(--surface)',
-                          color: 'var(--text-secondary)',
-                          fontSize: 13.5,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {text}
-                      </button>
-                    ))}
+                    {SUGGESTIONS.map((key) => {
+                      const text = t(key);
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          className="kh-chat-suggestion"
+                          data-testid="chat-suggestion"
+                          onClick={() => send(text, false)}
+                          style={{
+                            textAlign: 'left',
+                            padding: '13px 16px',
+                            borderRadius: 11,
+                            background: 'var(--surface)',
+                            color: 'var(--text-secondary)',
+                            fontSize: 13.5,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {text}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -752,8 +771,8 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
             value={draft}
             onChange={onDraftChange}
             onKeyDown={onComposerKeyDown}
-            placeholder="Preguntá al agente…"
-            aria-label="Escribí tu mensaje"
+            placeholder={t('chat.composerPlaceholder')}
+            aria-label={t('chat.inputAriaLabel')}
             style={{
               flex: 1,
               resize: 'none',
@@ -772,7 +791,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
             type="button"
             className="kh-chat-send"
             data-testid="chat-send"
-            aria-label="Enviar mensaje"
+            aria-label={t('chat.sendAriaLabel')}
             disabled={!canSend}
             onClick={() => send(draft)}
             style={{
@@ -807,7 +826,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
           <span aria-hidden="true" style={{ display: 'flex' }}>
             <LockIcon size={11} />
           </span>
-          Respuestas con fuente verificable · tools de share2brain.config.yml
+          {t('chat.privacyFooter')}
         </div>
       </div>
     </div>
@@ -849,10 +868,11 @@ function UserBubble({
   initials: string;
   content: string;
 }): ReactElement {
+  const { t } = useTranslation();
   return (
     <MessageRow
       avatar={
-        // Label is "Vos" (D4); the real username surfaces as the avatar tooltip.
+        // Label is chat.you (D4); the real username surfaces as the avatar tooltip.
         <span
           aria-hidden="true"
           title={name}
@@ -873,7 +893,7 @@ function UserBubble({
         </span>
       }
     >
-      <div style={NAME_LABEL_STYLE}>Vos</div>
+      <div style={NAME_LABEL_STYLE}>{t('chat.you')}</div>
       <div data-testid="chat-msg-user" style={MESSAGE_TEXT_STYLE}>
         {content}
       </div>
@@ -904,6 +924,7 @@ function AgentHexAvatar(): ReactElement {
 }
 
 function AgentBubble({ message }: { message: ChatMessage }): ReactElement {
+  const { t } = useTranslation();
   return (
     <MessageRow avatar={<AgentHexAvatar />}>
       <div style={NAME_LABEL_STYLE}>Share2Brain</div>
@@ -927,7 +948,7 @@ function AgentBubble({ message }: { message: ChatMessage }): ReactElement {
       </div>
       {message.errored && (
         <div data-testid="chat-error" style={{ marginTop: 8, fontSize: 13, color: 'var(--text-tertiary)' }}>
-          {message.errorNote ?? 'No se pudo completar la respuesta. Intentá de nuevo.'}
+          {message.errorNote || t('chat.genericError')}
         </div>
       )}
       {message.citations.length > 0 && <Citations citations={message.citations} />}
@@ -936,6 +957,7 @@ function AgentBubble({ message }: { message: ChatMessage }): ReactElement {
 }
 
 function Citations({ citations }: { citations: CitationType[] }): ReactElement {
+  const { t } = useTranslation();
   return (
     <div style={{ marginTop: 16 }}>
       <div
@@ -948,7 +970,7 @@ function Citations({ citations }: { citations: CitationType[] }): ReactElement {
           marginBottom: 8,
         }}
       >
-        Fuentes
+        {t('chat.sources')}
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {citations.map((c, i) => (

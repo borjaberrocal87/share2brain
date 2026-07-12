@@ -6,6 +6,7 @@
 // SearchView.tsx.
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { Channel, DocumentFragment, UnreadCountResponse } from '@share2brain/shared/schemas';
 
@@ -29,6 +30,7 @@ const containerStyle: CSSProperties = { flex: 1, overflowY: 'auto', padding: '34
 const innerStyle: CSSProperties = { maxWidth: 980, margin: '0 auto' };
 
 export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): ReactElement {
+  const { t } = useTranslation();
   const [docs, setDocs] = useState<DocumentFragment[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -173,12 +175,10 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
             color: 'var(--text-primary)',
           }}
         >
-          Documentos indexados
+          {t('docs.title')}
         </h2>
         <p style={{ margin: '7px 0 0', fontSize: 14, color: 'var(--text-tertiary)' }}>
-          Cada recurso es un link compartido en la comunidad, enriquecido con título y
-          descripción por IA. El punto ámbar marca los recursos sin leer — tocá una fila para
-          marcarla como leída.
+          {t('docs.description')}
         </p>
 
         <div
@@ -191,7 +191,7 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
           }}
         >
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <ChannelChip label="todos" active={activeChannelId === 'all'} onClick={() => setActiveChannelId('all')} />
+            <ChannelChip label={t('common.all')} active={activeChannelId === 'all'} onClick={() => setActiveChannelId('all')} />
             {channels.map((ch) => (
               <ChannelChip
                 key={ch.id}
@@ -219,7 +219,7 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
                 cursor: 'pointer',
               }}
             >
-              Marcar todas como leídas
+              {t('docs.markAllRead')}
             </button>
           )}
 
@@ -251,13 +251,13 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
             }}
           >
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#F5A623' }} />
-            Sin leer · {scopeUnread}
+            {t('docs.unreadToggle', { count: scopeUnread })}
           </button>
         </div>
 
         {status === 'error' ? (
           <div style={{ marginTop: 24, fontSize: 14, color: 'var(--text-tertiary)' }}>
-            No se pudieron cargar los documentos. Reintentá.
+            {t('docs.loadError')}
           </div>
         ) : showEmptyState ? (
           <div
@@ -287,10 +287,10 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
               <CheckIcon size={20} />
             </div>
             <div style={{ fontSize: 15, color: 'var(--text-primary)' }}>
-              ¡Estás al día! No te quedan fuentes sin leer.
+              {t('docs.emptyStateTitle')}
             </div>
             <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-subtle)' }}>
-              Quitá el filtro "Sin leer" para ver todo el conocimiento indexado.
+              {t('docs.emptyStateDescription')}
             </div>
           </div>
         ) : (
@@ -319,12 +319,12 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
                 color: 'var(--text-subtle)',
               }}
             >
-              <span>título</span>
-              <span>descripción</span>
-              <span>link</span>
-              <span>canal</span>
-              <span>autor</span>
-              <span style={{ textAlign: 'right' }}>indexado</span>
+              <span>{t('docs.columns.title')}</span>
+              <span>{t('docs.columns.description')}</span>
+              <span>{t('docs.columns.link')}</span>
+              <span>{t('docs.columns.channel')}</span>
+              <span>{t('docs.columns.author')}</span>
+              <span style={{ textAlign: 'right' }}>{t('docs.columns.indexed')}</span>
             </div>
 
             {visibleDocs.map((doc) => (
@@ -336,7 +336,7 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
         {status !== 'error' && (
           <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, color: 'var(--text-subtle)' }}>
-              mostrando {visibleDocs.length} de {total}
+              {t('docs.showing', { shown: visibleDocs.length, total })}
             </span>
             {docs.length < total && (
               <button
@@ -355,7 +355,7 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
                   cursor: 'pointer',
                 }}
               >
-                Cargar más
+                {t('docs.loadMore')}
               </button>
             )}
           </div>
@@ -405,7 +405,8 @@ function ChannelChip({
 }
 
 function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }): ReactElement {
-  const date = new Intl.DateTimeFormat('es', { dateStyle: 'medium' }).format(new Date(doc.indexedAt));
+  const { t, i18n } = useTranslation();
+  const date = new Intl.DateTimeFormat(i18n.language, { dateStyle: 'medium' }).format(new Date(doc.indexedAt));
 
   return (
     <div
@@ -487,7 +488,7 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
                 borderRadius: 5,
               }}
             >
-              Nuevo
+              {t('docs.newBadge')}
             </span>
           )}
         </div>
@@ -513,8 +514,8 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
         href={doc.link}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Ver recurso"
-        title="Ver recurso"
+        aria-label={t('docs.viewResourceAriaLabel')}
+        title={t('docs.viewResourceTitle')}
         className="kh-doc-link"
         style={{
           display: 'flex',

@@ -1,5 +1,16 @@
 # generated: 2026-06-30
-# last_updated: 2026-07-11 (story 2-5 backlog → ready-for-dev, bmad-create-story): guest access for
+# last_updated: 2026-07-12 (story 10-2 review → done, bmad-code-review): 3 adversarial layers
+# (Blind/Edge/Auditor). Auditor confirmed all 7 ACs + D1–D10 SATISFIED, zero violations. Blind/Edge
+# raised 6 robustness items → triaged: 2 decisions (D1 pre-render gate kept as ratified; D5 search
+# plural resolved to ADD forms), 3 patches applied, 1 deferred (parity-test placeholder hardening),
+# 3 dismissed (index.html lang="es" is AC3-mandated; useSuspense:false is a spec anti-pattern;
+# non-reactive error notes are informational — no in-app switcher). Patches: search.resultsCount
+# _one/_other in both locales (es byte-identical, en fixes "1 result"); ChatWidget errorNote ?? → ||
+# (empty frame.message no longer blanks the bubble); main.tsx bootstrap try/catch (changeLanguage
+# rejection mounts in default lang, no white screen). Gate re-run green: lint 0 / 1051 unit+web /
+# build clean (5 pkgs) / 28 e2e passed (0 spec changes, AC6 re-confirmed post-patch). Epic 10
+# COMPLETE (10-1 + 10-2 done). Next: PR + bmad-checkpoint-preview.
+# || (prior) last_updated: 2026-07-11 (story 2-5 backlog → ready-for-dev, bmad-create-story): guest access for
 # demos, config-gated. Story file 2-5-acceso-de-invitado-para-demos.md. GET+POST /api/auth/guest
 # (404 GUEST_ACCESS_DISABLED when off; GET = availability probe D1 — no unauth config endpoint
 # exists and AC1 requires the login link HIDDEN when disabled), shared guest_access optional config
@@ -184,7 +195,41 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-06-30
-last_updated: 2026-07-12  # story 10-1 review → done (bmad-code-review): 3 adversarial layers
+last_updated: 2026-07-12  # story 10-2 in-progress → review (bmad-dev-story): implemented on
+# feat/10-2-web-i18n off 4471cd2. i18next 26 + react-i18next 17 (single translation namespace,
+# 103 keys, es/en structurally identical per parity.test.ts); pre-render boot language
+# resolution (fetchUiLanguage never throws ⇒ es); ~80 literals extracted across 8 components,
+# D9 module-scope trap (NAV_ITEMS/SUGGESTIONS/STATS_LINE) resolved via render-time t(); D6
+# relativeTimeEs → relativeTime(iso, locale); D4 errors.<CODE> wired ChatWidget-only; D5
+# plurals in StatsView, SearchView "1 resultados" byte-identical. Gate green: lint 0 / 1051
+# unit+web (+32) / build clean (5 pkgs) / 28 e2e (0 spec changes). test:integration skipped
+# (web-only, 8-1 precedent). AC7 manually verified via dev servers + headless-Chromium
+# screenshots (login + guest-authenticated shell, all 3 views + chat, English; D3 KPI-Spanish
+# limitation visually confirmed as expected; local config restored to es afterward). D3
+# limitation appended to deferred-work.md. NOT committed to a PR yet. Next: commit + PR +
+# bmad-code-review.
+# || (prior) last_updated: 2026-07-12  # story 10-2 ready-for-dev → in-progress (bmad-dev-story): starting
+# implementation on branch feat/10-2-web-i18n off 4471cd2.
+# || (prior) last_updated: 2026-07-12  # story 10-2 backlog → ready-for-dev (bmad-create-story): react-i18next 17 +
+# i18next 26 in packages/web, static es/en JSON locales (single translation ns, view-namespaced keys),
+# pre-render boot fetch of GET /api/ui-config (fetchUiLanguage never throws, ANY failure ⇒ es,
+# AbortSignal.timeout 3s) + changeLanguage before first render (no FOUC). Literal inventory CORRECTED
+# vs epic: ~80 literals / 8 files (not ~31/9; icons.tsx & AppLayout have zero) + 3 extra hardcoded-locale
+# surfaces beyond StatsView's 7 toLocaleString('es'): Intl.DateTimeFormat('es') SearchView:282 +
+# DocsView:408, Intl.RelativeTimeFormat('es') lib/relativeTime.ts (relativeTimeEs → relativeTime(iso,
+# locale), mechanical test-callsite update sanctioned). 🚩 D3 veto point: StatsView KPI label/sub are
+# BACKEND-produced Spanish (statsService.ts:96–121) — stay untranslated under en (SCP pins backend
+# bodies unchanged); deferred-work follow-up. D4: errors.<CODE> mapping (11-code vocabulary) wired
+# ChatWidget-only (sole surface receiving codes; other 8 api clients untouched). D5: plurals in
+# StatsView only — SearchView keeps '1 resultados' (SearchView.test.tsx:93 pins it). D9 trap: module-
+# scope consts (NAV_ITEMS/SUGGESTIONS/STATS_LINE) must translate at render, not import. Unit i18n via
+# vitest setupFiles importing src/i18n.ts (real es resources ⇒ 126 existing asserts untouched); e2e
+# server uiLanguage-free ⇒ 28 e2e byte-identical (Epic 10 critical guard, AC6). Fresh-context checklist
+# validation applied 3 critical fixes (SearchView singular assert exists; CustomTypeOptions needs
+# { translation: ... } wrapper — bare JSON type fails TS2344; enableSelector already defaults false
+# in 26.3.6) + 6 enhancements. Next: bmad-dev-story 10-2 (branch feat/10-2-web-i18n off 4471cd2) —
+# final Epic 10 story.
+# || (prior) last_updated: 2026-07-12  # story 10-1 review → done (bmad-code-review): 3 adversarial layers
 # (Blind/Edge/Auditor). Auditor confirmed all 7 ACs + D1–D7 SATISFIED, no violations. 1 patch applied
 # (Task-4.3 optional hardening: catch-all router.use 404 on /api/ui-config so unmatched paths/methods
 # don't double-count the shared apiLimiters / ERR_ERL_DOUBLE_COUNT; router.use not all('*') for
@@ -646,7 +691,7 @@ development_status:
   # 28 e2e + unit Spanish-literal asserts byte-identical. Binding sequence: 10-1 → 10-2.
   epic-10: in-progress
   10-1-shared-backend-config-ui-language-endpoint-ui-config: done
-  10-2-web-react-i18next-extraccion-literales-locales-json: backlog
+  10-2-web-react-i18next-extraccion-literales-locales-json: done
   epic-10-retrospective: optional
 
   # ── Operational backlog (post-roadmap) — no epic; see operational-backlog.md ─

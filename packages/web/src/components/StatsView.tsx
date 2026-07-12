@@ -7,6 +7,7 @@
 // fetch-on-mount + AbortController pattern.
 import { useEffect, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import type { StatsActivityPoint, StatsChannel, StatsCoverage, StatsKpi, StatsResponse, StatsTopUser } from '@share2brain/shared/schemas';
 
@@ -87,6 +88,7 @@ function KpiIcon({ kpiKey }: { kpiKey: StatsKpi['key'] }): ReactElement {
 }
 
 export function StatsView(): ReactElement {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [status, setStatus] = useState<Status>('loading');
 
@@ -121,22 +123,21 @@ export function StatsView(): ReactElement {
             color: 'var(--text-primary)',
           }}
         >
-          Estadísticas
+          {t('stats.title')}
         </h2>
         <p style={{ margin: '7px 0 0', fontSize: 14, color: 'var(--text-tertiary)' }}>
-          El pulso del conocimiento de la comunidad: qué se indexa, quién participa y cuánto se
-          consulta al agente.
+          {t('stats.description')}
         </p>
 
         {status === 'loading' && (
           <div data-testid="stats-loading" style={{ marginTop: 24, ...monoMutedStyle }}>
-            Cargando estadísticas…
+            {t('stats.loading')}
           </div>
         )}
 
         {status === 'error' && (
           <div data-testid="stats-error" style={{ marginTop: 24, fontSize: 14, color: 'var(--text-tertiary)' }}>
-            No se pudieron cargar las estadísticas. Reintentá.
+            {t('stats.error')}
           </div>
         )}
 
@@ -165,6 +166,7 @@ export function StatsView(): ReactElement {
 }
 
 function KpiGrid({ kpis }: { kpis: StatsKpi[] }): ReactElement {
+  const { i18n } = useTranslation();
   return (
     <div
       style={{
@@ -213,7 +215,7 @@ function KpiGrid({ kpis }: { kpis: StatsKpi[] }): ReactElement {
               color: 'var(--text-primary)',
             }}
           >
-            {kpi.value.toLocaleString('es')}
+            {kpi.value.toLocaleString(i18n.language)}
           </div>
           <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>{kpi.sub}</div>
         </div>
@@ -223,6 +225,7 @@ function KpiGrid({ kpis }: { kpis: StatsKpi[] }): ReactElement {
 }
 
 function ActivityChart({ activity }: { activity: StatsActivityPoint[] }): ReactElement {
+  const { t } = useTranslation();
   const total = activity.reduce((sum, a) => sum + a.count, 0);
   const maxCount = Math.max(1, ...activity.map((a) => a.count)); // D6: zero-safe divisor
   const lastIndex = activity.length - 1;
@@ -230,12 +233,12 @@ function ActivityChart({ activity }: { activity: StatsActivityPoint[] }): ReactE
   return (
     <div data-testid="stats-activity-chart" style={{ marginTop: 22, ...sectionCardStyle }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h3 style={sectionTitleStyle}>Actividad de indexado</h3>
+        <h3 style={sectionTitleStyle}>{t('stats.activityTitle')}</h3>
         <span
           data-testid="stats-activity-total"
           style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, color: 'var(--text-muted)' }}
         >
-          {total.toLocaleString('es')} recursos · últimos 14 días
+          {t('stats.activityTotal', { count: total })}
         </span>
       </div>
 
@@ -246,7 +249,7 @@ function ActivityChart({ activity }: { activity: StatsActivityPoint[] }): ReactE
             <div
               key={point.date}
               data-testid="stats-activity-bar"
-              title={`${point.count.toLocaleString('es')} recursos`}
+              title={t('stats.activityBarTitle', { count: point.count })}
               style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', height: '100%' }}
             >
               <div
@@ -273,23 +276,24 @@ function ActivityChart({ activity }: { activity: StatsActivityPoint[] }): ReactE
           color: 'var(--text-subtle)',
         }}
       >
-        <span>hace 14 días</span>
-        <span>hoy</span>
+        <span>{t('stats.daysAgo14')}</span>
+        <span>{t('stats.today')}</span>
       </div>
     </div>
   );
 }
 
 function ChannelsCard({ channels }: { channels: StatsChannel[] }): ReactElement {
+  const { t, i18n } = useTranslation();
   const maxCount = Math.max(1, ...channels.map((c) => c.count)); // D6: zero-safe divisor
 
   return (
     <div style={sectionCardStyle}>
-      <h3 style={sectionTitleStyle}>Recursos por canal</h3>
+      <h3 style={sectionTitleStyle}>{t('stats.channelsTitle')}</h3>
 
       {channels.length === 0 ? (
         <div data-testid="stats-channels-empty" style={{ marginTop: 18, ...monoMutedStyle }}>
-          Sin datos en tus canales todavía.
+          {t('stats.channelsEmpty')}
         </div>
       ) : (
         <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 15 }}>
@@ -302,7 +306,7 @@ function ChannelsCard({ channels }: { channels: StatsChannel[] }): ReactElement 
                     #{ch.channelName}
                   </span>
                   <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'var(--text-tertiary)' }}>
-                    {ch.count.toLocaleString('es')}
+                    {ch.count.toLocaleString(i18n.language)}
                   </span>
                 </div>
                 <div style={{ height: 9, borderRadius: 5, background: 'var(--track)', overflow: 'hidden' }}>
@@ -325,14 +329,15 @@ function ChannelsCard({ channels }: { channels: StatsChannel[] }): ReactElement 
 }
 
 function CoverageCard({ coverage }: { coverage: StatsCoverage }): ReactElement {
+  const { t } = useTranslation();
   const { readCount, totalCount, readPct } = coverage;
   const unread = totalCount - readCount;
 
   return (
     <div style={sectionCardStyle}>
-      <h3 style={sectionTitleStyle}>Cobertura de lectura</h3>
+      <h3 style={sectionTitleStyle}>{t('stats.coverageTitle')}</h3>
       <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
-        Documentos indexados que ya revisaste.
+        {t('stats.coverageDescription')}
       </p>
 
       <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 24 }}>
@@ -368,13 +373,13 @@ function CoverageCard({ coverage }: { coverage: StatsCoverage }): ReactElement {
             >
               {readPct}%
             </span>
-            <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>leído</span>
+            <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{t('stats.read')}</span>
           </div>
         </div>
 
         <div data-testid="stats-coverage-legend" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <LegendRow color="#F5A623" label="Leídos" value={readCount} />
-          <LegendRow color="var(--track)" label="Sin leer" value={unread} />
+          <LegendRow color="#F5A623" label={t('stats.legendRead')} value={readCount} />
+          <LegendRow color="var(--track)" label={t('stats.legendUnread')} value={unread} />
         </div>
       </div>
 
@@ -386,33 +391,35 @@ function CoverageCard({ coverage }: { coverage: StatsCoverage }): ReactElement {
           color: 'var(--text-subtle)',
         }}
       >
-        {totalCount.toLocaleString('es')} documentos en total
+        {t('stats.coverageTotal', { count: totalCount })}
       </div>
     </div>
   );
 }
 
 function LegendRow({ color, label, value }: { color: string; label: string; value: number }): ReactElement {
+  const { i18n } = useTranslation();
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, color: 'var(--text-secondary)' }}>
       <span style={{ width: 11, height: 11, borderRadius: 3, background: color }} />
       <span>
-        {label} · <strong style={{ color: 'var(--text-primary)' }}>{value.toLocaleString('es')}</strong>
+        {label} · <strong style={{ color: 'var(--text-primary)' }}>{value.toLocaleString(i18n.language)}</strong>
       </span>
     </div>
   );
 }
 
 function TopUsersCard({ topUsers }: { topUsers: StatsTopUser[] }): ReactElement {
+  const { t, i18n } = useTranslation();
   const topCount = Math.max(1, topUsers[0]?.count ?? 1); // D6: zero-safe divisor
 
   return (
     <div style={{ marginTop: 22, ...sectionCardStyle }}>
-      <h3 style={sectionTitleStyle}>Top 5 · usuarios más activos</h3>
+      <h3 style={sectionTitleStyle}>{t('stats.topUsersTitle')}</h3>
 
       {topUsers.length === 0 ? (
         <div data-testid="stats-top-users-empty" style={{ marginTop: 18, ...monoMutedStyle }}>
-          Sin autores todavía.
+          {t('stats.topUsersEmpty')}
         </div>
       ) : (
         <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -453,7 +460,7 @@ function TopUsersCard({ topUsers }: { topUsers: StatsTopUser[] }): ReactElement 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                     <span style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>{user.authorName}</span>
                     <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'var(--text-tertiary)' }}>
-                      {user.count.toLocaleString('es')}
+                      {user.count.toLocaleString(i18n.language)}
                     </span>
                   </div>
                   <div style={{ height: 7, borderRadius: 4, background: 'var(--track)', overflow: 'hidden' }}>

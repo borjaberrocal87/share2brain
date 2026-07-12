@@ -9,13 +9,20 @@ import type { ConversationDetail, ConversationsResponse, SSEFrame } from '@share
 
 import * as chatApi from '../api/chat';
 import * as conversationsApi from '../api/conversations';
+import i18n from '../i18n';
 import { ChatWidget } from './ChatWidget';
 
 vi.mock('../api/conversations', () => ({
   fetchConversations: vi.fn(),
   fetchConversation: vi.fn(),
 }));
-vi.mock('../api/chat', () => ({ streamChat: vi.fn() }));
+// Story 10.2: ChatWidget now imports the real ChatStreamError class (for the
+// errors.<CODE> mapping, D4) — re-export the actual module and only stub
+// streamChat, so `instanceof ChatStreamError` still works against thrown errors.
+vi.mock('../api/chat', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/chat')>();
+  return { ...actual, streamChat: vi.fn() };
+});
 
 const fetchConversations = vi.mocked(conversationsApi.fetchConversations);
 const fetchConversation = vi.mocked(conversationsApi.fetchConversation);
@@ -553,5 +560,22 @@ describe('ChatWidget — history load (5.4)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Historial de conversaciones' }));
     const clearedRow = await screen.findByTestId('chat-history-item');
     expect(clearedRow.style.background).toBe('');
+  });
+});
+
+describe('ChatWidget — en locale (Story 10.2, AC2)', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage('es');
+  });
+
+  it('should render the empty state in English', () => {
+    renderWidget();
+    openPanel();
+
+    expect(screen.getByText('Ask whatever you want')).toBeTruthy();
   });
 });

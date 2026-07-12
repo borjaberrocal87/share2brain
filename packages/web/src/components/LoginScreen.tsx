@@ -5,6 +5,7 @@
 // (see story Dev Notes -> Language rule).
 import { useEffect, useState } from 'react';
 import type { CSSProperties, ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { fetchGuestAvailability } from '../api/auth';
 import { DiscordIcon, LockIcon, UserIcon } from './icons';
@@ -55,6 +56,7 @@ const cardStyle: CSSProperties = {
 };
 
 export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElement {
+  const { t } = useTranslation();
   // Views own their data-fetching: probe guest availability on mount. Default
   // false so the link never flashes when disabled; a probe rejection stays hidden.
   const [showGuest, setShowGuest] = useState(false);
@@ -107,7 +109,7 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElemen
             textTransform: 'uppercase',
           }}
         >
-          Agente de conocimiento · self-hosted
+          {t('login.tagline')}
         </div>
 
         <p
@@ -118,8 +120,7 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElemen
             color: 'var(--text-secondary)',
           }}
         >
-          El conocimiento de tu comunidad de Discord, indexado y consultable. Iniciá sesión para
-          buscar y chatear con el agente.
+          {t('login.description')}
         </p>
 
         <button
@@ -145,7 +146,7 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElemen
           }}
         >
           <DiscordIcon size={22} />
-          Continuar con Discord
+          {t('login.continueWithDiscord')}
         </button>
 
         <div
@@ -160,7 +161,7 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElemen
           }}
         >
           <LockIcon size={13} />
-          Solo miembros del guild pueden acceder
+          {t('login.membersOnly')}
         </div>
 
         {showGuest && (
@@ -184,7 +185,7 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElemen
                   color: 'var(--text-subtle)',
                 }}
               >
-                o para la demo
+                {t('login.orForDemo')}
               </span>
               <span style={{ flex: 1, height: 1, background: 'var(--border)' }} />
             </div>
@@ -210,7 +211,7 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElemen
               }}
             >
               <UserIcon size={18} />
-              <span>Entrar como invitado</span>
+              <span>{t('login.guestLogin')}</span>
             </button>
           </>
         )}

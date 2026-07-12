@@ -1,0 +1,132 @@
+{
+  "common": {
+    "all": "all",
+    "exampleQuestion": "How do I configure the channels to index?"
+  },
+  "app": {
+    "statsLine": "knowledge indexing · pgvector",
+    "loadingAriaLabel": "Loading"
+  },
+  "login": {
+    "tagline": "Knowledge agent · self-hosted",
+    "description": "Your Discord community's knowledge, indexed and searchable. Sign in to search and chat with the agent.",
+    "continueWithDiscord": "Continue with Discord",
+    "membersOnly": "Only guild members can access",
+    "orForDemo": "or for the demo",
+    "guestLogin": "Enter as guest"
+  },
+  "sidebar": {
+    "nav": {
+      "search": "Search",
+      "docs": "Documents",
+      "stats": "Stats"
+    }
+  },
+  "header": {
+    "liveIndexing": "live indexing",
+    "guestMode": "Guest mode",
+    "themeToLight": "Switch to light theme",
+    "themeToDark": "Switch to dark theme",
+    "logout": "Log out",
+    "guestLogout": "Exit"
+  },
+  "chat": {
+    "openAriaLabel": "Open chat with the agent",
+    "panelAriaLabel": "Chat with the agent",
+    "tagline": "Knowledge agent",
+    "historyTitle": "Conversation history",
+    "historyButtonTitle": "History",
+    "newConversation": "New conversation",
+    "closeAriaLabel": "Close chat",
+    "closeTitle": "Close",
+    "historyLoading": "Loading conversations…",
+    "historyError": "Couldn't load the history. Try again.",
+    "historyEmpty": "You don't have any saved conversations yet.",
+    "emptyStateTitle": "Ask whatever you want",
+    "emptyStateDescription": "The agent answers with RAG over the community's knowledge and cites its sources.",
+    "suggestions": {
+      "backfill": "What is the historical backfill?",
+      "rbac": "How does RBAC filtering work?"
+    },
+    "composerPlaceholder": "Ask the agent…",
+    "inputAriaLabel": "Write your message",
+    "sendAriaLabel": "Send message",
+    "privacyFooter": "Verifiable-source answers · tools from share2brain.config.yml",
+    "you": "You",
+    "genericError": "Couldn't complete the response. Try again.",
+    "historyLoadError": "Couldn't load the conversation. Try again.",
+    "sources": "Sources"
+  },
+  "docs": {
+    "title": "Indexed documents",
+    "description": "Each resource is a link shared in the community, enriched with an AI-generated title and description. The amber dot marks unread resources — tap a row to mark it as read.",
+    "markAllRead": "Mark all as read",
+    "unreadToggle": "Unread · {{count}}",
+    "loadError": "Couldn't load the documents. Try again.",
+    "emptyStateTitle": "You're all caught up! No unread resources left.",
+    "emptyStateDescription": "Remove the \"Unread\" filter to see all indexed knowledge.",
+    "columns": {
+      "title": "title",
+      "description": "description",
+      "link": "link",
+      "channel": "channel",
+      "author": "author",
+      "indexed": "indexed"
+    },
+    "showing": "showing {{shown}} of {{total}}",
+    "loadMore": "Load more",
+    "newBadge": "New",
+    "viewResourceAriaLabel": "View resource",
+    "viewResourceTitle": "View resource"
+  },
+  "search": {
+    "title": "Knowledge search",
+    "description": "Semantic search over indexed Discord messages. Each result cites its original source.",
+    "loading": "Searching…",
+    "error": "Couldn't complete the search. Try again.",
+    "resultsCount_one": "{{count}} result",
+    "resultsCount_other": "{{count}} results",
+    "orderedBySimilarity": "sorted by similarity",
+    "emptyStateTitle": "No matches in the indexed knowledge.",
+    "emptyStateDescription": "Try other terms or ask the agent in the chat.",
+    "viewResource": "view resource",
+    "viewOnDiscord": "view on Discord"
+  },
+  "stats": {
+    "title": "Stats",
+    "description": "The community's knowledge pulse: what gets indexed, who participates and how much the agent gets consulted.",
+    "loading": "Loading stats…",
+    "error": "Couldn't load the stats. Try again.",
+    "activityTitle": "Indexing activity",
+    "activityTotal_one": "{{count, number}} resource · last 14 days",
+    "activityTotal_other": "{{count, number}} resources · last 14 days",
+    "activityBarTitle_one": "{{count, number}} resource",
+    "activityBarTitle_other": "{{count, number}} resources",
+    "daysAgo14": "14 days ago",
+    "today": "today",
+    "channelsTitle": "Resources by channel",
+    "channelsEmpty": "No data in your channels yet.",
+    "coverageTitle": "Reading coverage",
+    "coverageDescription": "Indexed documents you've already reviewed.",
+    "read": "read",
+    "legendRead": "Read",
+    "legendUnread": "Unread",
+    "coverageTotal_one": "{{count, number}} document in total",
+    "coverageTotal_other": "{{count, number}} documents in total",
+    "topUsersTitle": "Top 5 · most active users",
+    "topUsersEmpty": "No authors yet."
+  },
+  "errors": {
+    "AUTH_REQUIRED": "You need to sign in to continue.",
+    "GUILD_MEMBER_REQUIRED": "You need to be a member of the Discord server to access this.",
+    "INVALID_OAUTH_STATE": "The login session is invalid. Try again.",
+    "OAUTH_CALLBACK_FAILED": "Couldn't complete the sign-in with Discord.",
+    "LOGOUT_FAILED": "Couldn't log out. Try again.",
+    "RBAC_EXPANSION_FAILED": "Couldn't resolve your permissions. Try again.",
+    "GUEST_ACCESS_DISABLED": "Guest access is disabled.",
+    "VALIDATION_ERROR": "The request is invalid.",
+    "NOT_FOUND": "The requested resource was not found.",
+    "FORBIDDEN": "You don't have permission to access this resource.",
+    "INTERNAL": "An internal error occurred. Try again."
+  }
+}

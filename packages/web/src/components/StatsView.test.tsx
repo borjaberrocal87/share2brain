@@ -5,11 +5,12 @@
 // (8.1-documented workaround) — computed-style truth is Story 9.3's Playwright
 // harness.
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { StatsResponse } from '@share2brain/shared/schemas';
 
 import * as statsApi from '../api/stats';
+import i18n from '../i18n';
 import { StatsView } from './StatsView';
 
 vi.mock('../api/stats', () => ({ fetchStats: vi.fn() }));
@@ -194,5 +195,52 @@ describe('StatsView', () => {
 
     await Promise.resolve();
     expect(screen.queryByTestId('stats-error')).toBeNull();
+  });
+
+  // Plural singular cases (Story 10.2, D5): the _one variant is new; the
+  // _other variant stays byte-identical to today (asserted above at 131/12).
+  it('should render the singular activity total for a count of exactly 1', async () => {
+    fetchStats.mockResolvedValue({
+      ...FULL_STATS,
+      activity: [
+        { date: '2026-07-01', count: 1 },
+        ...Array.from({ length: 13 }, (_, i) => ({ date: `2026-07-${String(i + 2).padStart(2, '0')}`, count: 0 })),
+      ],
+    });
+
+    render(<StatsView />);
+
+    expect((await screen.findByTestId('stats-activity-total')).textContent).toBe(
+      '1 recurso · últimos 14 días',
+    );
+  });
+
+  it('should render the singular coverage total for a count of exactly 1', async () => {
+    fetchStats.mockResolvedValue({
+      ...FULL_STATS,
+      coverage: { readCount: 1, totalCount: 1, readPct: 100 },
+    });
+
+    render(<StatsView />);
+
+    expect(await screen.findByText('1 documento en total')).toBeTruthy();
+  });
+});
+
+describe('StatsView — en locale (Story 10.2, AC2)', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage('es');
+  });
+
+  it('should render the header title in English', () => {
+    fetchStats.mockReturnValue(new Promise(() => {}));
+
+    render(<StatsView />);
+
+    expect(screen.getByText('Stats')).toBeTruthy();
   });
 });

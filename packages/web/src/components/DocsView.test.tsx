@@ -4,13 +4,14 @@
 // jsdom ignores external CSS, so exact fonts/box-shadow/grid are NOT asserted
 // here — that gap is covered retroactively by the Story 4.5 Playwright harness.
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { DocumentFragment, DocumentsResponse } from '@share2brain/shared/schemas';
 
 import * as channelsApi from '../api/channels';
 import * as documentsApi from '../api/documents';
 import * as readStatusApi from '../api/readStatus';
+import i18n from '../i18n';
 import { DocsView } from './DocsView';
 
 vi.mock('../api/channels', () => ({ fetchChannels: vi.fn() }));
@@ -346,5 +347,25 @@ describe('DocsView', () => {
 
     expect(await screen.findByText('already read fragment')).toBeTruthy();
     expect(screen.queryByText('No se pudieron cargar los documentos. Reintentá.')).toBeNull();
+  });
+});
+
+describe('DocsView — en locale (Story 10.2, AC2)', () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  afterEach(async () => {
+    await i18n.changeLanguage('es');
+  });
+
+  it('should render the title and column headers in English', async () => {
+    fetchChannels.mockResolvedValue([]);
+    fetchDocuments.mockResolvedValue(page([], 0));
+
+    renderView();
+
+    expect(screen.getByText('Indexed documents')).toBeTruthy();
+    expect(await screen.findByText('title')).toBeTruthy();
   });
 });
