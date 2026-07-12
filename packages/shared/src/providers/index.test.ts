@@ -4,12 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { Share2BrainConfig } from '../config/index.js';
 
-import {
-  assertEmbeddingDimensions,
-  createChatModel,
-  createEmbeddingsModel,
-  isValidEmbeddingLength,
-} from './index.js';
+import { assertEmbeddingDimensions, createChatModel, createEmbeddingsModel } from './index.js';
 
 const baseAgent: Share2BrainConfig['agent'] = {
   provider: 'anthropic',
@@ -25,6 +20,7 @@ const baseEmbeddings: Share2BrainConfig['embeddings'] = {
   model: 'text-embedding-3-small',
   dimensions: 1536,
   api_key: 'sk-openai-test',
+  timeout_ms: 60_000,
 };
 
 describe('createChatModel', () => {
@@ -88,6 +84,14 @@ describe('createEmbeddingsModel', () => {
       expect((model as OpenAIEmbeddings).encodingFormat).toBe('float');
     },
   );
+
+  // AUDIT M4: the embeddings client must carry the configured request timeout so a
+  // stalled provider can't wedge the sequential Indexer/Sync loop (or a search).
+  it('should pass the configured timeout_ms through to the embeddings client', () => {
+    const model = createEmbeddingsModel({ ...baseEmbeddings, timeout_ms: 12_345 });
+
+    expect((model as OpenAIEmbeddings).timeout).toBe(12_345);
+  });
 });
 
 describe('assertEmbeddingDimensions', () => {
@@ -105,17 +109,5 @@ describe('assertEmbeddingDimensions', () => {
 
   it('should throw when the vector is undefined', () => {
     expect(() => assertEmbeddingDimensions(undefined, 1536)).toThrow(/null or undefined/);
-  });
-});
-
-describe('isValidEmbeddingLength', () => {
-  it('should be true when lengths match and false otherwise', () => {
-    expect(isValidEmbeddingLength([1, 2, 3], 3)).toBe(true);
-    expect(isValidEmbeddingLength([1, 2, 3], 4)).toBe(false);
-  });
-
-  it('should return false when the vector is null or undefined', () => {
-    expect(isValidEmbeddingLength(null, 3)).toBe(false);
-    expect(isValidEmbeddingLength(undefined, 3)).toBe(false);
   });
 });

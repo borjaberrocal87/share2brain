@@ -77,7 +77,8 @@
     "loadMore": "Cargar más",
     "newBadge": "Nuevo",
     "viewResourceAriaLabel": "Ver recurso",
-    "viewResourceTitle": "Ver recurso"
+    "viewResourceTitle": "Ver recurso",
+    "rowAriaLabel": "Marcar \"{{title}}\" como leída"
   },
   "search": {
     "title": "Búsqueda de conocimiento",

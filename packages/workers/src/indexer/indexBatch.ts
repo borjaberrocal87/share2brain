@@ -92,11 +92,27 @@ async function persistMessage(
     // the row until this tx commits, so the stamp below can no longer race a
     // delete either. No alive row → the delete won: abort as a no-op but still
     // ACK (at-least-once is satisfied — there is nothing left to index).
+    //
+    // AUDIT M1 (create/update race): also read `indexed_at` UNDER THE SAME LOCK.
+    // The dedup SELECT that routed this entry to `toProcess` read `indexed_at`
+    // OUTSIDE the tx (partitionByIndexState); during our slow fetch→enrich→embed
+    // window a concurrent Sync `updated` event can re-index this message (newer
+    // content) and stamp `indexed_at`. Without this check we would UPSERT the
+    // now-stale create-time rows by `chunk_key` — clobbering the edit or leaving
+    // duplicate rows that never self-heal. A non-null `indexed_at` means an edit
+    // already won: abort as a no-op ACK, exactly like the delete-won branch.
     const alive = await tx.execute(
-      sql`SELECT 1 FROM discord_messages WHERE id = ${messageId} AND deleted_at IS NULL FOR UPDATE`,
+      sql`SELECT indexed_at AS "indexedAt" FROM discord_messages WHERE id = ${messageId} AND deleted_at IS NULL FOR UPDATE`,
     );
     if (alive.rows.length === 0) {
       logger.debug('message deleted mid-index — skipping persistence, acking no-op (delete won the race)', {
+        messageId,
+        channelId,
+      });
+      return true;
+    }
+    if ((alive.rows[0] as { indexedAt: unknown }).indexedAt != null) {
+      logger.debug('message already indexed mid-flight — skipping stale create persistence, acking no-op (update won the race)', {
         messageId,
         channelId,
       });

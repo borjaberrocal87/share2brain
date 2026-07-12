@@ -91,6 +91,11 @@ export const Share2BrainConfigSchema = z.object({
       message: 'embeddings.base_url must be empty or a valid HTTP(S) URL',
     }).optional(),
     api_key: z.string().min(1, 'embeddings.api_key cannot be empty'),
+    // AUDIT M4: per-request timeout (ms) on the embeddings client, so a provider
+    // that opens a connection then stalls can't wedge the strictly-sequential
+    // Indexer/Sync loop forever. Optional with a default so existing configs stay
+    // valid; capped so a typo can't disable the guard with an absurd value.
+    timeout_ms: z.number().int().positive().max(600_000).default(60_000),
   }),
   sync: z.object({
     enabled: z.boolean(),
@@ -177,6 +182,12 @@ export const Share2BrainConfigSchema = z.object({
         message: 'enrichment.llm.base_url must be empty or a valid HTTP(S) URL',
       }).optional(),
       api_key: z.string().min(1, 'enrichment.llm.api_key cannot be empty'),
+      // AUDIT M4: wall-clock timeout (ms) for each enrichment LLM call. Enforced
+      // by buildResourceRows via a combined abort signal, so a hung provider
+      // becomes a normal D1 enrichment failure (entry stays pending → eventually
+      // dead-lettered) instead of stalling the whole Indexer. Optional+default so
+      // existing configs stay valid; capped against an absurd typo.
+      timeout_ms: z.number().int().positive().max(600_000).default(60_000),
     }),
     fetch: z.object({
       timeout_ms: z.number().int().positive(),

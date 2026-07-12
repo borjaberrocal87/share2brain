@@ -16,6 +16,7 @@ vi.mock('./enrich.js', async () => {
 const config = {
   enrichment: {
     language: 'en',
+    llm: { timeout_ms: 60_000 },
     fetch: {
       timeout_ms: 5000,
       max_bytes: 2_000_000,

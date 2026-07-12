@@ -77,7 +77,8 @@
     "loadMore": "Load more",
     "newBadge": "New",
     "viewResourceAriaLabel": "View resource",
-    "viewResourceTitle": "View resource"
+    "viewResourceTitle": "View resource",
+    "rowAriaLabel": "Mark \"{{title}}\" as read"
   },
   "search": {
     "title": "Knowledge search",

@@ -39,6 +39,7 @@ const config = {
   embeddings: { dimensions: DIMENSIONS },
   enrichment: {
     language: 'en',
+    llm: { timeout_ms: 60_000 },
     fetch: {
       timeout_ms: 5000,
       max_bytes: 2_000_000,
@@ -119,6 +120,9 @@ function makeFakeDb(
   // M-4: message ids that a concurrent delete purges mid-flight — the in-tx
   // `SELECT … FOR UPDATE` liveness check finds no row for them.
   deletedMidFlight = new Set<string>(),
+  // AUDIT M1: message ids a concurrent Sync `updated` event indexes mid-flight —
+  // the in-tx liveness re-check finds the row alive but with `indexed_at` set.
+  indexedMidFlight = new Set<string>(),
 ) {
   const inserted: InsertedRow[] = [];
   let transactionCount = 0;
@@ -129,11 +133,15 @@ function makeFakeDb(
       transactionCount++;
       const tx = {
         execute: (q: unknown) => {
-          // Only the M-4 liveness re-check runs through `tx.execute`. It returns
-          // a row unless this message was deleted mid-flight (delete won).
+          // Only the liveness re-check runs through `tx.execute`. No row when the
+          // message was hard-deleted mid-flight (M-4, delete won); a row with a
+          // non-null `indexedAt` when a Sync edit indexed it mid-flight (M1,
+          // update won); otherwise a live, not-yet-indexed row.
           const text = sqlText(q);
           const deleted = [...deletedMidFlight].some((id) => text.includes(`id = ${id} `));
-          return Promise.resolve({ rows: deleted ? [] : [{ ok: 1 }] });
+          if (deleted) return Promise.resolve({ rows: [] });
+          const indexed = [...indexedMidFlight].some((id) => text.includes(`id = ${id} `));
+          return Promise.resolve({ rows: [{ indexedAt: indexed ? new Date() : null }] });
         },
         insert: () => ({
           values: (v: InsertedRow) => {
@@ -615,6 +623,38 @@ describe('indexBatch', () => {
     expect(inserted).toHaveLength(0); // nothing resurrected
     expect(logger.debug).toHaveBeenCalledWith(
       expect.stringContaining('deleted mid-index'),
+      expect.objectContaining({ messageId: 'm1' }),
+    );
+  });
+
+  it('should abort persistence as a no-op but still ack when a concurrent edit indexes the message mid-flight (M1)', async () => {
+    const logger = makeLogger();
+    // Row exists and is un-indexed at dedup time (→ toProcess), but a concurrent
+    // Sync `updated` event indexes it (newer content) before our persist tx. The
+    // in-tx FOR UPDATE re-check now sees `indexed_at` set, so we must NOT UPSERT
+    // the stale create-time rows over the edit — abort as a no-op and still ack.
+    const { db, inserted } = makeFakeDb(
+      [{ id: 'm1', indexedAt: null }],
+      new Set(),
+      new Set(),
+      new Set(['m1']),
+    );
+
+    const { ackIds } = await indexBatch({
+      entries: [raw('s1', { content: 'https://a.com' })],
+      db,
+      embedder,
+      config,
+      logger,
+      enrichModel,
+      guard,
+      signal: neverAbortedSignal(),
+    });
+
+    expect(ackIds).toEqual(['s1']); // acked no-op — the edit won
+    expect(inserted).toHaveLength(0); // stale create-time rows never written
+    expect(logger.debug).toHaveBeenCalledWith(
+      expect.stringContaining('already indexed mid-flight'),
       expect.objectContaining({ messageId: 'm1' }),
     );
   });
