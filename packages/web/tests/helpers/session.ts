@@ -46,7 +46,12 @@ export async function loginAs(page: Page, code: LoginCode = 'e2e-member'): Promi
  * jar, dark-theme init script, then land on the authenticated shell.
  */
 export async function loginAsGuest(page: Page): Promise<void> {
-  const res = await page.request.post('/api/auth/guest', { maxRedirects: 0 });
+  // CSRF (L-2): requireCustomHeader rejects mutating /api requests without this
+  // header — mirrors the SPA's CSRF_HEADER (src/api/csrf.ts).
+  const res = await page.request.post('/api/auth/guest', {
+    maxRedirects: 0,
+    headers: { 'X-Requested-With': 'share2brain' },
+  });
   expect(res.status()).toBe(200);
 
   await page.addInitScript(() => localStorage.setItem('share2brain-theme', 'dark'));
