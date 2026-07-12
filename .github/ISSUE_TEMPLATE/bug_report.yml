@@ -1,0 +1,78 @@
+name: 🐛 Bug report
+description: Something isn't working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! A clear report usually gets fixed much faster.
+
+        ⚠️ **Security issues**: please do NOT report vulnerabilities here — use
+        [private reporting](https://github.com/borjaberrocal87/share2brain/security/advisories/new) instead (see `SECURITY.md`).
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: The chat stream stops after the first citation frame...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Configure channel X in Share2Brain.config.yml
+        2. Ask the chat "..."
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected component
+      options:
+        - Not sure
+        - bot (Discord ingestion)
+        - workers (indexer / sync)
+        - backend (API / RAG agent)
+        - web (SPA)
+        - deployment (Docker Compose / nginx / config)
+    validations:
+      required: true
+  - type: dropdown
+    id: deploy-mode
+    attributes:
+      label: How are you running it?
+      options:
+        - Docker Compose (full stack)
+        - Local dev (npm run dev + infra in Docker)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: v0.1.0 or `git rev-parse --short HEAD`
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: |
+        e.g. `docker compose logs backend`. **Redact tokens, API keys, and real message content.**
+      render: shell
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have redacted all secrets and private message content from this report
+          required: true
+        - label: I have searched existing issues for duplicates
+          required: true
