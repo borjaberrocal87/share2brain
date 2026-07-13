@@ -11,11 +11,23 @@ import { expect, type Page } from '@playwright/test';
 export type LoginCode = 'e2e-member' | 'e2e-empty';
 
 /**
- * Log in through the fake-OAuth flow and land on the authenticated SPA shell.
- * Forces the dark theme (token assertions are theme-dependent) BEFORE the first
- * navigation so the pre-paint theme script reads it.
+ * Theme forced before first paint (Story 11.5). Mirrors the `data-kh` values in
+ * global.css. Default `'dark'` keeps every pre-11.5 caller byte-identical.
  */
-export async function loginAs(page: Page, code: LoginCode = 'e2e-member'): Promise<void> {
+export type HarnessTheme = 'dark' | 'light';
+
+/**
+ * Log in through the fake-OAuth flow and land on the authenticated SPA shell.
+ * Forces the requested theme (token assertions are theme-dependent) BEFORE the
+ * first navigation so the pre-paint theme script (index.html) reads it. Defaults
+ * to `'dark'` so existing callers (`loginAs(page)`, `loginAs(page, 'e2e-empty')`)
+ * are unchanged (Story 11.5, D1).
+ */
+export async function loginAs(
+  page: Page,
+  code: LoginCode = 'e2e-member',
+  theme: HarnessTheme = 'dark',
+): Promise<void> {
   // 1. Start the flow: the backend 302-redirects to discord.com with a `state`.
   //    Never follow the redirect (it points at the real Discord).
   const login = await page.request.get('/api/auth/login', { maxRedirects: 0 });
@@ -32,8 +44,8 @@ export async function loginAs(page: Page, code: LoginCode = 'e2e-member'): Promi
   );
   expect(callback.status()).toBe(302);
 
-  // 3. Force the dark theme before the first paint (see index.html theme script).
-  await page.addInitScript(() => localStorage.setItem('share2brain-theme', 'dark'));
+  // 3. Force the theme before the first paint (see index.html theme script).
+  await page.addInitScript((t) => localStorage.setItem('share2brain-theme', t), theme);
 
   // 4. Load the SPA: it calls /api/auth/me, resolves authed, renders AppLayout.
   await page.goto('/');

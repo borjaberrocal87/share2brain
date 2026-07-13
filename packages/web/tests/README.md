@@ -40,9 +40,14 @@ Playwright spawns two `webServer`s and tears them down at the end:
    (`SHARE2BRAIN_API_PROXY_TARGET=http://127.0.0.1:3100`). `vite preview` does **not**
    inherit `server.proxy`, hence the dedicated `preview` block in `vite.config.ts`.
 
-`workers: 1`, chromium only, dark theme forced (tokens differ per theme). HTML
-report opens with `npx playwright show-report packages/web/playwright-report`;
-per-test screenshots land under `test-results/` (both gitignored).
+`workers: 1`, chromium only. The theme is a `loginAs` parameter (default `'dark'`,
+Story 11.5) — most specs assert dark-desktop computed values, while the
+`theme-light.spec.ts` / `adaptive-shell.spec.ts` combos force `'light'` and/or the
+390×844 mobile viewport. There is **one** Playwright project (`Desktop Chrome`); the
+mobile viewport is set per-`describe` with `test.use({ viewport })`, not a project
+matrix (Story 11.5 D2). HTML report opens with `npx playwright show-report
+packages/web/playwright-report`; per-test screenshots land under `test-results/`
+(both gitignored).
 
 ## Session bootstrap
 
@@ -54,8 +59,13 @@ login is impossible — `loginAs` (`tests/helpers/session.ts`) drives the
 `GET /api/auth/callback?code=<identity>&state=<state>` (→ 302, sets the regenerated
 `sid` cookie). `page.request` shares the browser context's cookie jar, so the
 cookie lands in the browser automatically; requests go through the preview proxy,
-so it's scoped to the SPA origin. `loginAs` also forces `localStorage['share2brain-theme']
-= 'dark'` before the first navigation.
+so it's scoped to the SPA origin. `loginAs(page, code = 'e2e-member', theme =
+'dark')` also forces `localStorage['share2brain-theme']` before the first navigation
+(the `index.html` blocking script reads it into `data-kh` pre-paint, FOUC-free).
+Pass `'light'` to run a view against the light token set (Story 11.5); the default
+`'dark'` keeps every pre-11.5 caller byte-identical. `loginAsGuest` stays dark-only.
+For a pre-auth (login-screen) test, don't call `loginAs` — set the theme via
+`page.addInitScript(...)` + the viewport, then `page.goto('/')`.
 
 ## Seed identities & dataset
 
@@ -88,8 +98,20 @@ via the empty-scope identity.
 ## Spec discovery order (invariant)
 
 Playwright discovers spec files **alphabetically** and runs with `workers: 1`, so
-they execute in name order: `analytics.spec.ts` → `auth-guest.spec.ts` →
-`chat.spec.ts` → `docs.spec.ts` → `interactions.spec.ts` → `search.spec.ts`.
+they execute in name order: `adaptive-shell.spec.ts` → `analytics.spec.ts` →
+`auth-guest.spec.ts` → `chat.spec.ts` → `docs.spec.ts` → `interactions.spec.ts` →
+`search.spec.ts` → `theme-light.spec.ts`.
+
+The two Story 11.5 combo specs are **strictly non-mutating** (login + view
+navigation + chat-panel open only) and bracket the mutating specs by design:
+`adaptive-shell.spec.ts` (mobile 390×844, AC2/AC3 layout + AC4 mobile×light tokens)
+sorts **first**, so it reads the seed-fresh unread `bottom-nav-badge` (`3`) before
+`docs.spec.ts`'s mark-all zeroes it. `theme-light.spec.ts` (desktop×light, AC4
+tokens) sorts **last**; that is safe because it asserts only theme **token colors**
+— never a seed-fresh count — so `docs.spec.ts`'s mark-all and `chat.spec.ts`'s
+streaming (which perturb figures, not tokens) leave its assertions intact. A new
+combo spec that asserts a seed-fresh count must sort before the mutators (or
+reseed); one that asserts only layout px / theme tokens may sort anywhere.
 
 `auth-guest.spec.ts` (Story 2.5) sorts **second** — after `analytics`, before the
 mutating `chat`/`docs` specs — and is **strictly non-mutating** (guest login only;
