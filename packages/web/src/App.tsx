@@ -44,7 +44,8 @@ export function App(): ReactElement {
   const unreadReqRef = useRef(0);
   const { theme, toggleTheme } = useTheme();
   // Responsive shell (Story 11.2): drilled to AppLayout → {BottomNav, Header}.
-  // NOT passed to ChatWidget — the chat FAB reposition is Story 11.4.
+  // Also drilled to ChatWidget (Story 11.4) for the FAB/panel corner reposition
+  // above the mobile bottom-nav. Single hook instance — the source of truth.
   const isMobile = useIsMobile();
 
   // On mount: resolve the session. A stale/absent cookie yields 401 → anon.
@@ -158,7 +159,7 @@ export function App(): ReactElement {
         unreadCounts={unreadCounts}
         onUnreadChange={refreshUnread}
       />
-      <ChatWidget user={userIdentity} isGuest={user.isGuest === true} />
+      <ChatWidget user={userIdentity} isGuest={user.isGuest === true} isMobile={isMobile} />
     </>
   );
 }
