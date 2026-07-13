@@ -110,10 +110,18 @@ export async function buildResourceRows(
     }
 
     const pageHints = outcome.ok ? extractPageHints(outcome.body, outcome.contentType) : null;
+    // AUDIT M4: bound each enrichment LLM call with a wall-clock timeout combined
+    // with the shutdown signal. A provider that stalls without erroring would
+    // otherwise block this sequential loop forever; the timeout makes it a normal
+    // enrichment throw (message left un-ACKed → PEL replay → eventual dead-letter).
+    const enrichSignal = AbortSignal.any([
+      signal,
+      AbortSignal.timeout(config.enrichment.llm.timeout_ms),
+    ]);
     const result = await enrich(
       enrichModel,
       { messageText: content, pageHints, language: config.enrichment.language },
-      signal,
+      enrichSignal,
     );
 
     rows.push({ urlIndex, title: result.title, description: result.description, link: url });

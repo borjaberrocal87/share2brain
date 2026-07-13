@@ -83,7 +83,7 @@ export function createChatModel(agent: ChatModelConfig): BaseChatModel {
  * Returns the LangChain {@link Embeddings} base abstraction.
  */
 export function createEmbeddingsModel(embeddings: Share2BrainConfig['embeddings']): Embeddings {
-  const { provider, api_key, model, dimensions, base_url } = embeddings;
+  const { provider, api_key, model, dimensions, base_url, timeout_ms } = embeddings;
 
   switch (provider) {
     case 'openai':
@@ -94,6 +94,9 @@ export function createEmbeddingsModel(embeddings: Share2BrainConfig['embeddings'
         apiKey: api_key,
         model,
         dimensions,
+        // AUDIT M4: bound each embeddings request so a stalled provider can't
+        // wedge the sequential Indexer/Sync loop (or a backend search) forever.
+        timeout: timeout_ms,
         // Force plain-float responses. The OpenAI SDK otherwise requests
         // `encoding_format: "base64"` implicitly and decodes it client-side; an
         // OpenAI-compatible proxy (e.g. LiteLLM in front of a self-hosted model)
@@ -132,9 +135,4 @@ export function assertEmbeddingDimensions(vector: number[] | null | undefined, e
         `output do not agree — refusing to persist.`,
     );
   }
-}
-
-/** Non-throwing companion to {@link assertEmbeddingDimensions} for callers that branch. */
-export function isValidEmbeddingLength(vector: number[] | null | undefined, expected: number): boolean {
-  return vector != null && vector.length === expected;
 }

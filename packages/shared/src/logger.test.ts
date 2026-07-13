@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { createLogger } from './logger.js';
+import { createLogger, redactSecrets } from './logger.js';
 
 type SinkMethod = (...args: unknown[]) => void;
 
@@ -79,5 +79,32 @@ describe('createLogger', () => {
     workersLogger.error('crashed');
 
     expect(sink.error).toHaveBeenCalledWith('[workers] error crashed');
+  });
+
+  // AUDIT M2: a driver error can interpolate the whole DATABASE_URL/REDIS_URL
+  // (password included) into error.message/.stack; the logger must redact the
+  // userinfo of any connection URL it emits, in both the message and the context.
+  it('redacts connection-URL credentials in the message and the context JSON', () => {
+    const sink = fakeSink();
+    const logger = createLogger('error', 'workers', sink);
+
+    logger.error('connect failed to postgres://s2b:hunter2@db:5432/app', {
+      reason: 'ECONNREFUSED redis://:sekret@redis:6379',
+    });
+
+    expect(sink.error).toHaveBeenCalledWith(
+      '[workers] error connect failed to postgres://***@db:5432/app',
+      JSON.stringify({ reason: 'ECONNREFUSED redis://***@redis:6379' }),
+    );
+  });
+});
+
+describe('redactSecrets', () => {
+  it('redacts user:pass and password-only userinfo, and leaves clean text untouched', () => {
+    expect(redactSecrets('postgres://user:pass@host/db')).toBe('postgres://***@host/db');
+    expect(redactSecrets('redis://:onlypass@host:6379')).toBe('redis://***@host:6379');
+    expect(redactSecrets('no credentials here')).toBe('no credentials here');
+    // A bare host with no userinfo must not be altered.
+    expect(redactSecrets('https://api.example.com/v1')).toBe('https://api.example.com/v1');
   });
 });

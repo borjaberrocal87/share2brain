@@ -5,7 +5,11 @@
 //
 // SECURITY: callers must never pass secrets (token, DATABASE_URL, REDIS_URL, api
 // keys) or full message `content` in the context object — log `content.length` or
-// a redacted marker instead (see project-context §anti-patterns).
+// a redacted marker instead (see project-context §anti-patterns). AUDIT M2: as a
+// backstop, every emitted line is run through the shared `redactSecrets` so a
+// driver error that embeds a `user:pass@host` connection URL can't leak it.
+import { redactSecrets } from '@share2brain/shared/logger';
+
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 /** Severity ordering: a message is emitted only if its level >= the configured level. */
@@ -35,9 +39,9 @@ export function createLogger(level: LogLevel, sink: LogSink = console): Logger {
 
   const emit = (msgLevel: LogLevel, message: string, context?: Record<string, unknown>): void => {
     if (LEVEL_ORDER[msgLevel] < threshold) return;
-    const prefix = `[bot] ${msgLevel} ${message}`;
+    const prefix = `[bot] ${msgLevel} ${redactSecrets(message)}`;
     if (context && Object.keys(context).length > 0) {
-      sink[msgLevel](prefix, JSON.stringify(context));
+      sink[msgLevel](prefix, redactSecrets(JSON.stringify(context)));
     } else {
       sink[msgLevel](prefix);
     }

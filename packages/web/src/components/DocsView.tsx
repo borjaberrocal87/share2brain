@@ -413,6 +413,19 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
       className="kh-doc-row"
       data-read={doc.isRead}
       onClick={onClick}
+      // L9 (audit): the row's primary action (mark-as-read) was mouse-only. Make it
+      // a real interactive control so keyboard/screen-reader users can reach and
+      // activate it — role/tabIndex expose it, onKeyDown mirrors the click on
+      // Enter/Space (preventDefault stops Space from scrolling the page).
+      role="button"
+      tabIndex={0}
+      aria-label={t('docs.rowAriaLabel', { title: doc.title })}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       style={{
         display: 'grid',
         gridTemplateColumns: '150px minmax(160px,1fr) 44px 92px 116px 84px',

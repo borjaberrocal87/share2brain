@@ -11,6 +11,7 @@
 //
 // SECURITY: `notify()` must never receive or emit a secret (bot token, webhook
 // URL) or Discord message content — only { service, message, timestamp }.
+import { redactSecrets } from '../logger.js';
 import type { NotificationsConfig } from '../config/index.js';
 
 export interface NotificationPayload {
@@ -39,12 +40,12 @@ const MAX_MESSAGE_CHARS = 3_900;
  * Sanitize an error message before it leaves the process (AC-1: the alert body
  * must NEVER carry a DB/Redis URL, API key, or webhook secret). Some driver
  * errors interpolate the whole connection URL — including its `user:pass@`
- * userinfo — into `error.message`. Redact that userinfo of any `scheme://…@host`
- * authority, then cap the length so an oversized message can't make Telegram
- * drop the alert (note #3, note the 4096-char limit).
+ * userinfo — into `error.message`. Redact that userinfo (shared `redactSecrets`,
+ * also applied by every service logger — AUDIT M2), then cap the length so an
+ * oversized message can't make Telegram drop the alert (note #3, the 4096-char limit).
  */
 function sanitizeMessage(message: string): string {
-  const redacted = message.replace(/([a-z][a-z0-9+.-]*:\/\/)[^/\s@]*@/gi, '$1***@');
+  const redacted = redactSecrets(message);
   return redacted.length > MAX_MESSAGE_CHARS ? `${redacted.slice(0, MAX_MESSAGE_CHARS)}…` : redacted;
 }
 

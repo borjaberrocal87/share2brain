@@ -26,7 +26,7 @@
 import type { Share2BrainConfig } from '@share2brain/shared';
 import { discordMessages, type Database } from '@share2brain/shared/db';
 import type { RedisClient } from '@share2brain/shared/redis';
-import { STREAM_KEYS } from '@share2brain/shared/types/events';
+import { STREAM_KEYS, type MessageCreatedEvent } from '@share2brain/shared/types/events';
 
 /**
  * The narrow slice of a discord.js `Message` this pipeline reads. Declaring it
@@ -89,7 +89,10 @@ export async function persistMessage(
 
     // node-redis v6: xAdd(key, id, message). Every field value MUST be a string.
     // Stream ID '*' → server-generated. Never hardcode the key — import STREAM_KEYS (AD-13).
-    await redis.xAdd(STREAM_KEYS.DISCORD_MESSAGES, '*', {
+    // L1 (audit): type as Record<keyof MessageCreatedEvent, string> — like the
+    // update/delete/backfill-completed producers — so a new required field on the
+    // event forces this producer to send it instead of compiling silently.
+    const event: Record<keyof MessageCreatedEvent, string> = {
       type: 'discord.message.created',
       messageId: message.id,
       channelId: message.channelId,
@@ -97,7 +100,8 @@ export async function persistMessage(
       timestamp: message.createdAt.toISOString(),
       content: message.content,
       authorId: message.author.id,
-    });
+    };
+    await redis.xAdd(STREAM_KEYS.DISCORD_MESSAGES, '*', event);
     return true;
   });
 
