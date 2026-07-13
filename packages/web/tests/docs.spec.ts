@@ -28,20 +28,20 @@ async function gotoDocs(page: import('@playwright/test').Page): Promise<void> {
 }
 
 test.describe('Story 4.4 — Documentos (retroactive visual verification)', () => {
-  test('grid, header cells, read/unread rows, row hover, and sidebar badge (4.4, 8.1)', async ({
+  test('grid, header cells, read/unread rows, row hover, and sidebar badge (4.4, 8.1, 8.2)', async ({
     page,
   }, testInfo) => {
     await gotoDocs(page);
 
-    // Table grid: 6 tracks; minmax(160px,1fr) resolves to px in Chromium.
+    // Table grid: 5 tracks; the leading minmax(240px,1fr) resolves to px in Chromium.
     const firstRow = page.locator('.kh-doc-row').first();
     await expect(firstRow).toHaveCSS(
       'grid-template-columns',
-      /^150px \d+(\.\d+)?px 44px 92px 116px 84px$/,
+      /^\d+(\.\d+)?px 44px 92px 116px 84px$/,
     );
 
     // Header cells (source lowercase, uppercased by CSS): mono, 10.5px, uppercase, subtle.
-    const header = page.getByText('título', { exact: true });
+    const header = page.getByText('documento', { exact: true });
     await expect(header).toHaveCSS('font-family', /IBM Plex Mono/);
     await expect(header).toHaveCSS('font-size', '10.5px');
     await expect(header).toHaveCSS('text-transform', 'uppercase');
@@ -100,39 +100,33 @@ test.describe('Story 4.4 — Documentos (retroactive visual verification)', () =
 // Story 7.5 restructured the DocsView main cell into a title + a 2-line-clamped
 // description + a "ver recurso" resource link; Story 8.1 gave the title its own
 // 2-line clamp (was single-line ellipsis) and replaced the text link with a
-// 28×28 icon-button (.kh-doc-link). jsdom can't verify the clamp/typography/
-// hover; this harness does (Epic 4 retro AI#6). Both tests run AFTER the 4.4
-// dots test (which needs the seeded read/unread mix) and BEFORE the terminal
-// mark-all mutation below.
+// 28×28 icon-button (.kh-doc-link); Story 8.2 merged título + descripción into a
+// single "Documento" column, so the description testid now resolves inside that
+// cell (below the title/badge) rather than in a standalone grid column, and
+// dropped the 2-line clamp/ellipsis so title + description wrap freely. jsdom
+// can't verify the typography/hover; this harness does (Epic 4 retro AI#6). Both tests
+// run AFTER the 4.4 dots test (which needs the seeded read/unread mix) and
+// BEFORE the terminal mark-all mutation below.
 test.describe('Story 7.6 — DocsView description + resource link', () => {
-  test('first row: clamped title, clamped description, resource icon-button (AC2)', async ({
+  test('first row: full (unclamped) title, description, resource icon-button (AC2)', async ({
     page,
   }, testInfo) => {
     await gotoDocs(page);
     const firstRow = page.locator('.kh-doc-row').first();
 
-    // Description: tertiary color, 2-line -webkit-box clamp. NOTE: with
-    // -webkit-line-clamp engaged, Chromium reports the *computed* `display` as
-    // `flow-root` (not `-webkit-box`) even though the specified/used value is
-    // -webkit-box and the clamp works — so we assert the clamp via the
-    // properties that DO compute meaningfully (line-clamp + box-orient +
-    // overflow), which a non-clamped span would lack.
+    // Description: tertiary color, block-level, and NO truncation — 8.2 dropped
+    // the 2-line -webkit-box clamp/ellipsis so title and description wrap freely
+    // to whatever height they need (2-3 lines is fine). Assert the clamp is gone
+    // (`-webkit-line-clamp: none`) and the span renders as a plain block.
     const description = firstRow.getByTestId('doc-row-description');
     await expect(description).toHaveCSS('color', TEXT_TERTIARY);
-    await expect(description).toHaveCSS('-webkit-line-clamp', '2');
-    await expect(description).toHaveCSS('-webkit-box-orient', 'vertical');
-    await expect(description).toHaveCSS('overflow-x', 'hidden');
-    // overflow-y is the axis the 2-line clamp needs to hide the 3rd+ line; without
-    // it the clamp is inert, so assert it too (not just overflow-x).
-    await expect(description).toHaveCSS('overflow-y', 'hidden');
+    await expect(description).toHaveCSS('-webkit-line-clamp', 'none');
+    await expect(description).toHaveCSS('display', 'block');
 
-    // Title: same 2-line clamp set as the description — never assert `display`
-    // on a line-clamped element (see the note above).
+    // Title: same — block, no line-clamp truncation.
     const title = firstRow.getByTestId('doc-row-content');
-    await expect(title).toHaveCSS('-webkit-line-clamp', '2');
-    await expect(title).toHaveCSS('-webkit-box-orient', 'vertical');
-    await expect(title).toHaveCSS('overflow-x', 'hidden');
-    await expect(title).toHaveCSS('overflow-y', 'hidden');
+    await expect(title).toHaveCSS('-webkit-line-clamp', 'none');
+    await expect(title).toHaveCSS('display', 'block');
 
     // Resource icon-button: seed href, new tab, 28×28 geometry, base muted
     // color, hover amber (color AND border-color — the border-color hover is

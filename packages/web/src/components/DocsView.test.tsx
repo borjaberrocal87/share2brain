@@ -69,15 +69,14 @@ afterEach(() => {
 });
 
 describe('DocsView', () => {
-  it('should render the title, description and 6-column table header labels (AC1)', async () => {
+  it('should render the title and 5-column table header labels (AC1, AC3)', async () => {
     fetchChannels.mockResolvedValue([]);
     fetchDocuments.mockResolvedValue(page([], 0));
 
     renderView();
 
     expect(screen.getByText('Documentos indexados')).toBeTruthy();
-    expect(await screen.findByText('título')).toBeTruthy();
-    expect(screen.getByText('descripción')).toBeTruthy();
+    expect(await screen.findByText('documento')).toBeTruthy();
     expect(screen.getByText('link')).toBeTruthy();
     expect(screen.getByText('canal')).toBeTruthy();
     expect(screen.getByText('autor')).toBeTruthy();
@@ -94,7 +93,7 @@ describe('DocsView', () => {
     expect(screen.getByText('already read fragment')).toBeTruthy();
   });
 
-  it('should render the title and description separately on their own testids (AC3, D3)', async () => {
+  it('should render the title and description stacked in the same cell on their own testids (AC2, D4)', async () => {
     fetchChannels.mockResolvedValue([]);
     fetchDocuments.mockResolvedValue(page([DOC_UNREAD], 1));
 
@@ -104,6 +103,22 @@ describe('DocsView', () => {
     expect(title.getAttribute('data-testid')).toBe('doc-row-content');
     const description = screen.getByText('unread fragment content');
     expect(description.getAttribute('data-testid')).toBe('doc-row-description');
+    // AC2/D4: both spans must live in the SAME documento cell — they share the
+    // content wrapper as their parent. Guards against a regression that moves the
+    // description back into its own standalone grid column.
+    expect(title.parentElement).toBe(description.parentElement);
+  });
+
+  it('should render the title only, with no description node, when the description is empty (AC2, D5)', async () => {
+    fetchChannels.mockResolvedValue([]);
+    fetchDocuments.mockResolvedValue(page([{ ...DOC_UNREAD, description: '   ' }], 1));
+
+    renderView();
+
+    // Title still renders; the trimmed guard drops the description span entirely
+    // (no empty/whitespace-only span with a stray marginTop gap).
+    expect(await screen.findByText('Unread Fragment')).toBeTruthy();
+    expect(screen.queryByTestId('doc-row-description')).toBeNull();
   });
 
   it('should switch title weight between unread and read while keeping the title color primary in both states (AC3)', async () => {
@@ -252,7 +267,7 @@ describe('DocsView', () => {
     fetchDocuments.mockResolvedValue(page([], 0));
 
     renderView();
-    await screen.findByText('título');
+    await screen.findByText('documento');
 
     fireEvent.click(screen.getByRole('button', { name: /Sin leer/i }));
 
@@ -366,6 +381,6 @@ describe('DocsView — en locale (Story 10.2, AC2)', () => {
     renderView();
 
     expect(screen.getByText('Indexed documents')).toBeTruthy();
-    expect(await screen.findByText('title')).toBeTruthy();
+    expect(await screen.findByText('document')).toBeTruthy();
   });
 });

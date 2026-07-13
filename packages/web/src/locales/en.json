@@ -66,8 +66,7 @@
     "emptyStateTitle": "You're all caught up! No unread resources left.",
     "emptyStateDescription": "Remove the \"Unread\" filter to see all indexed knowledge.",
     "columns": {
-      "title": "title",
-      "description": "description",
+      "document": "document",
       "link": "link",
       "channel": "channel",
       "author": "author",

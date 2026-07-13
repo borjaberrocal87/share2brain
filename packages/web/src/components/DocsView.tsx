@@ -306,9 +306,9 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: '150px minmax(160px,1fr) 44px 92px 116px 84px',
+                gridTemplateColumns: 'minmax(240px,1fr) 44px 92px 116px 84px',
                 gap: 12,
-                minWidth: 720,
+                minWidth: 620,
                 padding: '12px 20px',
                 background: 'var(--bg)',
                 borderBottom: '1px solid var(--border)',
@@ -319,8 +319,7 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
                 color: 'var(--text-subtle)',
               }}
             >
-              <span>{t('docs.columns.title')}</span>
-              <span>{t('docs.columns.description')}</span>
+              <span>{t('docs.columns.document')}</span>
               <span>{t('docs.columns.link')}</span>
               <span>{t('docs.columns.channel')}</span>
               <span>{t('docs.columns.author')}</span>
@@ -428,9 +427,9 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
       }}
       style={{
         display: 'grid',
-        gridTemplateColumns: '150px minmax(160px,1fr) 44px 92px 116px 84px',
+        gridTemplateColumns: 'minmax(240px,1fr) 44px 92px 116px 84px',
         gap: 12,
-        minWidth: 720,
+        minWidth: 620,
         padding: '15px 20px',
         borderBottom: '1px solid var(--line)',
         alignItems: 'center',
@@ -470,15 +469,12 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
           <span
             data-testid="doc-row-content"
             style={{
-              display: '-webkit-box',
+              display: 'block',
+              overflowWrap: 'anywhere',
               fontSize: 13.5,
               lineHeight: 1.4,
               color: 'var(--text-primary)',
               fontWeight: doc.isRead ? 500 : 700,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
             }}
           >
             {doc.title}
@@ -504,24 +500,23 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
               {t('docs.newBadge')}
             </span>
           )}
+          {doc.description.trim() && (
+            <span
+              data-testid="doc-row-description"
+              style={{
+                display: 'block',
+                overflowWrap: 'anywhere',
+                marginTop: 4,
+                fontSize: 13,
+                lineHeight: 1.5,
+                color: 'var(--text-tertiary)',
+              }}
+            >
+              {doc.description}
+            </span>
+          )}
         </div>
       </div>
-
-      <span
-        data-testid="doc-row-description"
-        style={{
-          display: '-webkit-box',
-          fontSize: 13,
-          lineHeight: 1.5,
-          color: 'var(--text-tertiary)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-        }}
-      >
-        {doc.description}
-      </span>
 
       <a
         href={doc.link}

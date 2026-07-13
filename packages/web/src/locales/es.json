@@ -66,8 +66,7 @@
     "emptyStateTitle": "¡Estás al día! No te quedan fuentes sin leer.",
     "emptyStateDescription": "Quitá el filtro \"Sin leer\" para ver todo el conocimiento indexado.",
     "columns": {
-      "title": "título",
-      "description": "descripción",
+      "document": "documento",
       "link": "link",
       "channel": "canal",
       "author": "autor",
