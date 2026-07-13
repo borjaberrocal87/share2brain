@@ -850,7 +850,7 @@ CREATE INDEX idx_user_roles_cache_expires ON user_roles_cache(expires_at);
 | Cola de eventos | **Redis Streams** | Desacoplamiento de indexación |
 | Configuración | **YAML + Zod** | Infrastructure-as-Code; validación de schema |
 | Notificaciones | **Telegram Bot API** | Notificaciones al operador |
-| Observabilidad | **Sentry + Pino** | Errores + logging estructurado |
+| Observabilidad | **Sentry + `@share2brain/shared/logger` (custom structured logger)** | Errores + logs estructurados completos a Sentry (Pino nunca se adoptó) |
 | Empaquetado | **Docker Compose** | App + bot + base + redis |
 | Web App | **React + Vite** | Búsqueda + chat |
 | Testing | **Vitest + Playwright** | Unit/integration + E2E |
@@ -1354,7 +1354,7 @@ const logger = pino({
 | SNF-6 | Health check en `/health` | El endpoint retorna HTTP 200 con estado de cada componente en <500ms. Retorna HTTP 503 si cualquier componente está degradado. El campo `"agent"` reporta `"degraded"` cuando el API LLM no es alcanzable. |
 | SNF-7 | Restart automático en fallo | El contenedor Docker se reinicia en <30s tras un crash (política `restart: unless-stopped`). Se emite alerta Notifier si el reinicio ocurre más de 3 veces en 5 minutos. |
 | SNF-8 | Graceful shutdown | Al recibir SIGTERM, el servidor espera hasta 10s para completar requests en curso, cierra conexiones DB y Redis, y termina el proceso. Las peticiones nuevas durante el shutdown reciben HTTP 503. |
-| SNF-9 | Logging de errores | Todos los errores HTTP 5xx son capturados por Sentry con stack trace y contexto de usuario. Los errores de indexación se loguean en Pino con nivel `error` e incluyen `channel_id` y `message_id`. |
+| SNF-9 | Logging de errores | Todos los errores HTTP 5xx son capturados por Sentry con stack trace y contexto de usuario (id interno de usuario + roles de Discord, nunca contenido ni PII). Además, **todas** las líneas de log (no solo los 5xx) se envían a Sentry Structured Logs vía el logger compartido `@share2brain/shared/logger` (dual sink stdout + Sentry, gated por `observability.log_level`); los errores de indexación incluyen `channel_id` y `message_id`. Implementado en Story ops-4 (`@sentry/node` vive solo en `packages/shared`). |
 
 ### 11.3 Testing
 
