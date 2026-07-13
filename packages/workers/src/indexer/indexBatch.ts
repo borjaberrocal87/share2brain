@@ -24,7 +24,7 @@ import {
 } from '../enrichment/rateLimiter.js';
 import { buildResourceRows, type MessageOutcome, type ResourceRow } from '../enrichment/resourceRows.js';
 import type { GuardedDispatcher } from '../enrichment/ssrfGuard.js';
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { parseCreatedEvent } from './events.js';
 import { partitionByIndexState } from './partition.js';
 import type { Embedder, IndexStateRow, ParsedEntry, RawStreamEntry } from './types.js';

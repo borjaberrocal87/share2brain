@@ -11,7 +11,7 @@ import type { Client } from 'discord.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { runBackfill, type BackfillDeps } from './backfiller.js';
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { persistMessage, type IngestibleMessage } from '../persistence/persistMessage.js';
 
 vi.mock('../persistence/persistMessage.js', () => ({

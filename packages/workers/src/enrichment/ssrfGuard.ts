@@ -21,7 +21,7 @@ import { Agent, type Dispatcher } from 'undici';
 
 import type { EnrichmentConfig } from '@share2brain/shared';
 
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 
 /** Raised by the Layer B custom lookup when a resolved address is blocked —
  *  distinguishable from a generic DNS/network failure by `fetchUrl`'s caller. */

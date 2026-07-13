@@ -6,7 +6,7 @@
 // A skip (expected) is a debug line; a persistence FAILURE on an in-scope message
 // (unexpected) is an error line with { messageId, channelId } — and must NOT crash
 // the process (AC-3). Never log the full message content (project-context §anti-patterns).
-import type { Logger } from '../../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import {
   persistMessage,
   type IngestDeps,

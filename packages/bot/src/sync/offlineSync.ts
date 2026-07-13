@@ -20,7 +20,7 @@ import { getChannelCursor } from '../backfill/cursor.js';
 import { handleMessageDelete } from '../discord/handlers/messageDelete.js';
 import { handleMessageUpdate } from '../discord/handlers/messageUpdate.js';
 import { waitOrAbort } from '../discord/reconnect.js';
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { diffChannel, toIdKey, type FetchedMessage, type PersistedRow } from './reconcile.js';
 
 // Same cadence as backfill/backfiller.ts — one shared REST budget, not a second one.

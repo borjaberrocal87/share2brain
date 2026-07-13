@@ -11,7 +11,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getChannelCursor } from '../backfill/cursor.js';
 import { handleMessageDelete } from '../discord/handlers/messageDelete.js';
 import { handleMessageUpdate } from '../discord/handlers/messageUpdate.js';
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { runOfflineSync, type OfflineSyncDeps } from './offlineSync.js';
 import type { FetchedMessage } from './reconcile.js';
 

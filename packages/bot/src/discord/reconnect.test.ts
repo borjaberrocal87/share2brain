@@ -2,7 +2,7 @@
 // bounds, and connectWithRetry's retry-until-success, error escalation, and reset.
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { computeDelay, connectWithRetry } from './reconnect.js';
 
 function fakeLogger(): Logger {

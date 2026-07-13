@@ -13,7 +13,7 @@ import { CONSUMER_GROUPS, STREAM_KEYS } from '@share2brain/shared/types/events';
 import type { EnrichmentChatModel } from '../enrichment/enrich.js';
 import { resolveEnrichmentRateLimit } from '../enrichment/rateLimiter.js';
 import type { GuardedDispatcher } from '../enrichment/ssrfGuard.js';
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { DEFAULT_REAP_INTERVAL_MS, reapPoisonEntries } from '../streams/poisonReaper.js';
 import { indexBatch } from './indexBatch.js';
 import type { Embedder, RawStreamEntry } from './types.js';

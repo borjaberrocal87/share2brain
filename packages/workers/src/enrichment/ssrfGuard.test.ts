@@ -2,7 +2,7 @@ import { BlockList } from 'node:net';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 
 import {
   createDefaultBlockList,

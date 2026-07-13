@@ -3,7 +3,7 @@ import type { Database } from '@share2brain/shared/db';
 import type { MessageDeletedEvent } from '@share2brain/shared/types/events';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { processDelete as processDeleteImpl, type ProcessDeleteDeps } from './processDelete.js';
 
 // The consumer always supplies streamId/stream (AC-5); inject fixed values so

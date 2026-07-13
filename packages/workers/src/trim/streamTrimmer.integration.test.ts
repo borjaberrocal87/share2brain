@@ -9,7 +9,7 @@
 import type { RedisClient } from '@share2brain/shared/redis';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { openTestClients, type TestClients } from '../test-helpers.js';
 import { trimStream } from './streamTrimmer.js';
 

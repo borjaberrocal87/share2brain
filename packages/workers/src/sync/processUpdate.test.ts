@@ -7,7 +7,7 @@ import { enrich } from '../enrichment/enrich.js';
 import type { GuardedDispatcher } from '../enrichment/ssrfGuard.js';
 import { fetchUrl } from '../enrichment/urlFetcher.js';
 import type { Embedder } from '../indexer/types.js';
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { processUpdate as processUpdateImpl, type ProcessUpdateDeps } from './processUpdate.js';
 
 vi.mock('../enrichment/urlFetcher.js', () => ({ fetchUrl: vi.fn() }));

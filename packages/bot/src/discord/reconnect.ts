@@ -9,7 +9,7 @@
 // it with fake timers and assert the delay sequence and the reset-on-success.
 import { Client, Events } from 'discord.js';
 
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 
 const INITIAL_DELAY_MS = 1_000;
 const MAX_DELAY_MS = 300_000; // 5 min cap

@@ -26,7 +26,7 @@ import type { Share2BrainConfig } from '@share2brain/shared';
 import type { RedisClient } from '@share2brain/shared/redis';
 import { STREAM_KEYS } from '@share2brain/shared/types/events';
 
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 
 const DEFAULT_TRIM_INTERVAL_MS = 300_000; // 5 minutes (Story OPS-1 D2)
 
