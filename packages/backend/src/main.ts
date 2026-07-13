@@ -5,6 +5,7 @@ import { loadConfig } from '@share2brain/shared';
 import { createDatabase, type Database } from '@share2brain/shared/db';
 import { createLogger } from '@share2brain/shared/logger';
 import { createNotifier } from '@share2brain/shared/notifier';
+import { captureException, flushSentry, initSentry } from '@share2brain/shared/observability';
 import { createRedisClient } from '@share2brain/shared/redis';
 
 import { createApp } from './app.js';
@@ -29,6 +30,10 @@ async function main(): Promise<void> {
   // AD-8: validate behavior config before opening any connection. Invalid YAML
   // throws ConfigError here and aborts the process (caught below).
   const config = loadConfig();
+  // Story ops-4: arm Sentry immediately after loadConfig() and before any network
+  // I/O (AD-8). A no-op when observability.sentry_dsn is empty (S-5). Placed before
+  // createLogger so the logger's dual sink can forward from the very first line.
+  initSentry(config.observability.sentry_dsn, 'backend');
   const logger = createLogger(config.observability.log_level, 'backend');
   // FR21 (Story 6.4): a no-op when notifications.enabled is false/absent — every
   // service behaves exactly as before this story (AC-1).
@@ -46,17 +51,25 @@ async function main(): Promise<void> {
   // restarts the container either way.
   process.on('uncaughtException', (error) => {
     if (isShuttingDown()) return;
+    // Story ops-4: capture the real Error (stack preserved) to Sentry alongside
+    // the existing structured log + crash notifier.
+    captureException(error);
     logger.error('uncaughtException', { reason: error.message, stack: error.stack });
+    // Story ops-4: drain Sentry's queue before the hard exit so the captured
+    // Error + buffered logs actually ship (the transport sends asynchronously).
     void notifier
       .notify({ service: 'backend', message: error.message, timestamp: new Date().toISOString() })
+      .finally(() => flushSentry())
       .finally(() => process.exit(1));
   });
   process.on('unhandledRejection', (reason) => {
     if (isShuttingDown()) return;
     const error = reason instanceof Error ? reason : new Error(String(reason));
+    captureException(error);
     logger.error('unhandledRejection', { reason: error.message, stack: error.stack });
     void notifier
       .notify({ service: 'backend', message: error.message, timestamp: new Date().toISOString() })
+      .finally(() => flushSentry())
       .finally(() => process.exit(1));
   });
 

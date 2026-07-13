@@ -34,6 +34,30 @@
   a stack with live dev containers attached." Green when the full `npm run test:integration` is
   deterministic.
 
+### P1.3 — Sentry observability for the three Node services
+> **Approved 2026-07-13** via `sprint-change-proposal-2026-07-13-sentry.md` (Correct Course). To be
+> promoted to story `ops-4-sentry-observability.md` (`bmad-create-story`). Scope decided with Borja:
+> **full logs** (errors + all log lines to Sentry Logs) and **consolidate on the shared logger**.
+- **Why now:** The operator needs centralized runtime observability for `backend`/`bot`/`workers`
+  without `docker logs`/`docker exec` on the Hostinger VPS. Not a new requirement — Sentry was
+  designed and the scaffolding shipped (config `observability.sentry_dsn` at S-5, `SENTRY_DSN` in
+  `.env`, compose wiring on all 3 services, PRD NFR13), but the instrumentation was **explicitly
+  deferred** (`ARCHITECTURE-SPINE.md:325`). `@sentry/node` is not installed anywhere.
+- **Scope:** (a) add `@sentry/node` to `packages/shared`; (b) new
+  `packages/shared/src/observability/sentry.ts` `initSentry(dsn, service)` — empty DSN = no-op (S-5),
+  `_experiments.enableLogs`, `beforeSend`/`beforeSendLog` scrub via existing `redactSecrets`, never
+  attach message `content`/PII; (c) dual sink (stdout + Sentry) in the shared `logger.ts` — `error`
+  → `captureException`, all levels → `Sentry.logger[level]`; (d) consolidate `bot`/`workers` onto
+  `@share2brain/shared/logger` and **delete** their local `logger.ts` + tests (Story 6.4 duplication
+  debt); (e) call `initSentry` in the 3 `main.ts` right after `loadConfig()`, before network I/O
+  (AD-8); backend 5xx handler → `captureException` with Discord id/roles (NFR13); (f) tests mocking
+  `@sentry/node`; (g) docs — PRD "Sentry + Pino" drift, NFR13 note, `ARCHITECTURE-SPINE.md:325`
+  deferred→implemented, `development_guide.md`, `project-context.md`.
+- **Green when:** with `SENTRY_DSN` set, errors + all logs from the 3 services reach Sentry (backend
+  5xx carries user context, no `content`); with empty DSN, services start and log to stdout as today;
+  no secret/PII/`content` in any Sentry event; single logger in `shared`; verification gate green.
+- **Caveat:** Sentry Logs is a relatively recent feature and full-log volume is high — watch quota.
+
 ## Priority 2 — correctness hardening (low live-path risk today)
 
 ### P2.1 — Transactional outbox for the XADD-before-COMMIT producer race

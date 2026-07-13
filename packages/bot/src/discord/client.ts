@@ -13,7 +13,7 @@
 // Creating the client opens no connection; login() dials the Gateway.
 import { Client, Events, GatewayIntentBits, Partials } from 'discord.js';
 
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 
 /** Create the Gateway client with Share2Brain's intents and a ClientReady → info log. */
 export function createDiscordClient(logger: Logger, guildId: string): Client {

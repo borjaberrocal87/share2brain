@@ -1,13 +1,22 @@
 // Canonical structured logger, shared by all three services (AD-2). Promoted
 // from the byte-identical packages/bot/src/logger.ts and
-// packages/workers/src/logger.ts (Story 6.4, DECISION 3) — those two stay on
-// their local copies (mature 6.1/6.2 code, don't churn); the backend uses this
-// one for its new shutdown/notifier paths. It honors the operator's
-// `observability.log_level` and emits `[${service}] <level> <msg> <ctx-json>`.
+// packages/workers/src/logger.ts (Story 6.4, DECISION 3); Story ops-4 finished
+// the consolidation — bot/workers now call THIS logger too, their local copies
+// deleted. It honors the operator's `observability.log_level` and emits
+// `[${service}] <level> <msg> <ctx-json>` to stdout.
+//
+// Story ops-4 — DUAL SINK: every line at or above the threshold is ALSO forwarded
+// to Sentry Structured Logs (`Sentry.logger[level]`) so the operator never has to
+// open `docker logs`. The Sentry methods are safe no-ops until `initSentry` runs
+// (and stay no-ops when the DSN is empty, S-5), so this adds nothing to a service
+// booted without a DSN. The SAME `redactSecrets` output that guards stdout is what
+// is forwarded — a secret never reaches either sink.
 //
 // SECURITY: callers must never pass secrets (tokens, DATABASE_URL, REDIS_URL,
 // API keys) or full message `content` in the context object — log
 // `content.length`, counts, or ids instead (see project-context §anti-patterns).
+import * as Sentry from '@sentry/node';
+
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 /** Severity ordering: a message is emitted only if its level >= the configured level. */
@@ -52,12 +61,31 @@ export function createLogger(level: LogLevel, service: string, sink: LogSink = c
 
   const emit = (msgLevel: LogLevel, message: string, context?: Record<string, unknown>): void => {
     if (LEVEL_ORDER[msgLevel] < threshold) return;
-    const prefix = `[${service}] ${msgLevel} ${redactSecrets(message)}`;
-    if (context && Object.keys(context).length > 0) {
-      sink[msgLevel](prefix, redactSecrets(JSON.stringify(context)));
+    // Redact ONCE and feed the same scrubbed output to both sinks (AC5): stdout
+    // (unchanged) and Sentry Logs. Below-threshold lines return above, so they
+    // reach neither sink — Sentry log volume respects `log_level`.
+    const redactedMessage = redactSecrets(message);
+    const prefix = `[${service}] ${msgLevel} ${redactedMessage}`;
+    const hasContext = context !== undefined && Object.keys(context).length > 0;
+    // The console path serializes+redacts the context to a trailing JSON string;
+    // round-trip that exact redacted JSON back to an object for Sentry's log
+    // attributes, so both sinks carry byte-identical redaction (no raw context
+    // object ever leaves this function).
+    const redactedContextJson = hasContext ? redactSecrets(JSON.stringify(context)) : undefined;
+
+    if (redactedContextJson !== undefined) {
+      sink[msgLevel](prefix, redactedContextJson);
     } else {
       sink[msgLevel](prefix);
     }
+
+    // Sentry Structured Logs sink (Story ops-4). No-op until initSentry runs.
+    // `debug/info/warn/error` map 1:1 to Sentry.logger's same-named methods.
+    const attributes =
+      redactedContextJson !== undefined
+        ? (JSON.parse(redactedContextJson) as Record<string, unknown>)
+        : undefined;
+    Sentry.logger[msgLevel](redactedMessage, attributes);
   };
 
   return {

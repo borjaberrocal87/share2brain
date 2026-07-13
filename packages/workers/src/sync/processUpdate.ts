@@ -20,7 +20,7 @@ import type { Embedder } from '../indexer/types.js';
 import { buildEmbeddingText, type EnrichmentChatModel } from '../enrichment/enrich.js';
 import { buildResourceRows, type ResourceRow } from '../enrichment/resourceRows.js';
 import type { GuardedDispatcher } from '../enrichment/ssrfGuard.js';
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import type { ProcessResult } from './types.js';
 
 export interface ProcessUpdateDeps {

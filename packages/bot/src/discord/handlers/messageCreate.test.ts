@@ -6,7 +6,7 @@ import type { Database } from '@share2brain/shared/db';
 import type { RedisClient } from '@share2brain/shared/redis';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Logger } from '../../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import type { IngestibleMessage } from '../../persistence/persistMessage.js';
 import { handleMessageCreate, type MessageCreateDeps } from './messageCreate.js';
 

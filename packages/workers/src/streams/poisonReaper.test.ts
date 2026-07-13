@@ -1,7 +1,7 @@
 import type { RedisClient } from '@share2brain/shared/redis';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { dlqStreamKey, MAX_DELIVERIES, reapPoisonEntries } from './poisonReaper.js';
 
 const STREAM = 'share2brain:discord:messages';

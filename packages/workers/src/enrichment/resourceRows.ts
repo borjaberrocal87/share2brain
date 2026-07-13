@@ -12,7 +12,7 @@
 // enrichment failed.
 import type { Share2BrainConfig } from '@share2brain/shared';
 
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { enrich, type EnrichmentChatModel } from './enrich.js';
 import { extractUrls } from './extractUrls.js';
 import { extractPageHints } from './htmlText.js';

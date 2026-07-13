@@ -22,7 +22,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { EnrichmentChatModel } from '../enrichment/enrich.js';
 import { createGuardedDispatcher, type GuardedDispatcher } from '../enrichment/ssrfGuard.js';
 import type { Embedder } from '../indexer/types.js';
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { openTestClients, type TestClients } from '../test-helpers.js';
 import { processDelete as processDeleteImpl, type ProcessDeleteDeps } from './processDelete.js';
 import { processUpdate as processUpdateImpl, type ProcessUpdateDeps } from './processUpdate.js';

@@ -19,7 +19,7 @@ import { STREAM_KEYS, type BackfillCompletedEvent } from '@share2brain/shared/ty
 import type { Client } from 'discord.js';
 
 import { waitOrAbort } from '../discord/reconnect.js';
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import {
   persistMessage,
   type IngestDeps,

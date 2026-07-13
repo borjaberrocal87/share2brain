@@ -1,6 +1,19 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Story ops-4: the logger now forwards to Sentry Structured Logs alongside the
+// console sink. Mock the SDK so unit tests can assert the forward without a real
+// client (Sentry.logger.* are safe no-ops in prod before initSentry runs).
+vi.mock('@sentry/node', () => ({
+  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+import * as Sentry from '@sentry/node';
 
 import { createLogger, redactSecrets } from './logger.js';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 type SinkMethod = (...args: unknown[]) => void;
 
@@ -96,6 +109,44 @@ describe('createLogger', () => {
       '[workers] error connect failed to postgres://***@db:5432/app',
       JSON.stringify({ reason: 'ECONNREFUSED redis://***@redis:6379' }),
     );
+  });
+});
+
+describe('Sentry Logs dual sink (Story ops-4, AC5)', () => {
+  it('forwards an emitted line to Sentry.logger[level] with the SAME redaction as stdout', () => {
+    const sink = fakeSink();
+    const logger = createLogger('debug', 'backend', sink);
+
+    logger.info('connecting to redis://user:pass@cache:6379', {
+      url: 'redis://user:pass@cache:6379',
+      count: 2,
+    });
+
+    // Message is the raw (redacted) line — the `[service]` prefix is a stdout
+    // formatting concern; in Sentry the service rides as a tag/attribute.
+    expect(vi.mocked(Sentry.logger.info)).toHaveBeenCalledWith(
+      'connecting to redis://***@cache:6379',
+      { url: 'redis://***@cache:6379', count: 2 },
+    );
+  });
+
+  it('maps each level 1:1 and passes undefined attributes when context is absent', () => {
+    const sink = fakeSink();
+    const logger = createLogger('debug', 'workers', sink);
+
+    logger.error('boom');
+
+    expect(vi.mocked(Sentry.logger.error)).toHaveBeenCalledWith('boom', undefined);
+  });
+
+  it('forwards a line below the threshold to NEITHER sink (Sentry volume respects log_level)', () => {
+    const sink = fakeSink();
+    const logger = createLogger('warn', 'backend', sink);
+
+    logger.info('below threshold — dropped');
+
+    expect(sink.info).not.toHaveBeenCalled();
+    expect(vi.mocked(Sentry.logger.info)).not.toHaveBeenCalled();
   });
 });
 

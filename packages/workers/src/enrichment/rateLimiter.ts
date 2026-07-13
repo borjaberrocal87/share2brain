@@ -14,7 +14,7 @@
 import type { Share2BrainConfig } from '@share2brain/shared';
 import type { RedisClient } from '@share2brain/shared/redis';
 
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 
 const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;

@@ -146,6 +146,32 @@ npx playwright install chromium  # one-time: download the browser (chromium only
 npm run test:e2e -w @share2brain/web   # Playwright end-to-end (needs test Postgres+Redis + fake-OAuth session)
 ```
 
+## 🔭 Observability (Sentry)
+
+The three Node services (`backend`, `bot`, `workers`) ship their errors **and every
+structured log line** to [Sentry](https://sentry.io) so you never have to `docker logs`
+the VPS. It is **opt-in and off by default**.
+
+- **Enable it:** set `SENTRY_DSN` in `.env` to your project's DSN. That value flows into
+  `Share2Brain.config.yml`'s `observability.sentry_dsn: "${SENTRY_DSN}"`, which
+  `docker-compose.yml` already passes to all three services.
+- **Disable it:** leave `SENTRY_DSN` empty (the default). `initSentry` is then a genuine
+  no-op — `Sentry.init` is never called and logs go to `stdout` exactly as before.
+- **What is captured** when enabled:
+  - **Errors** — `uncaughtException` / `unhandledRejection` in every service, plus unhandled
+    HTTP 5xx in the backend (via `Sentry.setupExpressErrorHandler`), with full stack traces.
+  - **Logs** — *all* levels at or above `observability.log_level`, forwarded to Sentry
+    Structured Logs alongside `stdout` (dual sink). Lower the log level to reduce volume.
+  - Every event/log is **tagged with the emitting `service`** (`backend` | `bot` | `workers`).
+  - Backend errors also carry **user context**: the internal user id + Discord role ids only.
+- **Never sent:** secrets (DB/Redis connection-string credentials are scrubbed by
+  `redactSecrets`), Discord message `content`, emails, or IPs (`sendDefaultPii` stays off).
+- **Volume note:** because *all* logs ship (not only errors), watch your Sentry quota and
+  keep `observability.log_level` at `info` (or higher) in production.
+- `@sentry/node` is a dependency of `@share2brain/shared` **only** — the services inherit it
+  transitively (AD-2). The single integration point is
+  `packages/shared/src/observability/`.
+
 ## Updating a running deployment
 
 ```bash

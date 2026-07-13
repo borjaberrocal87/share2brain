@@ -5,6 +5,7 @@
 // presentation controller → routes.
 import { type Database } from '@share2brain/shared/db';
 import type { Logger } from '@share2brain/shared/logger';
+import { setSentryUser, setupSentryErrorHandler } from '@share2brain/shared/observability';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
@@ -244,6 +245,18 @@ export function createApp(db: Database, redis: RedisClient, opts: AppOptions): E
   // registered below inherit it.
   app.use('/api', ...apiLimiters, requireAuth, createRbacMiddleware(rbacService));
 
+  // Story ops-4 (NFR13): attach the authenticated user's identity to Sentry so any
+  // error/5xx captured downstream is traceable to a user — the INTERNAL user id +
+  // Discord role ids ONLY. Never the Discord snowflake, message content, email, or
+  // IP (sendDefaultPii stays off). Mounted after requireAuth so req.session.userId
+  // is present; a no-op when Sentry has no DSN.
+  app.use('/api', (req, _res, next) => {
+    if (req.session.userId) {
+      setSentryUser({ id: req.session.userId, roles: req.session.discordRoles ?? [] });
+    }
+    next();
+  });
+
   // Search (Epic 4). Registered AFTER the /api gate, so it inherits requireAuth +
   // the RBAC middleware (req.allowedChannelIds) — the AD-12 filter is enforced
   // inside the vector query by the adapter. The embedder must be injected (no
@@ -320,6 +333,14 @@ export function createApp(db: Database, redis: RedisClient, opts: AppOptions): E
   const conversationService = createConversationService({ conversationRepo });
   const conversationController = createConversationController({ conversationService });
   app.use('/api/conversations', createConversationRouter(conversationController));
+
+  // Story ops-4 (AC7): Sentry's Express error handler sits AFTER all routes and
+  // BEFORE the mapper below. It observes unhandled errors / HTTP 5xx (capturing
+  // the stack + the user context set above) then calls next(err), so the mapper
+  // still owns the client-facing `{ error, code }` shape — the response is
+  // unchanged. A capture-only no-op until initSentry arms the client (tests/e2e
+  // never call initSentry, so this is inert there).
+  setupSentryErrorHandler(app);
 
   // M-3 (audit): final error-handling middleware — the LAST app.use, so it is the
   // net for everything above it (asyncHandler-forwarded controller rejections AND

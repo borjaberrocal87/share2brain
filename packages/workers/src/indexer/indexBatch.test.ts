@@ -7,7 +7,7 @@ import { enrich } from '../enrichment/enrich.js';
 import type { ResolvedEnrichmentRateLimit } from '../enrichment/rateLimiter.js';
 import type { GuardedDispatcher } from '../enrichment/ssrfGuard.js';
 import { fetchUrl } from '../enrichment/urlFetcher.js';
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { indexBatch } from './indexBatch.js';
 import type { Embedder, IndexStateRow, RawStreamEntry } from './types.js';
 

@@ -23,7 +23,7 @@
 import type { RedisClient } from '@share2brain/shared/redis';
 
 import type { RawStreamEntry } from '../indexer/types.js';
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 
 /** Deliveries (boot replays + reaper reclaims) before an entry is dead-lettered. */
 export const MAX_DELIVERIES = 5;

@@ -195,7 +195,54 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-06-30
-last_updated: 2026-07-12  # story 10-2 in-progress → review (bmad-dev-story): implemented on
+last_updated: 2026-07-13  # ops-4-sentry-observability review → done (bmad-code-review, incl. 3 post-patch
+# re-runs @ Borja's request). Re-run #3 FULLY CONVERGED: all 3 layers 0 new findings — Blind "ship it",
+# Edge 0 edges, Auditor 0 AC violations (AC1–AC11 SATISFIED); graceful-shutdown flush verified sound on both
+# clean+error paths, no hang/double-exit. Only a doc-hygiene note (story File List missing lifecycle.ts/
+# lifecycle.test.ts) → fixed. Review CONVERGED; no further re-run needed. || (re-run #2) CONVERGED: Edge +
+# Auditor 0 findings (26/26 shared tests, tsc clean,
+# AD-2 grep empty, redactor hardening hand-traced sound); Blind surfaced B1 (graceful SIGTERM shutdown never
+# flushed Sentry → tail logs dropped on normal restart) → FIXED: flushSentry() in the finally of all 3
+# graceful paths (backend lifecycle.ts DI-injectable + bot/workers exit(0)), +1 lifecycle test. Blind's other
+# 4 items were already deferred/dismissed. Gate: lint 0 / 1072 unit+web / build 5 pkgs.
+# || (prior re-run #1): re-run re-confirmed 0 AC violations + P1/P2 sound (Edge verified flush no-hang/
+# no-early-exit vs real Sentry SDK); re-run caught P2's redactValue had introduced a shared-reference (DAG)
+# drop bug (N1 Med) + Date/Map-mangle (N4) + string-body-escape (N3) → all fixed in one consolidated
+# hardening patch (path-scoped WeakSet, isPlainObject pass-through, string-body redaction, +3 tests); N2
+# (headers throw) dismissed — refuted at Sentry source. Gate re-run green: lint 0 / 1071 unit+web / build 5
+# pkgs. || (orig) 3 adversarial
+# layers @ Opus 4.8 (Blind / Edge / Auditor). Auditor 0 AC violations — AC1–AC11 all SATISFIED vs real
+# source; the 3 DECISIONs confirmed implemented. Triage: 1 decision-needed (→ DEFERRED by Borja: no
+# per-request scope isolation / setUser cross-request bleed — accepted KNOWN LIMITATION, single-guild
+# profile, import-time instrument.ts = future enhancement), 2 patch APPLIED, 3 defer, 5 dismissed. Patches:
+# (P1 High) flushSentry (Sentry.close, bounded 2s, never-throws) chained into all 6 fatal handlers before
+# exit(1) — fatal errors + buffered logs were being dropped (acute w/ crash notifications off, the default,
+# so notify() resolves instantly); (P2 Med) deep/recursive redaction in sentry.ts (redactValue drops
+# `content` at any depth + WeakSet circular guard) + beforeSend now scrubs breadcrumbs/request. +4 unit
+# tests. Gate re-run green: lint 0 / 1068 unit+web (+4) / build clean (5 pkgs). Defers → deferred-work.md
+# (redactSecrets URL-userinfo-only; JSON.stringify throw-on-circular; <500-status→client-500 escapes
+# Sentry's >=500 capture). Story done; UNCOMMITTED on feat/ops-4-sentry-observability, no PR yet.
+# Next: commit + PR + bmad-checkpoint-preview. || (prior) ops-4-sentry-observability in-progress → review
+# (bmad-dev-story): implemented on
+# feat/ops-4-sentry-observability. @sentry/node ^9.41.0 (→9.47.1) in shared ONLY; new
+# @share2brain/shared/observability (initSentry + beforeSend/beforeSendLog scrubbing + captureException/
+# setSentryUser/setupSentryErrorHandler wrappers — single integration point, services never import
+# @sentry/node directly, AD-2). Logger dual sink (stdout + Sentry Structured Logs, same redactSecrets,
+# gated by log_level). All 3 main.ts: initSentry after loadConfig (AD-8) + captureException in fatal
+# handlers; backend app.ts: post-auth setSentryUser (internal userId + roles, never snowflake/content/PII)
+# + setupSentryErrorHandler before the { error, code } mapper. bot/workers consolidated onto shared logger
+# (local copies DELETED, 36 import sites redirected; [bot]/[workers] prefix unchanged). DECISION: setUser
+# id = internal UUID (session has no discord snowflake; better fit for "id+roles, no PII"). Log type derived
+# from beforeSendLog sig (not imported from @sentry/core). Docs synced (PRD stack+SNF-9, SPINE deferred→
+# implemented, development_guide Observability section, project-context rule). Gate green: lint 0 / 1064
+# unit+web (+13) / build clean (5 pkgs). AC3 empty-DSN no-op boot smoke PASS; AC11 live real-DSN smoke PASS
+# (error+info log flushed to real Sentry, flush=true, eventId returned). NOT committed to a PR yet.
+# Open Q resolved: environment=NODE_ENV??'production'; release tagging deferred. Next: commit + PR +
+# bmad-code-review (different LLM). || (prior) ops-4-sentry-observability backlog → ready-for-dev (bmad-create-story):
+# Sentry observability for backend/bot/workers (full logs + errors), @sentry/node ^9.41.0 in shared only,
+# initSentry per main.ts after loadConfig, consolidate bot/workers onto shared logger. Source:
+# sprint-change-proposal-2026-07-13-sentry.md + operational-backlog P1.3 (bmad-correct-course, approved).
+# || (prior) story 10-2 in-progress → review (bmad-dev-story): implemented on
 # feat/10-2-web-i18n off 4471cd2. i18next 26 + react-i18next 17 (single translation namespace,
 # 103 keys, es/en structurally identical per parity.test.ts); pre-render boot language
 # resolution (fetchUiLanguage never throws ⇒ es); ~80 literals extracted across 8 components,
@@ -706,6 +753,14 @@ development_status:
   # stream prefix hivly: → share2brain:. Safe (never deployed to prod; docker compose down -v clears
   # old volumes/keys). Repo/remote/local-config rename = Borja's ops steps (outside the code PR).
   ops-3-rename-hivly-share2brain: done
+  # Added 2026-07-13 via bmad-correct-course + bmad-create-story (sprint-change-proposal-2026-07-13-sentry.md,
+  # operational-backlog P1.3): Sentry observability for backend/bot/workers. Scope (Borja): FULL LOGS
+  # (errors + all log lines → Sentry Structured Logs) + consolidate bot/workers onto @share2brain/shared/logger
+  # (delete local logger.ts copies, Story 6.4 dup debt). @sentry/node ^9.41.0 in shared only (AD-2);
+  # initSentry(dsn, service) in each main.ts after loadConfig (AD-8); empty DSN = no-op (S-5); dual sink
+  # (stdout + Sentry.logger[level]); beforeSend/beforeSendLog reuse redactSecrets, never PII/content (NFR13).
+  # Scaffolding already existed (config sentry_dsn, .env, compose wiring on all 3). Story: ops-4-sentry-observability.md.
+  ops-4-sentry-observability: done
 
 action_items:
   - epic: 1

@@ -1,7 +1,7 @@
 import type { Share2BrainConfig } from '@share2brain/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { enrich } from './enrich.js';
 import { buildResourceRows, MAX_URLS_PER_MESSAGE } from './resourceRows.js';
 import type { GuardedDispatcher } from './ssrfGuard.js';

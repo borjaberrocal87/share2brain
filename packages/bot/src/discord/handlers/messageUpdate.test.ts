@@ -6,7 +6,7 @@ import type { RedisClient } from '@share2brain/shared/redis';
 import { STREAM_KEYS } from '@share2brain/shared/types/events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Logger } from '../../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { handleMessageUpdate, type MessageUpdateDeps, type UpdatableMessage } from './messageUpdate.js';
 
 function makeConfig(ignoreBots: boolean): Share2BrainConfig {

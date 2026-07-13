@@ -19,7 +19,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { EnrichmentChatModel } from '../enrichment/enrich.js';
 import { createGuardedDispatcher, type GuardedDispatcher } from '../enrichment/ssrfGuard.js';
-import type { Logger } from '../logger.js';
+import type { Logger } from '@share2brain/shared/logger';
 import { openTestClients, type TestClients } from '../test-helpers.js';
 import { indexBatch } from './indexBatch.js';
 import type { Embedder, RawStreamEntry } from './types.js';
