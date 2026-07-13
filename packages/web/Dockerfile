@@ -19,6 +19,12 @@ RUN npm ci
 COPY tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 COPY packages/web ./packages/web
+
+# Build-time SPA branding. Vite inlines any VITE_-prefixed env var into the
+# bundle. Defaults to "Share2Brain" in App.tsx if not set.
+ARG VITE_COMMUNITY_NAME=Share2Brain
+ENV VITE_COMMUNITY_NAME=${VITE_COMMUNITY_NAME}
+
 RUN npm run build -w @share2brain/web
 
 # --- final image ------------------------------------------------------------

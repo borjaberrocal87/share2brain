@@ -1,0 +1,200 @@
+# Share2Brain — production compose for the Hostinger VPS deployment.
+#
+# Usage (the deploy workflow handles this automatically):
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d --remove-orphans
+#
+# This is a STANDALONE file (not an override of docker-compose.yml). In
+# production we use pre-built images from GHCR — no Dockerfile or build
+# context needed on the VPS. The base docker-compose.yml is for local dev only.
+#
+# Differences from the dev compose:
+#   - Images pulled from GHCR (not built locally)
+#   - nginx on Caddy's network (external reverse proxy for demo.share2brain.app)
+#   - nginx host ports replaced with loopback-only 8080 (Caddy owns 80/443)
+#   - container_name on nginx so Caddy can resolve it by DNS
+
+services:
+  # ── Data stores ────────────────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg17
+    mem_limit: 512m
+    environment:
+      POSTGRES_DB: share2brain
+      POSTGRES_USER: share2brain
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U share2brain -d share2brain"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    mem_limit: 256m
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command: sh -c 'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes --dir /data'
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── One-shot migrator ──────────────────────────────────────────────────────
+  migrator:
+    image: ghcr.io/borjaberrocal87/share2brain-migrator:${IMAGE_TAG:-latest}
+    command: npx drizzle-kit migrate
+    mem_limit: 256m
+    environment:
+      DATABASE_URL: postgres://share2brain:${POSTGRES_PASSWORD}@postgres:5432/share2brain
+    networks:
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # ── Application services ───────────────────────────────────────────────────
+  backend:
+    image: ghcr.io/borjaberrocal87/share2brain-backend:${IMAGE_TAG:-latest}
+    mem_limit: 512m
+    environment:
+      DATABASE_URL: postgres://share2brain:${POSTGRES_PASSWORD}@postgres:5432/share2brain
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      DISCORD_REDIRECT_URI: ${DISCORD_REDIRECT_URI}
+      SESSION_SECRET: ${SESSION_SECRET}
+      SESSION_TTL_DAYS: ${SESSION_TTL_DAYS}
+      FRONTEND_URL: ${FRONTEND_URL}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      EMBEDDINGS_API_KEY: ${EMBEDDINGS_API_KEY}
+      EMBEDDINGS_BASE_URL: ${EMBEDDINGS_BASE_URL:-}
+      ENRICHMENT_LLM_API_KEY: ${ENRICHMENT_LLM_API_KEY}
+      ENRICHMENT_LLM_BASE_URL: ${ENRICHMENT_LLM_BASE_URL:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    volumes:
+      - ./Share2Brain.config.yml:/app/Share2Brain.config.yml:ro
+    networks:
+      - frontend
+      - data
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  bot:
+    image: ghcr.io/borjaberrocal87/share2brain-bot:${IMAGE_TAG:-latest}
+    mem_limit: 384m
+    environment:
+      DATABASE_URL: postgres://share2brain:${POSTGRES_PASSWORD}@postgres:5432/share2brain
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      EMBEDDINGS_API_KEY: ${EMBEDDINGS_API_KEY}
+      EMBEDDINGS_BASE_URL: ${EMBEDDINGS_BASE_URL:-}
+      ENRICHMENT_LLM_API_KEY: ${ENRICHMENT_LLM_API_KEY}
+      ENRICHMENT_LLM_BASE_URL: ${ENRICHMENT_LLM_BASE_URL:-}
+      FRONTEND_URL: ${FRONTEND_URL}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    volumes:
+      - ./Share2Brain.config.yml:/app/Share2Brain.config.yml:ro
+    networks:
+      - data
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  workers:
+    image: ghcr.io/borjaberrocal87/share2brain-workers:${IMAGE_TAG:-latest}
+    mem_limit: 512m
+    environment:
+      DATABASE_URL: postgres://share2brain:${POSTGRES_PASSWORD}@postgres:5432/share2brain
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      EMBEDDINGS_API_KEY: ${EMBEDDINGS_API_KEY}
+      EMBEDDINGS_BASE_URL: ${EMBEDDINGS_BASE_URL:-}
+      ENRICHMENT_LLM_API_KEY: ${ENRICHMENT_LLM_API_KEY}
+      ENRICHMENT_LLM_BASE_URL: ${ENRICHMENT_LLM_BASE_URL:-}
+      FRONTEND_URL: ${FRONTEND_URL}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    volumes:
+      - ./Share2Brain.config.yml:/app/Share2Brain.config.yml:ro
+    networks:
+      - data
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stop_grace_period: 35s
+    restart: unless-stopped
+
+  # ── Edge ───────────────────────────────────────────────────────────────────
+  nginx:
+    image: ghcr.io/borjaberrocal87/share2brain-nginx:${IMAGE_TAG:-latest}
+    container_name: share2brain-nginx
+    mem_limit: 128m
+    # Caddy owns 80/443 on the host. Keep a loopback-only port so the deploy
+    # workflow can health-check nginx without going through Caddy.
+    ports: !override
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
+    networks:
+      - frontend
+      - caddy_net
+    depends_on:
+      - backend
+
+networks:
+  frontend:
+  data:
+  caddy_net:
+    external: true
+    name: share2brain-landing_share2brain-network
+
+volumes:
+  pgdata:
+  redisdata:

@@ -123,7 +123,9 @@ services:
       ENRICHMENT_LLM_API_KEY: ${ENRICHMENT_LLM_API_KEY}
       ENRICHMENT_LLM_BASE_URL: ${ENRICHMENT_LLM_BASE_URL:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
-      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
     volumes:
       - ./Share2Brain.config.yml:/app/Share2Brain.config.yml:ro
     networks:
@@ -140,6 +142,8 @@ services:
     # redis.quit 5s + db.end 10s) can total ~25s worst case — longer than
     # Compose's 10s default, which would SIGKILL mid-drain.
     stop_grace_period: 30s
+    # P2.6: auto-restart on crash (e.g. Redis socket close kills the process).
+    restart: unless-stopped
 
   bot:
     build:
@@ -164,7 +168,9 @@ services:
       ENRICHMENT_LLM_BASE_URL: ${ENRICHMENT_LLM_BASE_URL:-}
       FRONTEND_URL: ${FRONTEND_URL}
       SENTRY_DSN: ${SENTRY_DSN:-}
-      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
     volumes:
       - ./Share2Brain.config.yml:/app/Share2Brain.config.yml:ro
     networks:
@@ -179,6 +185,8 @@ services:
     # Story 6.4 (AC-3, note #7): the bounded drain (backfill/offline-sync wait 5s
     # + Gateway destroy 5s + redis.quit 5s + db.end 10s) can total ~25s worst case.
     stop_grace_period: 30s
+    # P2.6: auto-restart on crash (e.g. Redis socket close kills the process).
+    restart: unless-stopped
 
   workers:
     build:
@@ -201,7 +209,9 @@ services:
       ENRICHMENT_LLM_BASE_URL: ${ENRICHMENT_LLM_BASE_URL:-}
       FRONTEND_URL: ${FRONTEND_URL}
       SENTRY_DSN: ${SENTRY_DSN:-}
-      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
     volumes:
       - ./Share2Brain.config.yml:/app/Share2Brain.config.yml:ro
     networks:
@@ -219,6 +229,8 @@ services:
     # Grace must exceed that or Compose SIGKILLs mid db.end() → 35s (not 30s like
     # backend/bot, which top out at 25s with a single redis client).
     stop_grace_period: 35s
+    # P2.6: auto-restart on crash (e.g. Redis socket close kills the process).
+    restart: unless-stopped
 
   # ── Edge: the only host-exposed service (AD-7) ──────────────────────────────
   # Built from packages/web/Dockerfile: the SPA dist + nginx.conf are baked into
@@ -228,6 +240,10 @@ services:
     build:
       context: .
       dockerfile: packages/web/Dockerfile
+      args:
+        # Build-time SPA branding (Vite inlines VITE_-prefixed vars). Defaults
+        # to "Share2Brain" in App.tsx if not set.
+        VITE_COMMUNITY_NAME: ${VITE_COMMUNITY_NAME:-Share2Brain}
     mem_limit: 128m
     ports:
       - "80:80"
