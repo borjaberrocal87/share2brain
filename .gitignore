@@ -7,6 +7,8 @@ node_modules/
 Share2Brain.config.yml
 *.log
 .DS_Store
+# Local opencode session artifacts (plans, scratch)
+.opencode/
 *.tsbuildinfo
 # Playwright E2E artifacts (Story 4.5)
 test-results/
