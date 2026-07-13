@@ -143,7 +143,7 @@ export function Sidebar({ activeScreen, onNavigate, unreadCount = 0 }: SidebarPr
             style={{
               fontFamily: "'IBM Plex Mono', monospace",
               fontSize: 11,
-              color: 'var(--text-tertiary)',
+              color: 'var(--tx3)',
             }}
           >
             share2brain.config.yml
@@ -157,7 +157,7 @@ export function Sidebar({ activeScreen, onNavigate, unreadCount = 0 }: SidebarPr
             flexDirection: 'column',
             gap: 5,
             fontSize: 11.5,
-            color: 'var(--text-muted)',
+            color: 'var(--tx4)',
           }}
         >
           <div style={statusRowStyle}>
@@ -181,7 +181,7 @@ export function Sidebar({ activeScreen, onNavigate, unreadCount = 0 }: SidebarPr
           textAlign: 'center',
           fontFamily: "'IBM Plex Mono', monospace",
           fontSize: 10,
-          color: 'var(--text-subtle)',
+          color: 'var(--tx5)',
           letterSpacing: '0.05em',
         }}
       >

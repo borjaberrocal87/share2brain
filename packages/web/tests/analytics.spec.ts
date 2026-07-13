@@ -15,10 +15,10 @@ import { loginAs } from './helpers/session';
 
 // Dark-theme computed tokens (see global.css :root, dark block).
 const ACCENT_INK = 'rgb(245, 166, 35)'; // --accent-ink #F5A623
-const TEXT_PRIMARY = 'rgb(230, 233, 239)'; // --text-primary #E6E9EF
-const TEXT_SECONDARY = 'rgb(199, 205, 216)'; // --text-secondary #C7CDD8
-const TEXT_TERTIARY = 'rgb(154, 163, 178)'; // --text-tertiary #9AA3B2
-const TEXT_MUTED = 'rgb(124, 132, 148)'; // --text-muted #7C8494
+const TEXT_PRIMARY = 'rgb(230, 233, 239)'; // --tx #E6E9EF
+const TEXT_SECONDARY = 'rgb(199, 205, 216)'; // --tx2 #C7CDD8
+const TEXT_TERTIARY = 'rgb(154, 163, 178)'; // --tx3 #9AA3B2
+const TEXT_MUTED = 'rgb(124, 132, 148)'; // --tx4 #7C8494
 const SURFACE = 'rgb(18, 22, 29)'; // --surface #12161D
 const BORDER = 'rgb(32, 38, 47)'; // --border #20262F
 const TRACK = 'rgb(34, 41, 52)'; // --track #222934

@@ -10,11 +10,12 @@ import { loginAs } from './helpers/session';
 
 // Dark-theme computed tokens (see global.css :root).
 const ACCENT_INK = 'rgb(245, 166, 35)'; // --accent-ink #F5A623
+const DISCORD_BLURPLE = 'rgb(88, 101, 242)'; // #5865F2 (Ver recurso/Discord link hover, Story 11.1 D3)
 const HOVER_ROW = 'rgb(20, 25, 34)'; // --hover-row #141922
-const TEXT_PRIMARY = 'rgb(230, 233, 239)'; // --text-primary #E6E9EF
-const TEXT_MUTED = 'rgb(124, 132, 148)'; // --text-muted #7C8494
-const TEXT_TERTIARY = 'rgb(154, 163, 178)'; // --text-tertiary #9AA3B2
-const TEXT_SUBTLE = 'rgb(100, 108, 124)'; // --text-subtle #646C7C
+const TEXT_PRIMARY = 'rgb(230, 233, 239)'; // --tx #E6E9EF
+const TEXT_MUTED = 'rgb(124, 132, 148)'; // --tx4 #7C8494
+const TEXT_TERTIARY = 'rgb(154, 163, 178)'; // --tx3 #9AA3B2
+const TEXT_SUBTLE = 'rgb(100, 108, 124)'; // --tx5 #646C7C
 const BORDER_STRONG = 'rgb(42, 49, 61)'; // --border-strong #2A313D
 
 // The first DocsView row (ORDER BY created_at DESC → newest) is e2e-msg-g1, the
@@ -129,9 +130,10 @@ test.describe('Story 7.6 — DocsView description + resource link', () => {
     await expect(title).toHaveCSS('display', 'block');
 
     // Resource icon-button: seed href, new tab, 28×28 geometry, base muted
-    // color, hover amber (color AND border-color — the border-color hover is
-    // the D2 cascade guard: base border/color live in .kh-doc-link, not inline,
-    // Epic 4 retro AI#4).
+    // color, hover blurple #5865F2 (color AND border-color — Story 11.1 D3
+    // realigns the "Ver en Discord" link to the design's Discord blurple, was
+    // amber; the border-color hover is the D2 cascade guard: base border/color
+    // live in .kh-doc-link, not inline, Epic 4 retro AI#4).
     const resourceLink = firstRow.locator('.kh-doc-link');
     await expect(resourceLink).toHaveAttribute('href', FIRST_DOC_RESOURCE_LINK);
     await expect(resourceLink).toHaveAttribute('target', '_blank');
@@ -140,8 +142,8 @@ test.describe('Story 7.6 — DocsView description + resource link', () => {
     await expect(resourceLink).toHaveCSS('border-radius', '8px');
     await expect(resourceLink).toHaveCSS('color', TEXT_MUTED);
     await resourceLink.hover();
-    await expect(resourceLink).toHaveCSS('color', ACCENT_INK);
-    await expect(resourceLink).toHaveCSS('border-top-color', ACCENT_INK);
+    await expect(resourceLink).toHaveCSS('color', DISCORD_BLURPLE);
+    await expect(resourceLink).toHaveCSS('border-top-color', DISCORD_BLURPLE);
 
     await page.screenshot({ path: testInfo.outputPath('docs-resource.png'), fullPage: true });
   });

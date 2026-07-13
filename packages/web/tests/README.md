@@ -128,9 +128,8 @@ explicitly.
 ## Adding a spec (Stories 5.3 / 5.4)
 
 1. `import { loginAs } from './helpers/session'` and `await loginAs(page)`.
-2. Add `<view>.spec.ts` under `tests/`; assert **computed values** (rgb/px) with the
-   real token names (`--text-primary` / `--text-muted` / `--text-subtle`), never the
-   mockup's `--tx*`.
+2. Add `<view>.spec.ts` under `tests/`; assert **computed values** (rgb/px), annotating
+   each constant with its design token name (`--tx` / `--tx4` / `--tx5`).
 3. If you need new data, extend `seed.ts` (keep every id `e2e-`-prefixed and never
    widen a cleanup predicate beyond that prefix).
 4. Prefer `data-testid` where a computed-style locator would otherwise chain

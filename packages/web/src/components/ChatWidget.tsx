@@ -518,7 +518,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
               fontWeight: 700,
               fontSize: 15,
               lineHeight: 1.15,
-              color: 'var(--text-primary)',
+              color: 'var(--tx)',
             }}
           >
             Share2Brain
@@ -530,7 +530,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
               alignItems: 'center',
               gap: 5,
               fontSize: 11,
-              color: 'var(--text-muted)',
+              color: 'var(--tx4)',
             }}
           >
             <span
@@ -600,7 +600,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
                 fontSize: 10,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
-                color: 'var(--text-subtle)',
+                color: 'var(--tx5)',
               }}
             >
               {t('chat.historyTitle')}
@@ -653,7 +653,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
                       >
                         {c.title}
                       </span>
-                      <span style={{ flexShrink: 0, fontSize: 10.5, color: 'var(--text-subtle)' }}>
+                      <span style={{ flexShrink: 0, fontSize: 10.5, color: 'var(--tx5)' }}>
                         {relativeTime(c.updatedAt, i18n.language)}
                       </span>
                     </button>
@@ -680,12 +680,12 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
                       fontFamily: "'Space Grotesk', sans-serif",
                       fontWeight: 600,
                       fontSize: 21,
-                      color: 'var(--text-primary)',
+                      color: 'var(--tx)',
                     }}
                   >
                     {t('chat.emptyStateTitle')}
                   </h3>
-                  <p style={{ margin: '8px 0 0', fontSize: 14, color: 'var(--text-tertiary)' }}>
+                  <p style={{ margin: '8px 0 0', fontSize: 14, color: 'var(--tx3)' }}>
                     {t('chat.emptyStateDescription')}
                   </p>
                   <div
@@ -713,7 +713,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
                             padding: '13px 16px',
                             borderRadius: 11,
                             background: 'var(--surface)',
-                            color: 'var(--text-secondary)',
+                            color: 'var(--tx2)',
                             fontSize: 13.5,
                             cursor: 'pointer',
                           }}
@@ -780,7 +780,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
               border: 'none',
               outline: 'none',
               background: 'transparent',
-              color: 'var(--text-primary)',
+              color: 'var(--tx)',
               fontSize: 14,
               lineHeight: 1.5,
               padding: '8px 0',
@@ -805,7 +805,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
               border: 'none',
               transition: 'all 0.12s ease',
               background: canSend ? AMBER : 'var(--line)',
-              color: canSend ? 'var(--on-accent)' : 'var(--text-subtle)',
+              color: canSend ? 'var(--on-accent)' : 'var(--tx5)',
               cursor: canSend ? 'pointer' : 'not-allowed',
             }}
           >
@@ -820,7 +820,7 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
             justifyContent: 'center',
             gap: 6,
             fontSize: 10.5,
-            color: 'var(--text-subtle)',
+            color: 'var(--tx5)',
           }}
         >
           <span aria-hidden="true" style={{ display: 'flex' }}>
@@ -847,14 +847,14 @@ function MessageRow({ avatar, children }: { avatar: ReactNode; children: ReactNo
 const NAME_LABEL_STYLE: CSSProperties = {
   fontSize: 12.5,
   fontWeight: 600,
-  color: 'var(--text-tertiary)',
+  color: 'var(--tx3)',
   marginBottom: 8,
 };
 
 const MESSAGE_TEXT_STYLE: CSSProperties = {
   fontSize: 15,
   lineHeight: 1.7,
-  color: 'var(--text-primary)',
+  color: 'var(--tx)',
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
 };
@@ -947,7 +947,7 @@ function AgentBubble({ message }: { message: ChatMessage }): ReactElement {
         )}
       </div>
       {message.errored && (
-        <div data-testid="chat-error" style={{ marginTop: 8, fontSize: 13, color: 'var(--text-tertiary)' }}>
+        <div data-testid="chat-error" style={{ marginTop: 8, fontSize: 13, color: 'var(--tx3)' }}>
           {message.errorNote || t('chat.genericError')}
         </div>
       )}
@@ -966,7 +966,7 @@ function Citations({ citations }: { citations: CitationType[] }): ReactElement {
           fontSize: 10,
           letterSpacing: '0.06em',
           textTransform: 'uppercase',
-          color: 'var(--text-subtle)',
+          color: 'var(--tx5)',
           marginBottom: 8,
         }}
       >
@@ -1022,7 +1022,7 @@ function CitationChip({ citation }: { citation: CitationType }): ReactElement {
       <span
         style={{
           fontSize: 11.5,
-          color: 'var(--text-primary)',
+          color: 'var(--tx)',
           maxWidth: 180,
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -1031,8 +1031,8 @@ function CitationChip({ citation }: { citation: CitationType }): ReactElement {
       >
         {citation.title}
       </span>
-      <span style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>{citation.author}</span>
-      <span aria-hidden="true" style={{ display: 'flex', color: 'var(--text-subtle)' }}>
+      <span style={{ fontSize: 11.5, color: 'var(--tx3)' }}>{citation.author}</span>
+      <span aria-hidden="true" style={{ display: 'flex', color: 'var(--tx5)' }}>
         <ExternalLinkIcon size={12} />
       </span>
     </a>
@@ -1065,7 +1065,7 @@ const headerBtnStyle: CSSProperties = {
 const historyMessageStyle: CSSProperties = {
   margin: '10px 6px',
   fontSize: 12.5,
-  color: 'var(--text-subtle)',
+  color: 'var(--tx5)',
   textAlign: 'center',
 };
 
@@ -1082,5 +1082,5 @@ const historyRowStyle: CSSProperties = {
   cursor: 'pointer',
   fontSize: 13,
   textAlign: 'left',
-  color: 'var(--text-secondary)',
+  color: 'var(--tx2)',
 };

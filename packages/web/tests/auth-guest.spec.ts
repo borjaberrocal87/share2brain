@@ -13,7 +13,7 @@ import { loginAsGuest } from './helpers/session';
 // Dark-theme computed tokens (see global.css :root, dark block). loginAsGuest /
 // the login-screen test both force the dark theme before the first paint.
 const BORDER_STRONG = 'rgb(42, 49, 61)'; // --border-strong #2A313D
-const TEXT_SECONDARY = 'rgb(199, 205, 216)'; // --text-secondary #C7CDD8
+const TEXT_SECONDARY = 'rgb(199, 205, 216)'; // --tx2 #C7CDD8
 
 test.describe('Story 2.5 — guest access (E2E)', () => {
   test('login screen shows the guest button with its base colors (harness enabled)', async ({ page }) => {

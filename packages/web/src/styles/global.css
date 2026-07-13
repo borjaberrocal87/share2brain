@@ -18,16 +18,16 @@
 
 /* ---- Design tokens -------------------------------------------------------- */
 
-:root {
+:root, [data-kh="dark"] {
   --bg:#0E1116; --bg-deep:#0B0E13; --surface:#12161D; --card:#161B22; --hover-row:#141922; --track:#222934;
-  --line:#181D25; --border:#20262F; --border-strong:#2A313D; --border-hover:#3A4250;
-  --text-primary:#E6E9EF; --text-secondary:#C7CDD8; --text-tertiary:#9AA3B2; --text-muted:#7C8494; --text-subtle:#646C7C;
+  --line:#181D25; --border:#20262F; --border-strong:#2A313D; --border-hover:#3A4250; --dot-read:#272E39;
+  --tx:#E6E9EF; --tx2:#C7CDD8; --tx3:#9AA3B2; --tx4:#7C8494; --tx5:#646C7C;
   --hover:rgba(255,255,255,0.04); --on-accent:#0E1116; --accent-ink:#F5A623;
 }
 [data-kh="light"] {
   --bg:#F4F5F7; --bg-deep:#ECEEF1; --surface:#FFFFFF; --card:#FFFFFF; --hover-row:#EDEFF2; --track:#E2E5EA;
-  --line:#ECEEF1; --border:#E2E5EA; --border-strong:#D3D8DF; --border-hover:#C2C8D1;
-  --text-primary:#1B1F27; --text-secondary:#39414D; --text-tertiary:#5C6573; --text-muted:#79828F; --text-subtle:#99A1AD;
+  --line:#ECEEF1; --border:#E2E5EA; --border-strong:#D3D8DF; --border-hover:#C2C8D1; --dot-read:#C7CCD4;
+  --tx:#1B1F27; --tx2:#39414D; --tx3:#5C6573; --tx4:#79828F; --tx5:#99A1AD;
   --hover:rgba(0,0,0,0.05); --on-accent:#0E1116; --accent-ink:#9A5B00;
 }
 
@@ -35,7 +35,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text-primary); font-family: 'IBM Plex Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+body { background: var(--bg); color: var(--tx); font-family: 'IBM Plex Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
 ::selection { background: rgba(245,166,35,0.3); }
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; border: 2px solid var(--bg); }

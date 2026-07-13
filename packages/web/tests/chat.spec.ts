@@ -31,7 +31,7 @@ const BORDER = 'rgb(32, 38, 47)'; // --border #20262F
 const BORDER_STRONG = 'rgb(42, 49, 61)'; // --border-strong #2A313D
 const LINE = 'rgb(24, 29, 37)'; // --line #181D25 (disabled send button bg)
 const AMBER = 'rgb(245, 166, 35)'; // #F5A623 (enabled send button bg)
-const TEXT_PRIMARY = 'rgb(230, 233, 239)'; // --text-primary #E6E9EF
+const TEXT_PRIMARY = 'rgb(230, 233, 239)'; // --tx #E6E9EF
 
 // The seeded conversation's one citation (CONVERSATION_CITATIONS[0] in seed.ts):
 // the chip shows this resource title and links to this href.

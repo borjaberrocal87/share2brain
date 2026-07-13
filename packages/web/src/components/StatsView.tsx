@@ -30,13 +30,13 @@ const sectionTitleStyle: CSSProperties = {
   fontFamily: "'Space Grotesk', sans-serif",
   fontWeight: 600,
   fontSize: 16,
-  color: 'var(--text-primary)',
+  color: 'var(--tx)',
 };
 
 const monoMutedStyle: CSSProperties = {
   fontFamily: "'IBM Plex Mono', monospace",
   fontSize: 12,
-  color: 'var(--text-muted)',
+  color: 'var(--tx4)',
 };
 
 // D4: 6-color avatar palette (mock-verbatim), deterministically hashed over authorId.
@@ -120,12 +120,12 @@ export function StatsView(): ReactElement {
             fontWeight: 600,
             fontSize: 25,
             letterSpacing: '-0.02em',
-            color: 'var(--text-primary)',
+            color: 'var(--tx)',
           }}
         >
           {t('stats.title')}
         </h2>
-        <p style={{ margin: '7px 0 0', fontSize: 14, color: 'var(--text-tertiary)' }}>
+        <p style={{ margin: '7px 0 0', fontSize: 14, color: 'var(--tx3)' }}>
           {t('stats.description')}
         </p>
 
@@ -136,7 +136,7 @@ export function StatsView(): ReactElement {
         )}
 
         {status === 'error' && (
-          <div data-testid="stats-error" style={{ marginTop: 24, fontSize: 14, color: 'var(--text-tertiary)' }}>
+          <div data-testid="stats-error" style={{ marginTop: 24, fontSize: 14, color: 'var(--tx3)' }}>
             {t('stats.error')}
           </div>
         )}
@@ -189,7 +189,7 @@ function KpiGrid({ kpis }: { kpis: StatsKpi[] }): ReactElement {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 12.5, color: 'var(--text-tertiary)' }}>{kpi.label}</span>
+            <span style={{ fontSize: 12.5, color: 'var(--tx3)' }}>{kpi.label}</span>
             <span
               style={{
                 width: 32,
@@ -212,12 +212,12 @@ function KpiGrid({ kpis }: { kpis: StatsKpi[] }): ReactElement {
               fontWeight: 700,
               fontSize: 29,
               letterSpacing: '-0.01em',
-              color: 'var(--text-primary)',
+              color: 'var(--tx)',
             }}
           >
             {kpi.value.toLocaleString(i18n.language)}
           </div>
-          <div style={{ marginTop: 4, fontSize: 12, color: 'var(--text-muted)' }}>{kpi.sub}</div>
+          <div style={{ marginTop: 4, fontSize: 12, color: 'var(--tx4)' }}>{kpi.sub}</div>
         </div>
       ))}
     </div>
@@ -236,7 +236,7 @@ function ActivityChart({ activity }: { activity: StatsActivityPoint[] }): ReactE
         <h3 style={sectionTitleStyle}>{t('stats.activityTitle')}</h3>
         <span
           data-testid="stats-activity-total"
-          style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, color: 'var(--text-muted)' }}
+          style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, color: 'var(--tx4)' }}
         >
           {t('stats.activityTotal', { count: total })}
         </span>
@@ -273,7 +273,7 @@ function ActivityChart({ activity }: { activity: StatsActivityPoint[] }): ReactE
           justifyContent: 'space-between',
           fontFamily: "'IBM Plex Mono', monospace",
           fontSize: 10.5,
-          color: 'var(--text-subtle)',
+          color: 'var(--tx5)',
         }}
       >
         <span>{t('stats.daysAgo14')}</span>
@@ -305,7 +305,7 @@ function ChannelsCard({ channels }: { channels: StatsChannel[] }): ReactElement 
                   <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12.5, color: 'var(--accent-ink)' }}>
                     #{ch.channelName}
                   </span>
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'var(--text-tertiary)' }}>
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'var(--tx3)' }}>
                     {ch.count.toLocaleString(i18n.language)}
                   </span>
                 </div>
@@ -336,7 +336,7 @@ function CoverageCard({ coverage }: { coverage: StatsCoverage }): ReactElement {
   return (
     <div style={sectionCardStyle}>
       <h3 style={sectionTitleStyle}>{t('stats.coverageTitle')}</h3>
-      <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--text-muted)' }}>
+      <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--tx4)' }}>
         {t('stats.coverageDescription')}
       </p>
 
@@ -368,12 +368,12 @@ function CoverageCard({ coverage }: { coverage: StatsCoverage }): ReactElement {
                 fontFamily: "'Space Grotesk', sans-serif",
                 fontWeight: 700,
                 fontSize: 23,
-                color: 'var(--text-primary)',
+                color: 'var(--tx)',
               }}
             >
               {readPct}%
             </span>
-            <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{t('stats.read')}</span>
+            <span style={{ fontSize: 10.5, color: 'var(--tx4)' }}>{t('stats.read')}</span>
           </div>
         </div>
 
@@ -388,7 +388,7 @@ function CoverageCard({ coverage }: { coverage: StatsCoverage }): ReactElement {
           marginTop: 2,
           fontFamily: "'IBM Plex Mono', monospace",
           fontSize: 11,
-          color: 'var(--text-subtle)',
+          color: 'var(--tx5)',
         }}
       >
         {t('stats.coverageTotal', { count: totalCount })}
@@ -400,10 +400,10 @@ function CoverageCard({ coverage }: { coverage: StatsCoverage }): ReactElement {
 function LegendRow({ color, label, value }: { color: string; label: string; value: number }): ReactElement {
   const { i18n } = useTranslation();
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, color: 'var(--text-secondary)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, color: 'var(--tx2)' }}>
       <span style={{ width: 11, height: 11, borderRadius: 3, background: color }} />
       <span>
-        {label} · <strong style={{ color: 'var(--text-primary)' }}>{value.toLocaleString(i18n.language)}</strong>
+        {label} · <strong style={{ color: 'var(--tx)' }}>{value.toLocaleString(i18n.language)}</strong>
       </span>
     </div>
   );
@@ -431,7 +431,7 @@ function TopUsersCard({ topUsers }: { topUsers: StatsTopUser[] }): ReactElement 
                   style={{
                     fontFamily: "'IBM Plex Mono', monospace",
                     fontSize: 12,
-                    color: 'var(--text-subtle)',
+                    color: 'var(--tx5)',
                     width: 16,
                     textAlign: 'center',
                     flexShrink: 0,
@@ -458,8 +458,8 @@ function TopUsersCard({ topUsers }: { topUsers: StatsTopUser[] }): ReactElement 
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>{user.authorName}</span>
-                    <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'var(--text-tertiary)' }}>
+                    <span style={{ fontSize: 13.5, color: 'var(--tx)' }}>{user.authorName}</span>
+                    <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: 'var(--tx3)' }}>
                       {user.count.toLocaleString(i18n.language)}
                     </span>
                   </div>

@@ -31,7 +31,7 @@
    the hover rule (cascade gotcha, Epic 4 retro Action Item #4). */
 .kh-guest-btn {
   border: 1px solid var(--border-strong);
-  color: var(--text-secondary);
+  color: var(--tx2);
   transition:
     border-color 0.15s ease,
     color 0.15s ease;
@@ -50,7 +50,7 @@
    component only toggles a class. */
 .kh-nav-item {
   background: transparent;
-  color: var(--text-tertiary);
+  color: var(--tx3);
 }
 .kh-nav-item:hover {
   background: var(--hover);
@@ -114,7 +114,7 @@
    Epic 4 retro Action Item #4). Amber hover, unlike the blurple Discord-only
    links above. */
 .kh-resource-link {
-  color: var(--text-muted);
+  color: var(--tx4);
 }
 .kh-resource-link:hover {
   color: var(--accent-ink);
@@ -131,11 +131,11 @@
    Item #4, mirrors .kh-resource-link above). */
 .kh-doc-link {
   border: 1px solid var(--border);
-  color: var(--text-muted);
+  color: var(--tx4);
 }
 .kh-doc-link:hover {
-  border-color: var(--accent-ink);
-  color: var(--accent-ink);
+  border-color: #5865f2;
+  color: #5865f2;
 }
 .kh-doc-link:focus-visible {
   outline: 2px solid var(--accent-ink);
@@ -146,7 +146,7 @@
   color: var(--accent-ink);
 }
 .kh-mark-all:hover {
-  color: var(--text-primary);
+  color: var(--tx);
   border-color: var(--border-hover);
 }
 .kh-unread-toggle:hover {
@@ -177,7 +177,7 @@
    order decides). */
 .kh-chat-header-btn {
   border: 1px solid var(--border);
-  color: var(--text-tertiary);
+  color: var(--tx3);
 }
 .kh-chat-header-btn:hover {
   color: var(--accent-ink);
@@ -193,14 +193,14 @@
 }
 
 /* Empty-state suggestion chips: base border here so :hover border-color applies.
-   Hover color uses --text-primary (NOT the prototype's hardcoded #fff) so light
+   Hover color uses --tx (NOT the prototype's hardcoded #fff) so light
    theme stays legible. */
 .kh-chat-suggestion {
   border: 1px solid var(--border);
 }
 .kh-chat-suggestion:hover {
   border-color: var(--accent-ink);
-  color: var(--text-primary);
+  color: var(--tx);
 }
 .kh-chat-suggestion:focus-visible {
   outline: 2px solid var(--accent-ink);

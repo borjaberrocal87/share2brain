@@ -98,12 +98,12 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
             fontWeight: 600,
             fontSize: 25,
             letterSpacing: '-0.02em',
-            color: 'var(--text-primary)',
+            color: 'var(--tx)',
           }}
         >
           {t('search.title')}
         </h2>
-        <p style={{ margin: '7px 0 0', fontSize: 14, color: 'var(--text-tertiary)' }}>
+        <p style={{ margin: '7px 0 0', fontSize: 14, color: 'var(--tx3)' }}>
           {t('search.description')}
         </p>
 
@@ -115,7 +115,7 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
               left: 17,
               top: '50%',
               transform: 'translateY(-50%)',
-              color: 'var(--text-muted)',
+              color: 'var(--tx4)',
               display: 'flex',
             }}
           >
@@ -131,7 +131,7 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
               height: 54,
               padding: '0 18px 0 48px',
               fontSize: 15,
-              color: 'var(--text-primary)',
+              color: 'var(--tx)',
               background: 'var(--surface)',
               // Base border lives in the .kh-search-input CSS class (not inline) so
               // the :focus rule can override border-color to var(--accent-ink) —
@@ -161,7 +161,7 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
               marginTop: 24,
               fontFamily: "'IBM Plex Mono', monospace",
               fontSize: 12,
-              color: 'var(--text-muted)',
+              color: 'var(--tx4)',
             }}
           >
             {t('search.loading')}
@@ -173,7 +173,7 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
             style={{
               marginTop: 24,
               fontSize: 14,
-              color: 'var(--text-tertiary)',
+              color: 'var(--tx3)',
             }}
           >
             {t('search.error')}
@@ -192,7 +192,7 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
               style={{
                 fontFamily: "'IBM Plex Mono', monospace",
                 fontSize: 12,
-                color: 'var(--text-muted)',
+                color: 'var(--tx4)',
               }}
             >
               {t('search.resultsCount', { count: visibleResults.length })}
@@ -201,7 +201,7 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
               style={{
                 fontFamily: "'IBM Plex Mono', monospace",
                 fontSize: 11,
-                color: 'var(--text-subtle)',
+                color: 'var(--tx5)',
               }}
             >
               {t('search.orderedBySimilarity')}
@@ -226,10 +226,10 @@ export function SearchView({ guildId }: SearchViewProps): ReactElement {
               borderRadius: 16,
             }}
           >
-            <div style={{ fontSize: 15, color: 'var(--text-tertiary)' }}>
+            <div style={{ fontSize: 15, color: 'var(--tx3)' }}>
               {t('search.emptyStateTitle')}
             </div>
-            <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-subtle)' }}>
+            <div style={{ marginTop: 6, fontSize: 13, color: 'var(--tx5)' }}>
               {t('search.emptyStateDescription')}
             </div>
           </div>
@@ -270,7 +270,7 @@ function ChannelChip({
               // Base border lives in .kh-chip so :hover can override border-color
               // (Epic 4 retro Action Item #4); the active branch keeps it inline.
               background: 'var(--surface)',
-              color: 'var(--text-tertiary)',
+              color: 'var(--tx3)',
             }),
       }}
     >
@@ -313,7 +313,7 @@ function ResultCard({ fragment, guildId }: { fragment: SearchFragment; guildId: 
           >
             #{fragment.channelName}
           </span>
-          <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>{date}</span>
+          <span style={{ fontSize: 12, color: 'var(--tx5)' }}>{date}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
           <div
@@ -335,7 +335,7 @@ function ResultCard({ fragment, guildId }: { fragment: SearchFragment; guildId: 
               }}
             />
           </div>
-          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, color: 'var(--text-tertiary)' }}>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, color: 'var(--tx3)' }}>
             {fragment.similarity.toFixed(2)}
           </span>
         </div>
@@ -347,7 +347,7 @@ function ResultCard({ fragment, guildId }: { fragment: SearchFragment; guildId: 
           fontFamily: "'Space Grotesk', sans-serif",
           fontWeight: 600,
           fontSize: 15.5,
-          color: 'var(--text-primary)',
+          color: 'var(--tx)',
           overflowWrap: 'anywhere',
         }}
       >
@@ -359,7 +359,7 @@ function ResultCard({ fragment, guildId }: { fragment: SearchFragment; guildId: 
           margin: '6px 0 0',
           fontSize: 14,
           lineHeight: 1.6,
-          color: 'var(--text-secondary)',
+          color: 'var(--tx2)',
           overflowWrap: 'anywhere',
         }}
       >
@@ -384,7 +384,7 @@ function ResultCard({ fragment, guildId }: { fragment: SearchFragment; guildId: 
           >
             {initialsFromUsername(fragment.authorName)}
           </div>
-          <span style={{ fontSize: 13, color: 'var(--text-tertiary)' }}>{fragment.authorName}</span>
+          <span style={{ fontSize: 13, color: 'var(--tx3)' }}>{fragment.authorName}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <a
@@ -413,7 +413,7 @@ function ResultCard({ fragment, guildId }: { fragment: SearchFragment; guildId: 
               alignItems: 'center',
               gap: 6,
               fontSize: 12.5,
-              color: 'var(--text-muted)',
+              color: 'var(--tx4)',
               textDecoration: 'none',
             }}
           >

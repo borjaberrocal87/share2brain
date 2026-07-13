@@ -40,7 +40,7 @@ const iconBtnStyle: CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: 8,
   background: 'transparent',
-  color: 'var(--text-tertiary)',
+  color: 'var(--tx3)',
   cursor: 'pointer',
 };
 
@@ -68,7 +68,7 @@ export function Header({
           style={{
             fontFamily: "'IBM Plex Mono', monospace",
             fontSize: 11.5,
-            color: 'var(--text-muted)',
+            color: 'var(--tx4)',
           }}
         >
           {statsLine}
@@ -98,7 +98,7 @@ export function Header({
               animation: 'kh-pulse 1.6s ease-in-out infinite',
             }}
           />
-          <span style={{ fontSize: 11.5, color: 'var(--text-tertiary)' }}>{t('header.liveIndexing')}</span>
+          <span style={{ fontSize: 11.5, color: 'var(--tx3)' }}>{t('header.liveIndexing')}</span>
         </div>
 
         {isGuest && (
@@ -137,7 +137,7 @@ export function Header({
           >
             {user.initials}
           </span>
-          <span style={{ fontSize: 13.5, color: 'var(--text-secondary)' }}>{user.name}</span>
+          <span style={{ fontSize: 13.5, color: 'var(--tx2)' }}>{user.name}</span>
 
           <button
             type="button"

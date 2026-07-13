@@ -129,9 +129,9 @@ describe('DocsView', () => {
 
     const unreadTitle = await screen.findByText('Unread Fragment');
     const readTitle = screen.getByText('Already Read Fragment');
-    expect(unreadTitle.style.color).toBe('var(--text-primary)');
+    expect(unreadTitle.style.color).toBe('var(--tx)');
     expect(unreadTitle.style.fontWeight).toBe('700');
-    expect(readTitle.style.color).toBe('var(--text-primary)');
+    expect(readTitle.style.color).toBe('var(--tx)');
     expect(readTitle.style.fontWeight).toBe('500');
   });
 

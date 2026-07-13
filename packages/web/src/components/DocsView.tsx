@@ -172,12 +172,12 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
             fontWeight: 600,
             fontSize: 25,
             letterSpacing: '-0.02em',
-            color: 'var(--text-primary)',
+            color: 'var(--tx)',
           }}
         >
           {t('docs.title')}
         </h2>
-        <p style={{ margin: '7px 0 0', fontSize: 14, color: 'var(--text-tertiary)' }}>
+        <p style={{ margin: '7px 0 0', fontSize: 14, color: 'var(--tx3)' }}>
           {t('docs.description')}
         </p>
 
@@ -214,7 +214,7 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
                 border: '1px solid var(--border)',
                 borderRadius: 999,
                 background: 'transparent',
-                color: 'var(--text-tertiary)',
+                color: 'var(--tx3)',
                 fontSize: 12,
                 cursor: 'pointer',
               }}
@@ -246,7 +246,7 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
                 : {
                     background: 'var(--surface)',
                     border: '1px solid var(--border)',
-                    color: 'var(--text-tertiary)',
+                    color: 'var(--tx3)',
                   }),
             }}
           >
@@ -256,7 +256,7 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
         </div>
 
         {status === 'error' ? (
-          <div style={{ marginTop: 24, fontSize: 14, color: 'var(--text-tertiary)' }}>
+          <div style={{ marginTop: 24, fontSize: 14, color: 'var(--tx3)' }}>
             {t('docs.loadError')}
           </div>
         ) : showEmptyState ? (
@@ -286,10 +286,10 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
             >
               <CheckIcon size={20} />
             </div>
-            <div style={{ fontSize: 15, color: 'var(--text-primary)' }}>
+            <div style={{ fontSize: 15, color: 'var(--tx)' }}>
               {t('docs.emptyStateTitle')}
             </div>
-            <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-subtle)' }}>
+            <div style={{ marginTop: 6, fontSize: 13, color: 'var(--tx5)' }}>
               {t('docs.emptyStateDescription')}
             </div>
           </div>
@@ -316,7 +316,7 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
                 fontSize: 10.5,
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase',
-                color: 'var(--text-subtle)',
+                color: 'var(--tx5)',
               }}
             >
               <span>{t('docs.columns.document')}</span>
@@ -334,7 +334,7 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
 
         {status !== 'error' && (
           <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, color: 'var(--text-subtle)' }}>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, color: 'var(--tx5)' }}>
               {t('docs.showing', { shown: visibleDocs.length, total })}
             </span>
             {docs.length < total && (
@@ -348,7 +348,7 @@ export function DocsView({ unreadCounts, onUnreadChange }: DocsViewProps): React
                   border: '1px solid var(--border-strong)',
                   borderRadius: 10,
                   background: 'var(--surface)',
-                  color: 'var(--text-secondary)',
+                  color: 'var(--tx2)',
                   fontSize: 13,
                   fontWeight: 500,
                   cursor: 'pointer',
@@ -394,7 +394,7 @@ function ChannelChip({
           : {
               background: 'var(--surface)',
               border: '1px solid var(--border)',
-              color: 'var(--text-tertiary)',
+              color: 'var(--tx3)',
             }),
       }}
     >
@@ -448,7 +448,7 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
           }}
         >
           {doc.isRead ? (
-            <span data-testid="doc-row-check" style={{ color: 'var(--text-subtle)' }}>
+            <span data-testid="doc-row-check" style={{ color: 'var(--tx5)' }}>
               <CheckIcon size={14} />
             </span>
           ) : (
@@ -473,7 +473,7 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
               overflowWrap: 'anywhere',
               fontSize: 13.5,
               lineHeight: 1.4,
-              color: 'var(--text-primary)',
+              color: 'var(--tx)',
               fontWeight: doc.isRead ? 500 : 700,
             }}
           >
@@ -509,7 +509,7 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
                 marginTop: 4,
                 fontSize: 13,
                 lineHeight: 1.5,
-                color: 'var(--text-tertiary)',
+                color: 'var(--tx3)',
               }}
             >
               {doc.description}
@@ -563,7 +563,7 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
         <span
           style={{
             fontSize: 12.5,
-            color: 'var(--text-tertiary)',
+            color: 'var(--tx3)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -578,7 +578,7 @@ function DocRow({ doc, onClick }: { doc: DocumentFragment; onClick: () => void }
           textAlign: 'right',
           fontFamily: "'IBM Plex Mono', monospace",
           fontSize: 11.5,
-          color: 'var(--text-muted)',
+          color: 'var(--tx4)',
         }}
       >
         {date}

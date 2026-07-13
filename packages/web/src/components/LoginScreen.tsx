@@ -35,7 +35,7 @@ const screenStyle: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   overflow: 'hidden',
-  color: 'var(--text-primary)',
+  color: 'var(--tx)',
   background:
     'radial-gradient(1200px 700px at 50% -10%, rgba(245,166,35,0.10), transparent 60%), radial-gradient(900px 600px at 85% 110%, rgba(88,101,242,0.10), transparent 55%), var(--bg-deep)',
 };
@@ -105,7 +105,7 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElemen
             fontFamily: "'IBM Plex Mono', monospace",
             fontSize: 11.5,
             letterSpacing: '0.08em',
-            color: 'var(--text-tertiary)',
+            color: 'var(--tx3)',
             textTransform: 'uppercase',
           }}
         >
@@ -117,7 +117,7 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElemen
             margin: '20px 2px 0',
             fontSize: 14.5,
             lineHeight: 1.55,
-            color: 'var(--text-secondary)',
+            color: 'var(--tx2)',
           }}
         >
           {t('login.description')}
@@ -156,7 +156,7 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElemen
             alignItems: 'center',
             gap: 8,
             justifyContent: 'center',
-            color: 'var(--text-muted)',
+            color: 'var(--tx4)',
             fontSize: 12.5,
           }}
         >
@@ -182,7 +182,7 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElemen
                   fontSize: 10.5,
                   letterSpacing: '0.08em',
                   textTransform: 'uppercase',
-                  color: 'var(--text-subtle)',
+                  color: 'var(--tx5)',
                 }}
               >
                 {t('login.orForDemo')}
@@ -226,7 +226,7 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElemen
             width: '100%',
             fontFamily: "'IBM Plex Mono', monospace",
             fontSize: 10.5,
-            color: 'var(--text-subtle)',
+            color: 'var(--tx5)',
             letterSpacing: '0.04em',
           }}
         >
