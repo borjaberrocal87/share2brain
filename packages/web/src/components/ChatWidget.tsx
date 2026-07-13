@@ -59,6 +59,13 @@ interface ChatWidgetProps {
    * the "Historial" button too — a guest has no navigable history.
    */
   isGuest?: boolean;
+  /**
+   * Mobile layout (Story 11.4). Drives the FAB/panel corner offset only: on
+   * mobile they lift to bottom:78/right:16 to clear the 62px fixed bottom-nav;
+   * on desktop (default) they stay at bottom:24/right:24. Optional/default-false
+   * so every existing render(<ChatWidget user={…} />) test stays desktop.
+   */
+  isMobile?: boolean;
 }
 
 const AMBER = '#F5A623';
@@ -104,7 +111,7 @@ const ACTIVE_ROW_STYLE: CSSProperties = {
   color: 'var(--accent-ink)',
 };
 
-export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactElement {
+export function ChatWidget({ user, isGuest = false, isMobile = false }: ChatWidgetProps): ReactElement {
   const { t, i18n } = useTranslation();
   const [chatOpen, setChatOpen] = useState(false);
   const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
@@ -117,6 +124,12 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
   // UX-DR15: the pulsing green launcher dot shows while a send is in flight and
   // the panel is closed (the stream keeps running — D6).
   const launcherActive = sending && !chatOpen;
+  // Story 11.4: the FAB and panel share one corner. On mobile they lift to clear
+  // the 62px fixed bottom-nav (78 = 62 + 16px gap) and tuck to the tighter 16px
+  // gutter; desktop keeps 24/24. Kept NUMERIC so React serializes 24→"24px"
+  // byte-identical to the pre-11.4 DOM → the desktop e2e baselines cannot churn.
+  const chatBottom = isMobile ? 78 : 24;
+  const chatRight = isMobile ? 16 : 24;
 
   const fabRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -393,8 +406,8 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
         onClick={openChat}
         style={{
           position: 'fixed',
-          bottom: 24,
-          right: 24,
+          bottom: chatBottom,
+          right: chatRight,
           zIndex: 60,
           width: 60,
           height: 60,
@@ -480,8 +493,8 @@ export function ChatWidget({ user, isGuest = false }: ChatWidgetProps): ReactEle
       }}
       style={{
         position: 'fixed',
-        bottom: 24,
-        right: 24,
+        bottom: chatBottom,
+        right: chatRight,
         zIndex: 60,
         width: 404,
         maxWidth: 'calc(100vw - 32px)',

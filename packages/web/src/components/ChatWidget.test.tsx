@@ -579,3 +579,52 @@ describe('ChatWidget — en locale (Story 10.2, AC2)', () => {
     expect(screen.getByText('Ask whatever you want')).toBeTruthy();
   });
 });
+
+// Story 11.4: the FAB and panel reposition off `isMobile` to clear the mobile
+// bottom-nav. jsdom applies the inline style, so bottom/right read back as px
+// strings even though no external CSS loads. Values only — geometry vs the
+// live bottom-nav is a Playwright concern (11.5).
+describe('ChatWidget — responsive corner (11.4)', () => {
+  it('should keep the FAB and panel at bottom:24/right:24 on desktop (isMobile omitted → default)', () => {
+    renderWidget();
+
+    const fab = screen.getByTestId('chat-fab');
+    expect((fab as HTMLElement).style.bottom).toBe('24px');
+    expect((fab as HTMLElement).style.right).toBe('24px');
+
+    openPanel();
+    const panel = screen.getByTestId('chat-panel');
+    expect((panel as HTMLElement).style.bottom).toBe('24px');
+    expect((panel as HTMLElement).style.right).toBe('24px');
+  });
+
+  it('should lift the FAB and panel to bottom:78/right:16 on mobile (clears the 62px bottom-nav)', () => {
+    render(<ChatWidget user={USER} isMobile />);
+
+    const fab = screen.getByTestId('chat-fab');
+    expect((fab as HTMLElement).style.bottom).toBe('78px');
+    expect((fab as HTMLElement).style.right).toBe('16px');
+
+    fireEvent.click(fab);
+    const panel = screen.getByTestId('chat-panel');
+    expect((panel as HTMLElement).style.bottom).toBe('78px');
+    expect((panel as HTMLElement).style.right).toBe('16px');
+  });
+
+  it('should NOT recompute the panel viewport constraints off isMobile (unchanged both modes)', () => {
+    // Desktop.
+    renderWidget();
+    openPanel();
+    const desktopPanel = screen.getByTestId('chat-panel');
+    expect((desktopPanel as HTMLElement).style.maxWidth).toBe('calc(100vw - 32px)');
+    expect((desktopPanel as HTMLElement).style.maxHeight).toBe('calc(100vh - 48px)');
+    cleanup();
+
+    // Mobile — same constraints (they are static, not driven off isMobile).
+    render(<ChatWidget user={USER} isMobile />);
+    fireEvent.click(screen.getByTestId('chat-fab'));
+    const mobilePanel = screen.getByTestId('chat-panel');
+    expect((mobilePanel as HTMLElement).style.maxWidth).toBe('calc(100vw - 32px)');
+    expect((mobilePanel as HTMLElement).style.maxHeight).toBe('calc(100vh - 48px)');
+  });
+});
