@@ -15,5 +15,7 @@ docs
 .env.*
 !.env.example
 Share2Brain.config.yml
+certs/
+*.pem
 .DS_Store
 *.tsbuildinfo

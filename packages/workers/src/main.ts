@@ -199,7 +199,7 @@ async function main(): Promise<void> {
   // never rejects on a boot outage — it just hangs. Bound it: if Redis is
   // unreachable within the timeout we FAIL FAST (exit 1) and Compose restarts
   // the container (AC-1, same pattern as the bot).
-  const db: Database = createDatabase(databaseUrl);
+  const db: Database = createDatabase(databaseUrl, logger);
   const redis = createRedisClient(redisUrl);
   if (!(await connectRedisOrExit(redis, logger, 'indexer', () => shuttingDown))) return;
 

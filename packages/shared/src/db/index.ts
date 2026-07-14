@@ -4,6 +4,7 @@
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
+import { redactSecrets, type Logger } from '../logger.js';
 import * as schema from './schema.js';
 
 export * from './schema.js';
@@ -35,8 +36,24 @@ export type Database = NodePgDatabase<typeof schema> & { $client: Pool };
 /**
  * Create a Drizzle client for the given Postgres connection string. Callers own
  * the returned handle's lifecycle. No network I/O happens until the first query.
+ *
+ * The pg `Pool` emits `'error'` when a network/backend failure hits an *idle*
+ * client (Postgres restart/failover, connection blip). Without a listener that
+ * becomes an `uncaughtException` and crashes the whole service, dropping every
+ * in-flight request. We attach one so an idle-client failure is logged, not
+ * fatal — the pool discards the dead client and recovers on the next query.
+ * Pass `logger` so the message is credential-redacted (some pg errors
+ * interpolate the connection URL, password included); without one we fall back
+ * to `console.error` with the same redaction applied.
  */
-export function createDatabase(connectionString: string): Database {
+export function createDatabase(connectionString: string, logger?: Logger): Database {
   const pool = new Pool({ connectionString });
+  pool.on('error', (err) => {
+    if (logger) {
+      logger.error('idle pg client error', { reason: err.message, stack: err.stack });
+    } else {
+      console.error('idle pg client error:', redactSecrets(String(err)));
+    }
+  });
   return drizzle(pool, { schema });
 }

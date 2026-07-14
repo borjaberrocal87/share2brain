@@ -48,7 +48,7 @@ async function main(): Promise<void> {
   const redisUrl = requireEnv('REDIS_URL');
 
   // One pooled DB client and one Redis client for the process lifetime.
-  const db: Database = createDatabase(databaseUrl);
+  const db: Database = createDatabase(databaseUrl, logger);
   const redis = createRedisClient(redisUrl);
   // Connect Redis before touching the Gateway so the client is ready before the first
   // messageCreate arrives — otherwise the XADD fails, rolls back the INSERT, and the

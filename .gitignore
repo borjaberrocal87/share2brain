@@ -5,6 +5,10 @@ node_modules/
 !.env.example
 # Operator-specific behavior config; only the .example is tracked (AD-8).
 Share2Brain.config.yml
+# Operator-supplied TLS material (nginx mounts ./certs/{privkey,fullchain}.pem);
+# a private key must never be committable.
+certs/
+*.pem
 *.log
 .DS_Store
 # Local opencode session artifacts (plans, scratch)

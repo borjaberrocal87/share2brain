@@ -83,7 +83,7 @@ async function main(): Promise<void> {
   const sessionTtlDays = Number(process.env.SESSION_TTL_DAYS) || 7;
 
   // One pooled DB client and one Redis client for the process lifetime.
-  const db: Database = createDatabase(databaseUrl);
+  const db: Database = createDatabase(databaseUrl, logger);
   const redis = createRedisClient(redisUrl);
   // Connect in the background: a Redis outage at startup must degrade /health,
   // not crash the process. The reconnectStrategy keeps retrying; meanwhile the
