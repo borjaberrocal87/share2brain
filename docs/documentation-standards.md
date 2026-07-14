@@ -28,7 +28,7 @@ Planning and delivery artifacts (BMAD Method), resolved from `_bmad/bmm/config.y
 - `_bmad-output/implementation-artifacts/` — sprint status tracking and per-story implementation notes (from `bmad-sprint-planning`, `bmad-create-story`, `bmad-dev-story`).
 - `_bmad/core/config.yaml` and `_bmad/bmm/config.yaml` — BMAD install configuration (project name, languages, artifact locations).
 
-Standards docs (this folder): `base-standards.md`, `backend-standards.md`, `frontend-standards.md`, `documentation-standards.md`, `bmad-story-mandatory-steps.md`, `data-model.md`, `development_guide.md`, plus `api-spec.yml`.
+Standards docs (this folder): `base-standards.md`, `backend-standards.md`, `frontend-standards.md`, `documentation-standards.md`, `bmad-story-mandatory-steps.md`, `data-model.md`, `development_guide.md`, `self-hosting.md`, plus `api-spec.yml`.
 
 ## Technical Documentation
 Before making any commit or git push, or if you're asked to document a commit, you must ALWAYS review which technical documentation should be updated.
