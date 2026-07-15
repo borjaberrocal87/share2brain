@@ -117,8 +117,11 @@ export interface AppOptions {
    * path see guest access disabled (POST/GET /api/auth/guest → 404). `userId` is
    * the id RETURNED by seedGuestUser (never assumed); `username` is NOT here — it
    * only feeds the seed, and `/me` reads the name from the seeded row.
+   *
+   * Story 2.6: `inviteUrl` is optional — forwarded to the availability probe so
+   * the login screen can render the demo Discord invite. Absent → no invite row.
    */
-  guestAccess?: { role: string; sessionTtlMinutes: number; userId: string };
+  guestAccess?: { role: string; sessionTtlMinutes: number; userId: string; inviteUrl?: string };
   /**
    * Logger for the ragRetriever's per-row skip-and-warn (Story 7.4, F2). Only
    * `main.ts` injects the real structured logger; tests/e2e default to a no-op

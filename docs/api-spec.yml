@@ -93,6 +93,9 @@ paths:
                 required: [enabled]
                 properties:
                   enabled: { type: boolean, example: true }
+                  # Present ONLY when access_control.guest_access.invite_url is
+                  # configured — the demo Discord invite the SPA shows on login.
+                  inviteUrl: { type: string, format: uri, example: "https://discord.gg/xxxxxxxx" }
         "404":
           description: Guest access disabled
           content:

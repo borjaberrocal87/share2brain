@@ -257,6 +257,33 @@ describe('loadConfig', () => {
     expect(() => loadConfig(path)).toThrow(/session_ttl_minutes|guest_access/);
   });
 
+  // Story 2.6 — guest_access.invite_url (review 2026-07-15).
+  it('should parse an http(s) guest_access.invite_url', () => {
+    const yaml = withGuestBlock('  guest_access:\n    enabled: true\n    invite_url: "https://discord.gg/x"\n');
+    const path = writeFixture('guest-invite.yml', yaml);
+
+    const config = loadConfig(path);
+
+    expect(config.access_control.guest_access?.invite_url).toBe('https://discord.gg/x');
+  });
+
+  it('should coerce a blank guest_access.invite_url to undefined instead of aborting boot', () => {
+    const yaml = withGuestBlock('  guest_access:\n    enabled: true\n    invite_url: ""\n');
+    const path = writeFixture('guest-invite-blank.yml', yaml);
+
+    const config = loadConfig(path);
+
+    expect(config.access_control.guest_access?.enabled).toBe(true);
+    expect(config.access_control.guest_access?.invite_url).toBeUndefined();
+  });
+
+  it('should reject a non-http(s) guest_access.invite_url scheme', () => {
+    const yaml = withGuestBlock('  guest_access:\n    enabled: true\n    invite_url: "javascript:alert(1)"\n');
+    const path = writeFixture('guest-invite-bad-scheme.yml', yaml);
+
+    expect(() => loadConfig(path)).toThrow(/invite_url|guest_access/);
+  });
+
   it('should interpolate ${ENV_VAR} placeholders from process.env', () => {
     const previous = process.env.DISCORD_GUILD_ID;
     process.env.DISCORD_GUILD_ID = '999999999999999999';

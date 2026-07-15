@@ -494,6 +494,47 @@ para mostrar la aplicación sin credenciales, manteniendo RBAC y la seguridad de
 
 ---
 
+### Historia 2.6: Enlace de invitación al Discord de demo en el login (web/backend)
+
+Como Operador que presenta una demo,
+quiero un enlace "Únete al servidor Discord de demo" bajo el botón de invitado en el login,
+para que un visitante sin acceso pueda pedir invitación al servidor de demo sin salir de la pantalla.
+
+Historia **aditiva** (SCP `sprint-change-proposal-2026-07-15-login-demo-invite.md`, aprobada por Borja
+el 2026-07-15). Extiende el acceso de invitado de la Historia 2.5. Todos los campos nuevos son
+**opcionales y retrocompatibles**: un despliegue que no configure la URL renderiza igual que hoy.
+
+**Criterios de Aceptación:**
+
+**Dado** `access_control.guest_access.enabled: true` **y** `access_control.guest_access.invite_url` con una URL válida
+**Cuando** la SPA sondea `GET /api/auth/guest`
+**Entonces** el body 200 incluye `inviteUrl` con ese valor
+**Y** la URL vive en `Share2Brain.config.yml` (comportamiento), NUNCA en `.env` (secretos) — un fork self-hosted no apunta al servidor de demo de Borja
+
+**Dado** el login con acceso de invitado activo **y** `inviteUrl` presente
+**Cuando** renderiza
+**Entonces** muestra, dentro del bloque `{showGuest && …}` tras el botón de invitado, una fila centrada: icono Discord blurple (`#5865F2`, 14px), el texto i18n `login.noAccess` y un `<a>` con la etiqueta i18n `login.joinDemoServer` apuntando a `inviteUrl`, abierto con `target="_blank" rel="noopener"`
+
+**Dado** que `invite_url` está ausente (o el acceso de invitado está apagado)
+**Cuando** renderiza el login
+**Entonces** NO aparece la fila de invitación y NO hay regresión en los flujos de Discord ni de invitado
+
+**Dado** el enlace de invitación
+**Cuando** el usuario pasa el cursor (hover)
+**Entonces** aplica el look del prototipo: `color: var(--accent-ink)`, `font-weight: 600`, sin subrayado, `border-bottom` transparente que en hover pasa a `border-bottom-color: var(--accent-ink)` + `opacity: 0.8`, transición `.15s ease` (clase `.kh-demo-invite-link`, no inline)
+
+**Dado** el texto del enlace y su prompt
+**Cuando** se revisa el componente
+**Entonces** ambas claves (`login.noAccess`, `login.joinDemoServer`) existen en `es.json` y `en.json` y se renderizan vía `t(...)` — sin literales (Epic 10)
+
+**Notas de implementación:**
+- Contrato = scope `shared` (AD-6): `inviteUrl` opcional en `GuestAvailabilityResponseSchema`; `invite_url` opcional en el schema de config. Sin shapes locales.
+- Ruta de config correcta: `access_control.guest_access.invite_url` (el SCP usa `auth.` como abreviatura; el bloque real está bajo `access_control`).
+- Entrega por el probe existente `GET /api/auth/guest` (un round-trip, sin endpoint nuevo). El enlace renderiza solo cuando `enabled && inviteUrl`.
+- La "visual harness" e2e es por aserciones DOM/CSS (`toHaveCSS`), NO screenshots — no hay baselines PNG que refrescar; se añaden aserciones de la fila.
+
+---
+
 ## Épico 3: Pipeline de Indexación de Conocimiento
 
 El conocimiento de los canales de Discord configurados fluye automáticamente al índice vectorial y es consultable.

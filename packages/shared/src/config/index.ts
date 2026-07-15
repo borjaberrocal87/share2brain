@@ -11,6 +11,8 @@ import { readFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
 
+import { isHttpUrl } from '../schemas/linkRefine.js';
+
 /** Thrown for any configuration failure: missing file, bad YAML, unset ${VAR}, or Zod validation. */
 export class ConfigError extends Error {
   constructor(message: string) {
@@ -119,6 +121,19 @@ export const Share2BrainConfigSchema = z.object({
       role: z.string().min(1).optional(),
       username: z.string().min(1).optional(),
       session_ttl_minutes: z.number().int().positive().optional(),
+      // Story 2.6: demo Discord invite shown on the login screen. Optional and
+      // NO `.default()` (D4) — the backend resolves absence to "no URL" (link
+      // hidden). Behavior, not a secret, so it belongs here in YAML.
+      // Review 2026-07-15: a blank value ("") coerces to undefined so blanking
+      // the field means "off" (not a boot-aborting ConfigError); a non-empty value
+      // must be an http(s) URL (shared `isHttpUrl`, the project's URL.canParse
+      // convention — not the deprecated `z.string().url()`) so a `javascript:`/
+      // `data:` URL can never reach the login-screen `href`.
+      invite_url: z
+        .string()
+        .refine((v) => v === '' || isHttpUrl(v), 'invite_url must be a valid HTTP(S) URL')
+        .transform((v) => (v === '' ? undefined : v))
+        .optional(),
     }).optional(),
   }),
   read_tracking: z.object({

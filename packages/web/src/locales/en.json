@@ -13,7 +13,9 @@
     "continueWithDiscord": "Continue with Discord",
     "membersOnly": "Only guild members can access",
     "orForDemo": "or for the demo",
-    "guestLogin": "Enter as guest"
+    "guestLogin": "Enter as guest",
+    "noAccess": "No access?",
+    "joinDemoServer": "Join the demo Discord server"
   },
   "sidebar": {
     "nav": {

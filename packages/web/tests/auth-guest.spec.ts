@@ -29,6 +29,18 @@ test.describe('Story 2.5 — guest access (E2E)', () => {
     // computed base values (not the amber :hover).
     await expect(guestBtn).toHaveCSS('border-color', BORDER_STRONG);
     await expect(guestBtn).toHaveCSS('color', TEXT_SECONDARY);
+
+    // Story 2.6: the harness configures inviteUrl, so the demo-invite row renders
+    // under the guest button — the "¿No tienes acceso?" prompt + a new-tab link to
+    // the configured invite. The base border-bottom is transparent (turns on :hover).
+    await expect(page.getByText('¿No tienes acceso?')).toBeVisible();
+    const inviteLink = page.getByTestId('demo-invite-link');
+    await expect(inviteLink).toBeVisible();
+    await expect(inviteLink).toHaveText('Únete al servidor Discord de demo');
+    await expect(inviteLink).toHaveAttribute('href', 'https://discord.gg/e2e-demo');
+    await expect(inviteLink).toHaveAttribute('target', '_blank');
+    await expect(inviteLink).toHaveAttribute('rel', 'noopener');
+    await expect(inviteLink).toHaveCSS('border-bottom-color', 'rgba(0, 0, 0, 0)');
   });
 
   test('clicking the guest button enters the guest shell (badge + identity + "Salir")', async ({ page }) => {

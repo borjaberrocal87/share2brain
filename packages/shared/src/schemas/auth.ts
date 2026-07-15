@@ -3,6 +3,8 @@
 // reference them via z.infer / the AUTH_ERROR map instead of hardcoding strings.
 import { z } from 'zod';
 
+import { isHttpUrl } from './linkRefine.js';
+
 /** GET /api/auth/me — the authenticated user's public profile. */
 export const AuthMeResponseSchema = z.object({
   id: z.uuid(),
@@ -23,9 +25,18 @@ export type AuthMeResponse = z.infer<typeof AuthMeResponseSchema>;
  * `z.literal(true)` makes `{ enabled: false }` an invalid body, guaranteeing the
  * server never signals "guest exists but is off". The SPA treats any non-200 as
  * "hidden".
+ *
+ * Story 2.6: `inviteUrl` is OPTIONAL — present only when the operator configured
+ * `access_control.guest_access.invite_url`. It carries the demo Discord invite the
+ * login screen renders under the guest button; absent means "render no invite row".
+ * Review 2026-07-15: the scheme is pinned to http(s) (shared `isHttpUrl`, the same
+ * URL.canParse convention as `link` fields — never the deprecated `z.string().url()`)
+ * so a `javascript:`/`data:` value can never reach the login-screen `href` even if the
+ * server is coerced to emit one (defense-in-depth; the client parses this body first).
  */
 export const GuestAvailabilityResponseSchema = z.object({
   enabled: z.literal(true),
+  inviteUrl: z.string().refine(isHttpUrl, 'inviteUrl must be a valid HTTP(S) URL').optional(),
 });
 
 export type GuestAvailabilityResponse = z.infer<typeof GuestAvailabilityResponseSchema>;

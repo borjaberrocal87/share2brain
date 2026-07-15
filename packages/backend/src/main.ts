@@ -111,10 +111,17 @@ async function main(): Promise<void> {
   // entirely — presence = enabled, and an unconditional pass would enable guest
   // access in production with the flag OFF (main.ts has no automated coverage).
   const guest = resolveGuestAccessConfig(config.access_control);
-  let guestAccess: { role: string; sessionTtlMinutes: number; userId: string } | undefined;
+  let guestAccess:
+    | { role: string; sessionTtlMinutes: number; userId: string; inviteUrl?: string }
+    | undefined;
   if (guest.enabled) {
     const { id } = await seedGuestUser(db, guest.username);
-    guestAccess = { role: guest.role, sessionTtlMinutes: guest.sessionTtlMinutes, userId: id };
+    guestAccess = {
+      role: guest.role,
+      sessionTtlMinutes: guest.sessionTtlMinutes,
+      userId: id,
+      inviteUrl: guest.inviteUrl,
+    };
     logger.info('guest access enabled', { role: guest.role, sessionTtlMinutes: guest.sessionTtlMinutes });
   }
 

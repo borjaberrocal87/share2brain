@@ -52,7 +52,7 @@ const GUEST_PROFILE = {
 };
 
 function buildController(opts: {
-  guestAccess?: { role: string; sessionTtlMinutes: number; userId: string };
+  guestAccess?: { role: string; sessionTtlMinutes: number; userId: string; inviteUrl?: string };
   getMe?: AuthService['getMe'];
 }) {
   const authService = {
@@ -108,6 +108,27 @@ describe('authController guest access — enabled', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ enabled: true });
+  });
+
+  it('should include inviteUrl in the probe body when guestAccess.inviteUrl is set (Story 2.6)', () => {
+    const controller = buildController({
+      guestAccess: { ...guestAccess, inviteUrl: 'https://discord.gg/demo' },
+    });
+    const res = fakeRes();
+
+    controller.guestAvailability({} as Request, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ enabled: true, inviteUrl: 'https://discord.gg/demo' });
+  });
+
+  it('should omit inviteUrl from the probe body when it is absent (Story 2.6)', () => {
+    const controller = buildController({ guestAccess });
+    const res = fakeRes();
+
+    controller.guestAvailability({} as Request, res);
+
+    expect(res.body).not.toHaveProperty('inviteUrl');
   });
 
   it('should set the guest session fields + per-session TTL and return isGuest: true', async () => {
@@ -177,5 +198,16 @@ describe('resolveGuestAccessConfig', () => {
       guest_access: { enabled: true, role: 'demo', username: 'Guest', session_ttl_minutes: 30 },
     });
     expect(resolved).toEqual({ enabled: true, role: 'demo', username: 'Guest', sessionTtlMinutes: 30 });
+  });
+
+  it('should resolve invite_url to inviteUrl when present, undefined when absent (Story 2.6)', () => {
+    const withUrl = resolveGuestAccessConfig({
+      ...base,
+      guest_access: { enabled: true, invite_url: 'https://discord.gg/demo' },
+    });
+    expect(withUrl.inviteUrl).toBe('https://discord.gg/demo');
+
+    const withoutUrl = resolveGuestAccessConfig({ ...base, guest_access: { enabled: true } });
+    expect(withoutUrl.inviteUrl).toBeUndefined();
   });
 });

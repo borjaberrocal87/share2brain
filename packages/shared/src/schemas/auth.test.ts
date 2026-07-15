@@ -97,6 +97,21 @@ describe('GuestAvailabilityResponseSchema', () => {
   it('should reject { enabled: false } (disabled is expressed by the 404, never this body)', () => {
     expect(GuestAvailabilityResponseSchema.safeParse({ enabled: false }).success).toBe(false);
   });
+
+  it('should accept an http(s) inviteUrl (Story 2.6)', () => {
+    expect(
+      GuestAvailabilityResponseSchema.safeParse({ enabled: true, inviteUrl: 'https://discord.gg/x' }).success,
+    ).toBe(true);
+  });
+
+  it('should reject a non-http(s) inviteUrl scheme (review 2026-07-15 — no javascript:/data: into href)', () => {
+    expect(
+      GuestAvailabilityResponseSchema.safeParse({ enabled: true, inviteUrl: 'javascript:alert(1)' }).success,
+    ).toBe(false);
+    expect(
+      GuestAvailabilityResponseSchema.safeParse({ enabled: true, inviteUrl: 'data:text/html,x' }).success,
+    ).toBe(false);
+  });
 });
 
 describe('AuthRolesResponseSchema', () => {

@@ -45,6 +45,23 @@
   outline-offset: 2px;
 }
 
+/* Demo Discord invite link on the login screen (Story 2.6). Base border-bottom is
+   transparent and lives HERE (cascade parity with .kh-guest-btn) so :hover can
+   turn it on without an inline shorthand outranking the hover rule. */
+.kh-demo-invite-link {
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition:
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+.kh-demo-invite-link:hover {
+  border-bottom-color: var(--accent-ink);
+  opacity: 0.8;
+}
+
 /* Sidebar nav items. Base + inactive hover; the active modifier must beat :hover,
    hence the paired selector. Active/inactive text color is set here too so the
    component only toggles a class. */
