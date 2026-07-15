@@ -84,7 +84,7 @@ test.describe('Story 11.5 — mobile shell + chat geometry (390×844)', () => {
     await expect(hexagon).toHaveCSS('width', '28px'); // Hexagon size={28} — mobile-only
     await expect(page.getByTestId('live-pulse')).toHaveCount(0); // live-indexing pill
     await expect(header.getByText('e2e-member', { exact: true })).toHaveCount(0); // username span
-    await expect(header.getByText(/pgvector/)).toHaveCount(0); // statsLine (desktop-only, t('app.statsLine'))
+    await expect(header.getByText(/indexación de conocimiento/)).toHaveCount(0); // statsLine (desktop-only, t('app.statsLine'))
 
     await page.screenshot({ path: testInfo.outputPath('mobile-dark-shell.png'), fullPage: true });
   });

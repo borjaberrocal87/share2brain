@@ -178,7 +178,7 @@ test.describe('Story 5.4 — Chat messages + streaming', () => {
     await expect(inputRow).toHaveCSS('border-color', ACCENT_INK);
 
     // Footer privacy string.
-    await expect(page.getByText(/tools de share2brain\.config\.yml/)).toBeVisible();
+    await expect(page.getByText(/Respuestas con fuente verificable/)).toBeVisible();
 
     // Typing enables the send button: amber (#F5A623) bg, pointer cursor.
     await page.getByTestId('chat-input').fill('¿Qué es RBAC?');

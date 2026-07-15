@@ -4,7 +4,7 @@
     "exampleQuestion": "How do I configure the channels to index?"
   },
   "app": {
-    "statsLine": "knowledge indexing · pgvector",
+    "statsLine": "knowledge indexing",
     "loadingAriaLabel": "Loading"
   },
   "login": {
@@ -53,7 +53,7 @@
     "composerPlaceholder": "Ask the agent…",
     "inputAriaLabel": "Write your message",
     "sendAriaLabel": "Send message",
-    "privacyFooter": "Verifiable-source answers · tools from share2brain.config.yml",
+    "privacyFooter": "Verifiable-source answers",
     "you": "You",
     "genericError": "Couldn't complete the response. Try again.",
     "historyLoadError": "Couldn't load the conversation. Try again.",

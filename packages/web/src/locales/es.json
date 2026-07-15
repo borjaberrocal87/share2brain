@@ -4,7 +4,7 @@
     "exampleQuestion": "¿Cómo configuro los canales a indexar?"
   },
   "app": {
-    "statsLine": "indexación de conocimiento · pgvector",
+    "statsLine": "indexación de conocimiento",
     "loadingAriaLabel": "Cargando"
   },
   "login": {
@@ -53,7 +53,7 @@
     "composerPlaceholder": "Preguntá al agente…",
     "inputAriaLabel": "Escribí tu mensaje",
     "sendAriaLabel": "Enviar mensaje",
-    "privacyFooter": "Respuestas con fuente verificable · tools de share2brain.config.yml",
+    "privacyFooter": "Respuestas con fuente verificable",
     "you": "Vos",
     "genericError": "No se pudo completar la respuesta. Intentá de nuevo.",
     "historyLoadError": "No se pudo cargar la conversación. Intentá de nuevo.",

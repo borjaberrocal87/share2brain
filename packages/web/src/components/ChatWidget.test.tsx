@@ -307,7 +307,7 @@ describe('ChatWidget — composer (5.4)', () => {
     renderWidget();
     openPanel();
 
-    expect(screen.getByText(/tools de share2brain\.config\.yml/)).toBeTruthy();
+    expect(screen.getByText(/Respuestas con fuente verificable/)).toBeTruthy();
   });
 
   it('should send on Enter and NOT send on Shift+Enter', () => {
