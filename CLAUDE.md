@@ -21,6 +21,7 @@ ingestion over Redis Streams.
 | Data model / indexes | `docs/data-model.md` |
 | REST + SSE endpoints | `docs/api-spec.yml` |
 | Setup / run / test | `docs/development_guide.md` |
+| Past audit reports (CODE-AUDIT-*) | `docs/audits/` |
 
 # Non-negotiables (details in ARCHITECTURE-SPINE.md)
 

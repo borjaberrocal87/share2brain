@@ -151,5 +151,5 @@ See the reference documents for complete methodologies:
 ### After Audit
 - [ ] Categorize all findings by priority
 - [ ] Generate comprehensive report
-- [ ] Save report to project root
+- [ ] Save report to `docs/audits/CODE-AUDIT-YYYY-MM-DD.md`
 - [ ] Provide brief console summary
