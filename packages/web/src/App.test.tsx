@@ -72,7 +72,7 @@ fetchDocuments.mockResolvedValue(emptyDocs);
 markRead.mockResolvedValue();
 // Default: guest access disabled, so existing anon tests never render the button
 // and never hit a real fetch. Guest-specific tests override per-case.
-fetchGuestAvailability.mockResolvedValue(false);
+fetchGuestAvailability.mockResolvedValue({ enabled: false });
 
 describe('App session flow', () => {
   it('should show the login screen when the session check returns 401 (anon)', async () => {
@@ -234,7 +234,7 @@ describe('App session flow', () => {
   // Story 2.5 — guest access.
   it('should NOT render the guest button when guest access is disabled (anon)', async () => {
     fetchMe.mockResolvedValue(null);
-    fetchGuestAvailability.mockResolvedValue(false);
+    fetchGuestAvailability.mockResolvedValue({ enabled: false });
 
     render(<App />);
     await screen.findByRole('button', { name: /Continuar con Discord/i });
@@ -244,7 +244,7 @@ describe('App session flow', () => {
 
   it('should render the guest button when guest access is enabled (anon)', async () => {
     fetchMe.mockResolvedValue(null);
-    fetchGuestAvailability.mockResolvedValue(true);
+    fetchGuestAvailability.mockResolvedValue({ enabled: true });
 
     render(<App />);
 
@@ -253,7 +253,7 @@ describe('App session flow', () => {
 
   it('should enter the guest shell (badge + identity + "Salir") when the guest button is clicked', async () => {
     fetchMe.mockResolvedValue(null);
-    fetchGuestAvailability.mockResolvedValue(true);
+    fetchGuestAvailability.mockResolvedValue({ enabled: true });
     loginAsGuest.mockResolvedValue(GUEST_PROFILE);
 
     render(<App />);
@@ -270,7 +270,7 @@ describe('App session flow', () => {
 
   it('should stay on the login screen when guest login fails', async () => {
     fetchMe.mockResolvedValue(null);
-    fetchGuestAvailability.mockResolvedValue(true);
+    fetchGuestAvailability.mockResolvedValue({ enabled: true });
     loginAsGuest.mockRejectedValue(new Error('boom'));
 
     render(<App />);

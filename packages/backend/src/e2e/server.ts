@@ -77,7 +77,8 @@ async function main(): Promise<void> {
       queryEmbedder: fakeQueryEmbedder(),
       frontendUrl: E2E_WEB_ORIGIN,
       allowedOrigins: [E2E_WEB_ORIGIN],
-      guestAccess: { role: 'e2e-role-guest', sessionTtlMinutes: 120, userId: guestUserId },
+      // Story 2.6: inviteUrl set so the e2e login screen renders the demo-invite row.
+      guestAccess: { role: 'e2e-role-guest', sessionTtlMinutes: 120, userId: guestUserId, inviteUrl: 'https://discord.gg/e2e-demo' },
     }),
   );
 

@@ -33,8 +33,11 @@ export function createAuthController(deps: {
    * Guest access (Story 2.5). PRESENCE = enabled — when absent the two guest
    * endpoints 404, so an app built without it (buildTestAppOptions, the e2e
    * server's default, main.ts with the flag off) has guest access disabled.
+   *
+   * Story 2.6: optional `inviteUrl` is echoed by the availability probe so the
+   * login screen can show the demo Discord invite. Absent → no invite row.
    */
-  guestAccess?: { role: string; sessionTtlMinutes: number; userId: string };
+  guestAccess?: { role: string; sessionTtlMinutes: number; userId: string; inviteUrl?: string };
 }): AuthController {
   const { authService, rbacService, discord, frontendUrl, cookieSecure, guestAccess } = deps;
 
@@ -182,7 +185,13 @@ export function createAuthController(deps: {
         res.status(404).json({ error: 'Not found', code: AUTH_ERROR.GUEST_ACCESS_DISABLED });
         return;
       }
-      res.status(200).json(GuestAvailabilityResponseSchema.parse({ enabled: true }));
+      // Story 2.6: include `inviteUrl` only when configured (absent → no invite row).
+      res.status(200).json(
+        GuestAvailabilityResponseSchema.parse({
+          enabled: true,
+          ...(guestAccess.inviteUrl ? { inviteUrl: guestAccess.inviteUrl } : {}),
+        }),
+      );
     },
 
     async guestLogin(req, res) {

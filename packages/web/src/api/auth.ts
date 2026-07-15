@@ -34,15 +34,17 @@ export async function logout(): Promise<void> {
 }
 
 /**
- * Probe whether guest access is enabled (Story 2.5, D1). 200 → the parsed
- * `enabled` flag; ANY non-200 (404 included, or a probe failure) → `false`, so a
- * disabled deployment simply hides the guest link and a probe error never breaks
- * the Discord path.
+ * Probe whether guest access is enabled (Story 2.5, D1). 200 → `{ enabled: true,
+ * inviteUrl? }` (Story 2.6: `inviteUrl` is present only when the operator
+ * configured a demo invite); ANY non-200 (404 included, or a probe failure) →
+ * `{ enabled: false }`, so a disabled deployment simply hides the guest link and
+ * a probe error never breaks the Discord path.
  */
-export async function fetchGuestAvailability(): Promise<boolean> {
+export async function fetchGuestAvailability(): Promise<{ enabled: boolean; inviteUrl?: string }> {
   const res = await fetch('/api/auth/guest', { credentials: 'include' });
-  if (res.status !== 200) return false;
-  return GuestAvailabilityResponseSchema.parse(await res.json()).enabled;
+  if (res.status !== 200) return { enabled: false };
+  const parsed = GuestAvailabilityResponseSchema.parse(await res.json());
+  return { enabled: parsed.enabled, inviteUrl: parsed.inviteUrl };
 }
 
 /** Create a guest session and resolve the guest profile (Story 2.5, AC6). */

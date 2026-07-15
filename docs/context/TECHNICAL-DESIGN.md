@@ -1009,6 +1009,7 @@ access_control:
     role: "guest"             # synthetic role; add it to allowed_roles of demo channels
     username: "Invitado"      # display name in the UI
     session_ttl_minutes: 120  # short-lived demo session
+    invite_url: "https://discord.gg/xxxxxxxx"   # optional — demo server invite shown on the login screen
   channel_permissions:
     - channel_id: "1234567890"
       name: "general"

@@ -26,6 +26,9 @@ export interface ResolvedGuestAccess {
   role: string;
   username: string;
   sessionTtlMinutes: number;
+  // Story 2.6: demo Discord invite for the login screen. NO default — an unset
+  // URL stays `undefined` and the SPA renders no invite row.
+  inviteUrl?: string;
 }
 
 /**
@@ -42,6 +45,7 @@ export function resolveGuestAccessConfig(
     role: block?.role ?? 'guest',
     username: block?.username ?? 'Invitado',
     sessionTtlMinutes: block?.session_ttl_minutes ?? 120,
+    inviteUrl: block?.invite_url,
   };
 }
 

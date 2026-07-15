@@ -60,11 +60,17 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElemen
   // Views own their data-fetching: probe guest availability on mount. Default
   // false so the link never flashes when disabled; a probe rejection stays hidden.
   const [showGuest, setShowGuest] = useState(false);
+  // Story 2.6: the demo Discord invite URL, present only when the operator
+  // configured one. Gates the invite row inside the guest fragment.
+  const [inviteUrl, setInviteUrl] = useState<string | undefined>();
   useEffect(() => {
     let active = true;
     fetchGuestAvailability()
-      .then((enabled) => {
-        if (active) setShowGuest(enabled);
+      .then(({ enabled, inviteUrl }) => {
+        if (active) {
+          setShowGuest(enabled);
+          setInviteUrl(inviteUrl);
+        }
       })
       .catch(() => {
         // A probe failure must never break the Discord path — stay hidden.
@@ -213,6 +219,33 @@ export function LoginScreen({ onLogin, onGuest }: LoginScreenProps): ReactElemen
               <UserIcon size={18} />
               <span>{t('login.guestLogin')}</span>
             </button>
+
+            {/* Story 2.6: demo Discord invite — only when an invite_url is configured. */}
+            {inviteUrl && (
+              <div
+                style={{
+                  marginTop: 13,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  justifyContent: 'center',
+                  fontSize: 12.5,
+                  color: 'var(--tx4)',
+                }}
+              >
+                <DiscordIcon size={14} color="#5865F2" />
+                <span>{t('login.noAccess')}</span>
+                <a
+                  href={inviteUrl}
+                  target="_blank"
+                  rel="noopener"
+                  className="kh-demo-invite-link"
+                  data-testid="demo-invite-link"
+                >
+                  {t('login.joinDemoServer')}
+                </a>
+              </div>
+            )}
           </>
         )}
 
