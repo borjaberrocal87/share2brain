@@ -46,7 +46,25 @@ Ideas we want, pending design work — feedback especially welcome:
   wired (shared config + UI-config schemas, the web i18n setup, and the locale
   parity test). Contributions welcome.
 - **Additional ingestion sources** — the pipeline is event-driven and
-  source-agnostic by design; Discord is the first adapter.
+  source-agnostic by design; Discord is the first adapter, with **Slack** as
+  the next target: ingest messages and shared links from Slack channels
+  alongside Discord into the same curated index (with its own OAuth + RBAC
+  mapping).
+- **Richer resource types** — go beyond plain page links: index YouTube and
+  other video transcripts, PDFs and message attachments, and detect and merge
+  duplicate URLs so the same resource is not indexed twice.
+- **Periodic knowledge digest** — a scheduled (e.g. weekly) roundup of the
+  resources newly indexed in that window, delivered via the existing notifier
+  (Telegram/Slack) or posted back to a Discord channel. Distinct from the
+  per-resource lifecycle notification above: this is an aggregated summary meant
+  to bring members back.
+- **Personal knowledge tools** — per-member collections/bookmarks, saved
+  searches, personal notes attached to any resource, and topic subscriptions
+  that alert you when a matching resource is indexed. Builds on the existing
+  per-member read tracking.
+- **Export & read-only API** — export the curated index to Markdown/JSON and
+  expose an API-key-gated read-only API, so the knowledge base stays portable
+  and integrable rather than locked in.
 
 ## 🚫 Non-goals
 
