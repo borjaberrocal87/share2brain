@@ -121,8 +121,20 @@ async function bounded(op: () => Promise<unknown>, timeoutMs: number): Promise<v
  * not silently produce a half-armed tracer. Only the runtime surface (`withSpan`,
  * `flush`, `shutdown`) swallows its own faults.
  */
-export function createPhoenixLlmTracing(opts: { endpoint: string; service: string }): LlmTracing {
+export function createPhoenixLlmTracing(opts: {
+  endpoint: string;
+  service: string;
+  /** Bearer token for a Phoenix collector with auth enabled. Blank/absent ⇒ no auth header. */
+  apiKey?: string;
+}): LlmTracing {
   const { endpoint, service } = opts;
+  // A self-hosted Phoenix (e.g. behind a public reverse proxy) can require auth on OTLP
+  // ingestion, rejecting an unauthenticated export with 401 — silently, since the exporter
+  // is best-effort. Send `Authorization: Bearer <key>` (the OTLP-standard auth header Phoenix
+  // honors) only when a non-blank key is configured; otherwise omit `headers` entirely so an
+  // auth-less collector sees the byte-identical pre-auth request.
+  const apiKey = opts.apiKey?.trim();
+  const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined;
 
   const provider = new NodeTracerProvider({
     resource: resourceFromAttributes({
@@ -140,7 +152,12 @@ export function createPhoenixLlmTracing(opts: { endpoint: string; service: strin
       // `OTEL_EXPORTER_OTLP_ENDPOINT` semantics, so Phoenix behind a reverse-proxy subpath
       // (`http://host/phoenix`) resolves to `http://host/phoenix/v1/traces`.
       new BatchSpanProcessor(
-        new OTLPTraceExporter({ url: `${endpoint.replace(/\/+$/, '')}/v1/traces` }),
+        new OTLPTraceExporter({
+          url: `${endpoint.replace(/\/+$/, '')}/v1/traces`,
+          // Spread so `headers` is ABSENT (not `undefined`) when unauthenticated — keeps the
+          // request byte-identical to the pre-auth adapter and the exporter's own defaults.
+          ...(headers ? { headers } : {}),
+        }),
       ),
     ],
   });

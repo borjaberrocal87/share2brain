@@ -137,6 +137,10 @@ observability:
   tracing:
     # provider: "phoenix"  # optional; defaults to "phoenix" (the only adapter today)
     endpoint: "${PHOENIX_ENDPOINT}"
+    # Uncomment for a Phoenix collector that requires auth on OTLP ingestion (e.g. one
+    # exposed publicly behind a reverse proxy — 401 otherwise). Secret, so referenced via
+    # ${VAR}; set PHOENIX_API_KEY in .env. Leave commented for an auth-less collector.
+    # api_key: "${PHOENIX_API_KEY}"
 
 # --- Security -----------------------------------------------------------------
 security:

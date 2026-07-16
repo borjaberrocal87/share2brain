@@ -108,6 +108,7 @@ async function main(): Promise<void> {
     endpoint: config.observability.tracing?.endpoint ?? '',
     service: 'workers',
     provider: config.observability.tracing?.provider,
+    apiKey: config.observability.tracing?.api_key,
   });
   // Story ops-6 (review): bound the crash-path tracing flush with an OUTER timeout, the
   // same hardening the graceful shutdown applies to shutdown() below. The port guarantees

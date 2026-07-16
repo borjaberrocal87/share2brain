@@ -57,6 +57,7 @@ async function main(): Promise<void> {
     endpoint: config.observability.tracing?.endpoint ?? '',
     service: 'backend',
     provider: config.observability.tracing?.provider,
+    apiKey: config.observability.tracing?.api_key,
   });
   // Story ops-6 (review): bound the crash-path tracing flush with an OUTER timeout, the
   // same hardening the graceful drain applies to shutdown() in lifecycle.ts. The port

@@ -703,6 +703,19 @@ claude-opus-4-8 (Opus 4.8) via bmad-dev-story.
 
 ## Change Log
 
+- 2026-07-16 — Post-ship increment (Amelia, test-first): optional Phoenix OTLP **auth** support.
+  A prod Phoenix behind Caddy (`telemetry.share2brain.app`, TLS terminated on 443 → `phoenix:6006`)
+  returned `401 Unauthorized` on ingestion — auth enabled, and the adapter sent no credentials.
+  Added optional `observability.tracing.api_key` (a secret ⇒ `${PHOENIX_API_KEY}`, `.optional()`,
+  no format check); `createLlmTracing`/`createPhoenixLlmTracing` thread `apiKey` and, when non-blank,
+  set `headers: { Authorization: 'Bearer <key>' }` on the `OTLPTraceExporter` — blank/absent ⇒ no
+  `headers` (byte-identical to the pre-auth request, S-5 spirit). Wired `apiKey` in backend+workers
+  `main.ts`; `PHOENIX_API_KEY` passed to all config-mounting services in both compose files (same
+  unset-`${VAR}`-aborts-boot rationale as `PHOENIX_ENDPOINT`); `.env.example` + both config examples
+  document the opt-in (commented `api_key`). Also corrected the prod endpoint guidance: use the
+  Caddy public origin `https://telemetry.share2brain.app` (no `:6006`), not Phoenix's internal
+  plain-HTTP port. Red→green: 3 new tests (config accepts api_key; adapter sends/omits the header;
+  factory threads it). Gate green (lint 0 / 1152 pass 1 skip / build 4 pkgs).
 - 2026-07-16 — Implemented by bmad-dev-story (Opus 4.8): all 8 tasks + 15 ACs. New vendor-neutral
   `LlmTracing` port + Phoenix adapter (OTel 2.x + OpenInference) behind `createLlmTracing`
   (empty endpoint ⇒ Noop, S-5); backend+workers wired in the AD-8 slot with embed/pgvector/
