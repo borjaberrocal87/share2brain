@@ -131,6 +131,7 @@ Share2Brain uses a strict two-file system — secrets and behavior are never mix
 | `FRONTEND_URL` | Yes | CORS origin / SPA URL |
 | `VITE_COMMUNITY_NAME` | No | SPA header name (build-time) |
 | `SENTRY_DSN` | No | Sentry project DSN (empty = disabled) |
+| `PHOENIX_ENDPOINT` | No | Arize Phoenix collector for LLM traces, e.g. `http://phoenix:6006` (empty = disabled) |
 | `TELEGRAM_BOT_TOKEN` | No | Telegram crash alerts |
 | `TELEGRAM_CHAT_ID` | No | Telegram target chat |
 | `SLACK_WEBHOOK_URL` | No | Slack crash alerts |
@@ -430,6 +431,16 @@ All three services (`backend`, `bot`, `workers`) integrate with Sentry for error
 - **Captured**: uncaught exceptions, unhandled rejections, HTTP 5xx, all structured logs (`observability.log_level`).
 - **Never sent**: secrets (redacted by `beforeSend`), Discord message `content`, IPs (`sendDefaultPii: false`).
 - **User context**: internal user ID + Discord role IDs only (no PII).
+
+### Arize Phoenix — LLM tracing (opt-in)
+
+`backend` and `workers` emit OpenTelemetry traces for every LLM/embeddings call (spans with model, tokens, latency, prompt/completion) to a self-hosted Arize Phoenix collector, behind the vendor-neutral `LlmTracing` port — a **separate** seam from Sentry (Sentry keeps errors + logs; Phoenix takes LLM traces).
+
+- **Enable**: set `PHOENIX_ENDPOINT` in `.env` (e.g. `http://phoenix:6006`). The `phoenix` service ships in `docker-compose.yml`; reach its UI at `http://127.0.0.1:6006` (loopback-only dev port, never publicly exposed).
+- **Disable**: leave it empty (the default) — `createLlmTracing` returns `NoopLlmTracing`: no OTel object, no instrumentation, zero tracing network calls (byte-identical to before tracing existed).
+- **Captured**: the RAG pipeline (`retrieve → reason → respond`), history compression, enrichment, query embedding, batch embedding, and the pgvector similarity query.
+- **Content policy**: prompt/completion content may travel in spans **only** because Phoenix is self-hosted inside the Compose network and never publicly exposed; the no-content/PII rule toward Sentry (SNF-9) is untouched. Manual span attributes carry counts/params only.
+- **Scope**: `backend` + `workers` only (the bot makes no LLM calls; it still receives `PHOENIX_ENDPOINT` in Compose because `${VAR}` interpolation aborts on any unset reference).
 
 ### External crash notifications
 
