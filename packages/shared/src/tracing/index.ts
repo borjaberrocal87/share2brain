@@ -42,12 +42,14 @@ export function createLlmTracing(opts: {
   endpoint: string;
   service: string;
   provider?: LlmTracingProvider;
+  /** Optional bearer token for a Phoenix collector with auth enabled (blank ⇒ no auth). */
+  apiKey?: string;
 }): LlmTracing {
   if (opts.endpoint.trim() === '') return NoopLlmTracing; // S-5 — the feature flag (also treats whitespace-only as off)
 
   const provider = opts.provider ?? 'phoenix';
   if (provider === 'phoenix') {
-    return createPhoenixLlmTracing({ endpoint: opts.endpoint, service: opts.service });
+    return createPhoenixLlmTracing({ endpoint: opts.endpoint, service: opts.service, apiKey: opts.apiKey });
   }
   // Unreachable today — the Zod enum admits only 'phoenix'. A new provider adds its
   // branch above (step 2); until then, fail safe to the Noop rather than throw, so a

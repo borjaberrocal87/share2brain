@@ -115,6 +115,15 @@ describe('createLlmTracing (S-5 factory / composition root)', () => {
     expect(tracing).toBe(NoopLlmTracing);
     expect(h.NodeTracerProvider).not.toHaveBeenCalled();
   });
+
+  it('threads the apiKey through to the Phoenix adapter as an Authorization header', () => {
+    createLlmTracing({ endpoint: ENDPOINT, service: 'backend', apiKey: 'key-xyz' });
+
+    expect(h.OTLPTraceExporter).toHaveBeenCalledWith({
+      url: 'http://phoenix:6006/v1/traces',
+      headers: { Authorization: 'Bearer key-xyz' },
+    });
+  });
 });
 
 describe('createPhoenixLlmTracing (adapter construction, AC3)', () => {
@@ -151,6 +160,25 @@ describe('createPhoenixLlmTracing (adapter construction, AC3)', () => {
     const arg = h.manuallyInstrument.mock.calls[0]![0] as Record<string, unknown>;
     expect(arg).toBeDefined();
     expect(arg).toHaveProperty('CallbackManager');
+  });
+
+  // Phoenix auth (post-ops-6 increment): a self-hosted Phoenix behind a reverse proxy
+  // can require an API key on OTLP ingestion (401 otherwise). When an apiKey is present
+  // the exporter must carry `Authorization: Bearer <key>`; when absent/blank it must
+  // send NO headers (byte-identical to the pre-auth exporter — see the adapter test above).
+  it('adds an Authorization: Bearer header to the exporter when an apiKey is provided (Phoenix auth)', () => {
+    createPhoenixLlmTracing({ endpoint: ENDPOINT, service: 'backend', apiKey: 'sk-phoenix-123' });
+
+    expect(h.OTLPTraceExporter).toHaveBeenCalledWith({
+      url: 'http://phoenix:6006/v1/traces',
+      headers: { Authorization: 'Bearer sk-phoenix-123' },
+    });
+  });
+
+  it('omits headers entirely when apiKey is blank (backward compatible, no auth)', () => {
+    createPhoenixLlmTracing({ endpoint: ENDPOINT, service: 'backend', apiKey: '   ' });
+
+    expect(h.OTLPTraceExporter).toHaveBeenCalledWith({ url: 'http://phoenix:6006/v1/traces' });
   });
 });
 

@@ -155,6 +155,11 @@ services:
       # config references ${PHOENIX_ENDPOINT} and interpolation aborts on any unset
       # ${VAR}. See the top-of-file NOTE.
       PHOENIX_ENDPOINT: ${PHOENIX_ENDPOINT:-}
+      # Optional Phoenix OTLP auth token. Passed to every config-mounting service (incl.
+      # bot) for the same reason as PHOENIX_ENDPOINT: uncommenting api_key in the config
+      # makes ${PHOENIX_API_KEY} interpolate, and an unset ${VAR} aborts boot. Empty ⇒ the
+      # adapter sends no Authorization header.
+      PHOENIX_API_KEY: ${PHOENIX_API_KEY:-}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
@@ -205,6 +210,11 @@ services:
       # config references ${PHOENIX_ENDPOINT} and interpolation aborts on any unset
       # ${VAR}. See the top-of-file NOTE.
       PHOENIX_ENDPOINT: ${PHOENIX_ENDPOINT:-}
+      # Optional Phoenix OTLP auth token. Passed to every config-mounting service (incl.
+      # bot) for the same reason as PHOENIX_ENDPOINT: uncommenting api_key in the config
+      # makes ${PHOENIX_API_KEY} interpolate, and an unset ${VAR} aborts boot. Empty ⇒ the
+      # adapter sends no Authorization header.
+      PHOENIX_API_KEY: ${PHOENIX_API_KEY:-}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
@@ -251,6 +261,11 @@ services:
       # config references ${PHOENIX_ENDPOINT} and interpolation aborts on any unset
       # ${VAR}. See the top-of-file NOTE.
       PHOENIX_ENDPOINT: ${PHOENIX_ENDPOINT:-}
+      # Optional Phoenix OTLP auth token. Passed to every config-mounting service (incl.
+      # bot) for the same reason as PHOENIX_ENDPOINT: uncommenting api_key in the config
+      # makes ${PHOENIX_API_KEY} interpolate, and an unset ${VAR} aborts boot. Empty ⇒ the
+      # adapter sends no Authorization header.
+      PHOENIX_API_KEY: ${PHOENIX_API_KEY:-}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}

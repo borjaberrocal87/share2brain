@@ -193,6 +193,14 @@ export const Share2BrainConfigSchema = z.object({
                 'observability.tracing.endpoint must be the collector root — no query/fragment and no trailing /v1/traces (the adapter appends /v1/traces)',
             },
           ),
+        // Optional API key for a self-hosted Phoenix that requires auth on OTLP ingestion
+        // (401 otherwise, e.g. behind a public reverse proxy). It is a SECRET, so — like
+        // sentry_dsn / notification tokens — it is supplied via ${PHOENIX_API_KEY}, never a
+        // raw value in YAML. Absent/blank ⇒ the adapter sends NO Authorization header
+        // (byte-identical to a Phoenix with auth disabled, S-5 spirit). No format check: it
+        // is an opaque bearer token, and a wrong key surfaces as a 401 the best-effort
+        // exporter swallows — not a boot-time ConfigError.
+        api_key: z.string().optional(),
       })
       .optional(),
   }),

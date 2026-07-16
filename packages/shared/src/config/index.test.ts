@@ -454,6 +454,24 @@ describe('loadConfig', () => {
     expect(config.observability.tracing?.endpoint).toBe('http://gateway/phoenix');
   });
 
+  it('should accept an optional tracing api_key (a secret, referenced via ${VAR}) for Phoenix auth', () => {
+    const yaml = VALID_YAML.replace(
+      'observability:\n  sentry_dsn: ""',
+      'observability:\n  tracing:\n    endpoint: "http://phoenix:6006"\n    api_key: "sk-phoenix-abc"\n  sentry_dsn: ""',
+    );
+    const config = loadConfig(writeFixture('tracing-apikey.yml', yaml));
+    expect(config.observability.tracing?.api_key).toBe('sk-phoenix-abc');
+  });
+
+  it('should leave tracing api_key undefined when the field is omitted (backward compatible, no auth)', () => {
+    const yaml = VALID_YAML.replace(
+      'observability:\n  sentry_dsn: ""',
+      'observability:\n  tracing:\n    endpoint: "http://phoenix:6006"\n  sentry_dsn: ""',
+    );
+    const config = loadConfig(writeFixture('tracing-no-apikey.yml', yaml));
+    expect(config.observability.tracing?.api_key).toBeUndefined();
+  });
+
   it('should reject a non-HTTPS slack webhook_url when notifications are enabled (S-5)', () => {
     const yaml = `${VALID_YAML}notifications:\n  enabled: true\n  provider: "slack"\n  slack:\n    webhook_url: "http://hooks.example.com/x"\n`;
     expect(() => loadConfig(writeFixture('slack-http.yml', yaml))).toThrow(/webhook_url|HTTPS/i);
