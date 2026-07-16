@@ -1,5 +1,28 @@
 # generated: 2026-06-30
-# last_updated: 2026-07-16 (ops-5 review → done, bmad-code-review): 3-layer adversarial review (Opus). All 11 ACs PASS. Follow-up: findings #2 (port non-throw contract + adapter guards) and #6 (coverage tests: unknown-provider fallthrough, e2e logger→logSink→service, 4 never-throw) promoted to patches, applied + delta re-reviewed clean. Gate re-run green (lint / 1123 pass 1 skip / build). Net: 2 patched, 4 defer (see deferred-work.md), 9 dismissed. Full 3-layer re-sweep on complete diff: 11/11 ACs PASS, no regression, no Crit/High; 3 micro-fixes to the delta (guard doc precision, redact degraded-path console.error, honest test naming). Gate green. || (prior) last_updated: 2026-07-16 (ops-5 in-progress → review, bmad-dev-story): Observability port + Sentry adapter
+# last_updated: 2026-07-16 (ops-6 backlog → ready-for-dev, bmad-create-story): story file
+# ops-6-llm-tracing-phoenix.md created from the SCP (15 ACs, 8 tasks). Versions resolved and pinned:
+# arizephoenix/phoenix:18.0.0; @arizeai/openinference-instrumentation-langchain ^4.0.14 (LangChain-1.x
+# support CONFIRMED — peer @langchain/core ^1.0.0, patches CallbackManager so LangGraph 1.4 nodes are
+# auto-traced; registration is manuallyInstrument, must run before any chain + single @langchain/core
+# copy required); OTel SDK 2.9.0 matched set + exporter-trace-otlp-proto 0.220.0 (Phoenix wants
+# protobuf on :6006/v1/traces; SDK 2.x = resourceFromAttributes + spanProcessors ctor). Enrichment
+# invoke = @langchain/core call ⇒ auto-instrumented (AC10 verifies live, withSpan fallback specified).
+# Footguns baked into ACs: eslint no-restricted-imports clobber (fold OTel ban into existing objects);
+# compose interpolateTree aborts on unset ${VAR} ⇒ PHOENIX_ENDPOINT:- also in bot env; /tracing subpath
+# NOT in root barrel. Next: bmad-dev-story ops-6.
+# || (prior) last_updated: 2026-07-16 (bmad-correct-course, sprint-change-proposal-2026-07-16-llm-tracing-phoenix.md):
+# ops-6 added → backlog (operational-backlog P1.5). LLM inference tracing via Arize Phoenix
+# (self-hosted, compose-internal) behind a NEW separate vendor-neutral LlmTracing port in
+# packages/shared/src/tracing/ (port + createLlmTracing factory + NoopLlmTracing, never-throw —
+# mirrors ops-5). SEPARATE from the ops-5 Observability port by design (Borja-ratified D1): Sentry
+# keeps errors+logs, Phoenix takes LLM traces; each port provider-swappable independently. OTel
+# NodeTracerProvider + OTLP → phoenix:6006 + OpenInference LangChain auto-instrumentation (reason /
+# compress / enrich) + manual withSpan for embeddings+pgvector. Config observability.tracing
+# (optional block, empty endpoint ⇒ Noop = feature flag, S-5). Scope backend+workers (bot has no
+# LLM calls). Content in spans allowed ONLY self-hosted (new SNF-18; SNF-9 Sentry prohibition
+# intact). PRD/TD edits ride ops-6 docs-sync (approved old→new in the SCP). Scope Moderate, MVP
+# unaffected, no epic/story re-work. Next: bmad-create-story ops-6.
+# || (prior) last_updated: 2026-07-16 (ops-5 review → done, bmad-code-review): 3-layer adversarial review (Opus). All 11 ACs PASS. Follow-up: findings #2 (port non-throw contract + adapter guards) and #6 (coverage tests: unknown-provider fallthrough, e2e logger→logSink→service, 4 never-throw) promoted to patches, applied + delta re-reviewed clean. Gate re-run green (lint / 1123 pass 1 skip / build). Net: 2 patched, 4 defer (see deferred-work.md), 9 dismissed. Full 3-layer re-sweep on complete diff: 11/11 ACs PASS, no regression, no Crit/High; 3 micro-fixes to the delta (guard doc precision, redact degraded-path console.error, honest test naming). Gate green. || (prior) last_updated: 2026-07-16 (ops-5 in-progress → review, bmad-dev-story): Observability port + Sentry adapter
 # behind createObservability; NoopObservability (S-5); logger decoupled from @sentry/node via injected
 # StructuredLogSink; all 3 services + backend app.ts/lifecycle.ts re-wired through the port; optional
 # observability.provider selector (AC10, default sentry). @sentry/node now in ONE file. Gate green:
@@ -899,6 +922,14 @@ development_status:
   # new adapter + 1 factory branch + 1 config value, zero service/web edits. Optional observability.provider
   # config selector (default sentry, fail-safe). No behavior/output change. Story: ops-5-observability-port-adapter.md.
   ops-5-observability-port-adapter: done
+  # Added 2026-07-16 via bmad-correct-course (sprint-change-proposal-2026-07-16-llm-tracing-phoenix.md,
+  # operational-backlog P1.5): LLM inference tracing (traces/spans/latency of every LLM/embeddings call)
+  # via Arize Phoenix self-hosted, behind a NEW separate LlmTracing port (packages/shared/src/tracing/) —
+  # deliberately NOT the ops-5 Observability port (Sentry keeps errors+logs; ISP, Borja-ratified).
+  # OTel + OpenInference LangChain auto-instrumentation + manual withSpan (embeddings, pgvector); config
+  # observability.tracing (empty endpoint ⇒ Noop, S-5); compose service `phoenix` (pinned tag, internal-only);
+  # backend+workers only (bot has no LLM calls). Content in spans ONLY to self-hosted collectors (SNF-18).
+  ops-6-llm-tracing-phoenix: review
 
 action_items:
   - epic: 1

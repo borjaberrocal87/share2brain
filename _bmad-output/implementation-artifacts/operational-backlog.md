@@ -80,6 +80,33 @@
   vendor name in any service or the logger; empty-DSN boot byte-identical to today; gate green with no net test
   loss; adding a future provider is a new adapter + one factory branch + one config value, zero service/web edits.
 
+### P1.5 — LLM inference tracing (Arize Phoenix, self-hosted) behind a separate `LlmTracing` port
+> **Approved 2026-07-16** via `sprint-change-proposal-2026-07-16-llm-tracing-phoenix.md` (Correct
+> Course). Promoted to story `ops-6-llm-tracing-phoenix` (status `backlog`; `bmad-create-story` next).
+- **Why now:** zero visibility of the LLM pipeline — no traces, spans or latencies for any model
+  call (RAG graph `retrieve→reason→respond`, history compression, query/document embeddings,
+  workers enrichment). PRD latency NFRs (SNF-1/2/3/13/14) are not instrumented; Epic 9 retro
+  **AI-3** (real deploy + observability, CRITICAL) still open. Requested by Borja 2026-07-16.
+- **Scope:** new `packages/shared/src/tracing/` module: vendor-neutral `LlmTracing` port +
+  `createLlmTracing({endpoint, service, provider})` factory + `NoopLlmTracing` (never-throw
+  contract, mirrors ops-5). Phoenix adapter = OTel NodeTracerProvider + OTLP → `phoenix:6006` +
+  OpenInference LangChain auto-instrumentation (covers `reason`, `compress`, workers `enrich`);
+  manual `withSpan` for `embedQuery`/`embedDocuments` + the pgvector similarity query. Config
+  `observability.tracing` (optional block; empty `endpoint` ⇒ Noop = the feature flag, S-5).
+  Compose gains a `phoenix` service (pinned tag, own volume, **internal network only** — SSH
+  tunnel access, never public without auth). Wiring in backend + workers `main.ts` after
+  `loadConfig()` (AD-8); **bot excluded** (no LLM calls). **Deliberately a SEPARATE port from the
+  ops-5 `Observability` port** (Borja-ratified): Sentry keeps errors+logs, Phoenix takes inference
+  traces — two concerns with different shapes, each provider-swappable independently (a future
+  Langfuse/Datadog adapter = new file + factory branch + config value, zero service edits).
+- **Content policy (new SNF-18):** prompts/completions MAY travel in spans **only** to self-hosted
+  collectors inside the Compose network; the SNF-9 never-content-to-Sentry rule stays intact.
+- **Green when:** a chat turn shows the full trace in Phoenix (embed + pgvector + LLM spans with
+  latency/tokens); an indexed URL shows enrichment + embedding spans; empty endpoint boots
+  byte-identical (Noop); `grep -r '@opentelemetry\|@arizeai' packages/` hits only
+  `packages/shared`; SNF-3 first-chunk latency unaffected; gate green. PRD/TD doc edits (SNF-18,
+  §6.2/§4.6/§10.2 Pino fix; TD §13/§15/§17) ride this story's docs-sync per the SCP.
+
 ## Priority 2 — correctness hardening (low live-path risk today)
 
 ### P2.1 — Transactional outbox for the XADD-before-COMMIT producer race

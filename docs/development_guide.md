@@ -187,6 +187,39 @@ The port exists so a second provider is **config-only** for the services — thr
    Zod enum (`config/index.ts`).
 3. **Set the config value** `observability.provider: <provider>` in `Share2Brain.config.yml`.
 
+## 🔬 LLM inference tracing (Arize Phoenix — Story ops-6)
+
+LLM/embeddings **traces** (spans with model, tokens, latency, prompt/completion) are a
+**separate seam** from the Sentry `Observability` port above (Sentry keeps errors + logs;
+Phoenix takes LLM traces). They flow through a second vendor-neutral port, `LlmTracing`
+(`@share2brain/shared/tracing`), to a **self-hosted Arize Phoenix** collector. Also opt-in
+and off by default; scoped to `backend` + `workers` (the bot makes no LLM calls).
+
+- **Enable it:** set `PHOENIX_ENDPOINT` in `.env` (e.g. `http://phoenix:6006`). It flows into
+  `Share2Brain.config.yml`'s `observability.tracing.endpoint: "${PHOENIX_ENDPOINT}"`, which
+  `docker-compose.yml` passes to all config-mounting services (incl. `bot` — the config
+  references the var, and interpolation aborts on any unset `${VAR}`). The dev compose ships a
+  `phoenix` service on the `data` network with a loopback-only dev port; reach the UI at
+  `http://127.0.0.1:6006` (or via SSH tunnel). Phoenix is **never** publicly exposed or proxied
+  by nginx (SNF-18).
+- **Disable it:** leave `PHOENIX_ENDPOINT` empty (the default). `createLlmTracing` then returns
+  `NoopLlmTracing` — no OTel object is constructed, no `@langchain/core` instrumentation is
+  registered, and there are zero tracing network calls (byte-identical to before tracing).
+- **What is captured** when enabled: the RAG pipeline (`retrieve → reason → respond`), history
+  compression, workers enrichment (all auto-instrumented via OpenInference at the
+  `@langchain/core` layer), plus manual spans for the query embedding
+  (`embeddings.embed_query`), the pgvector similarity search (`pgvector.similarity_search`), and
+  batch indexing embeddings (`embeddings.embed_documents`).
+- **Content in spans:** prompts/completions/retrieved fragments MAY appear in spans **only**
+  because the collector is self-hosted inside the Compose network. The never-content-to-Sentry
+  rule (SNF-9) is untouched — nothing from tracing flows to the `Observability` port; manual
+  span attributes carry counts/params only.
+- **Architecture:** services depend on the `LlmTracing` **port**, never on
+  `@opentelemetry/*`/`@arizeai/*` — those live in **exactly one file**,
+  `packages/shared/src/tracing/phoenix.ts` (AD-2). Adding a provider (Langfuse, OpenLLMetry,
+  Datadog, …) is the same three-step recipe as the observability port, against
+  `createLlmTracing` + `observability.tracing.provider`.
+
 ## Updating a running deployment
 
 ```bash

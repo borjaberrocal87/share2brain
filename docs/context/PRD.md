@@ -580,6 +580,11 @@ security:
 observability:
   sentry_dsn: "${SENTRY_DSN}"
   log_level: "info"
+  # Trazado de inferencia LLM (Story ops-6) — seam SEPARADO de Sentry (Sentry
+  # mantiene errores+logs; Phoenix recibe trazas LLM). endpoint vacío ⇒ Noop (S-5).
+  tracing:
+    # provider: "phoenix"  # opcional; default "phoenix"
+    endpoint: "${PHOENIX_ENDPOINT}"
 ```
 
 ### 4.7 Autenticación
@@ -850,7 +855,7 @@ CREATE INDEX idx_user_roles_cache_expires ON user_roles_cache(expires_at);
 | Cola de eventos | **Redis Streams** | Desacoplamiento de indexación |
 | Configuración | **YAML + Zod** | Infrastructure-as-Code; validación de schema |
 | Notificaciones | **Telegram Bot API** | Notificaciones al operador |
-| Observabilidad | **Sentry + `@share2brain/shared/logger` (custom structured logger)** | Errores + logs estructurados completos a Sentry (Pino nunca se adoptó) |
+| Observabilidad | **Sentry + `@share2brain/shared/logger` (custom structured logger)** | Errores + logs estructurados completos a Sentry (Pino nunca se adoptó) + **Arize Phoenix (self-hosted)** para trazas LLM vía OTel/OpenInference (puerto `LlmTracing`, Story ops-6) |
 | Empaquetado | **Docker Compose** | App + bot + base + redis |
 | Web App | **React + Vite** | Búsqueda + chat |
 | Testing | **Vitest + Playwright** | Unit/integration + E2E |
@@ -1301,17 +1306,27 @@ const rateLimitConfig = {
 
 ### 10.2 Logging estructurado
 
+El logging pasa por el logger compartido `@share2brain/shared/logger` (Pino nunca se
+adoptó — ver §6.2). Es un **dual sink**: escribe a stdout **y** reenvía cada línea al
+`StructuredLogSink` inyectado por el puerto `Observability` (Sentry Structured Logs),
+filtrado por `observability.log_level`. El logger no importa ningún SDK de proveedor
+(la dirección de dependencia es observability → logger); `@sentry/node` vive solo en
+`packages/shared/src/observability/sentry.ts`. Toda línea se redacta (`redactSecrets`)
+y nunca lleva `content` ni PII (SNF-9).
+
 ```typescript
-// Pino logger
-const logger = pino({
-  name: 'Share2Brain',
-  level: process.env.LOG_LEVEL || 'info',
-  formatters: {
-    level: (label) => ({ level: label })
-  },
-  timestamp: pino.stdTimeFunctions.isoTime
-});
+// @share2brain/shared/logger — dual sink (stdout + StructuredLogSink del puerto Observability)
+const logger = createLogger(
+  config.observability.log_level, // 'debug' | 'info' | 'warn' | 'error'
+  'backend',                      // nombre del servicio emisor
+  undefined,                      // sink de stdout (default)
+  observability.logSink,          // reenvío a Sentry (Noop si el DSN está vacío, S-5)
+);
 ```
+
+Trazado de inferencia LLM (spans de modelo/tokens/latencia/prompt-completion) es un
+seam SEPARADO: el puerto `LlmTracing` (`@share2brain/shared/tracing`) hacia Arize
+Phoenix self-hosted (Story ops-6, SNF-18). No pasa por el logger ni por Sentry.
 
 ### 10.3 Notificaciones
 
@@ -1355,6 +1370,7 @@ const logger = pino({
 | SNF-7 | Restart automático en fallo | El contenedor Docker se reinicia en <30s tras un crash (política `restart: unless-stopped`). Se emite alerta Notifier si el reinicio ocurre más de 3 veces en 5 minutos. |
 | SNF-8 | Graceful shutdown | Al recibir SIGTERM, el servidor espera hasta 10s para completar requests en curso, cierra conexiones DB y Redis, y termina el proceso. Las peticiones nuevas durante el shutdown reciben HTTP 503. |
 | SNF-9 | Logging de errores | Todos los errores HTTP 5xx son capturados por Sentry con stack trace y contexto de usuario (id interno de usuario + roles de Discord, nunca contenido ni PII). Además, **todas** las líneas de log (no solo los 5xx) se envían a Sentry Structured Logs vía el logger compartido `@share2brain/shared/logger` (dual sink stdout + Sentry, gated por `observability.log_level`); los errores de indexación incluyen `channel_id` y `message_id`. Implementado en Story ops-4 (`@sentry/node` vive solo en `packages/shared`). |
+| SNF-18 | Trazado de inferencia LLM | Las llamadas LLM y de embeddings de `backend` y `workers` emiten trazas OTel (spans con modelo, tokens, latencia y prompt/completion) a un colector **self-hosted** (Arize Phoenix) vía el puerto vendor-neutral `LlmTracing` (`@share2brain/shared/tracing`); `endpoint` vacío ⇒ desactivado (Noop). El contenido puede viajar en spans **solo** hacia colectores self-hosted dentro de la red del Compose y nunca expuestos públicamente sin autenticación; la prohibición de contenido/PII hacia Sentry (SNF-9) permanece intacta. Implementado en Story ops-6. |
 
 ### 11.3 Testing
 

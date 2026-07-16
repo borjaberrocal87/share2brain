@@ -1029,6 +1029,11 @@ ui:
 observability:
   sentry_dsn: "${SENTRY_DSN}"
   log_level: "info"
+  # Trazas LLM → Arize Phoenix self-hosted vía el puerto `LlmTracing` (Story ops-6),
+  # seam SEPARADO de Sentry (D1). endpoint vacío ⇒ Noop (S-5); provider default "phoenix".
+  tracing:
+    # provider: "phoenix"
+    endpoint: "${PHOENIX_ENDPOINT}"
 
 security:
   rate_limit:
@@ -1157,6 +1162,8 @@ docker compose up -d
 | Reverse proxy | nginx | 1.27 mainline | |
 | Contenedores | Docker Compose | 2 | |
 | Embeddings | Configurable (OpenAI / custom OpenAI-compatible) | — | provider-factory; dimensión declarada en `embeddings.dimensions` |
+| Observabilidad (errores+logs) | Sentry (`@sentry/node`) tras el puerto `Observability` | 9.x | Un solo adaptador en `packages/shared/src/observability/sentry.ts` (ops-4/ops-5) |
+| Trazado LLM | Arize Phoenix (self-hosted) + OpenTelemetry SDK + OpenInference | Phoenix 18.0.0 / OTel SDK 2.9 / OpenInference 4.0 | Tras el puerto `LlmTracing`; SDKs solo en `packages/shared/src/tracing/phoenix.ts` (ops-6) |
 
 ---
 
@@ -1209,6 +1216,6 @@ Estas decisiones están conscientemente pospuestas. No son olvidos — son área
 | **Health checks Compose** | Scripts de probe por servicio | Sin restricción |
 | **Abstracción proveedor LLM/embeddings** | Implementada en Story 3.0 (provider-factory en shared: ChatAnthropic / ChatOpenAI(baseURL) / OpenAIEmbeddings(baseURL)) | Cubre LLM (anthropic/openai/custom) y embeddings (openai/custom) |
 | **Batching del Indexer** *(superseded, Epic 7)* | Lógica de grouping_window (diseño Story 3.3, pre-pivote) | Retirado del Indexer en Story 7.2 — el pipeline indexa por URL, sin agrupar mensajes |
-| **Observabilidad** | Qué errores y traces van a Sentry | `SENTRY_DSN` en config |
+| **Observabilidad** | Errores + logs → Sentry tras el puerto `Observability` (ops-4/ops-5); trazas LLM → Arize Phoenix self-hosted tras el puerto `LlmTracing` (ops-6) | `SENTRY_DSN` / `PHOENIX_ENDPOINT` en `.env`; bloques `observability.*` en config |
 | **Topología dev local** | Vite proxy, CORS config en Backend | No afecta producción (AD-7) |
 | **nginx image tag** | `nginx:1.27-alpine` o versión exacta | No usar `nginx:latest` |
