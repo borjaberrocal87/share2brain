@@ -4,7 +4,7 @@ baseline_commit: 41f8e8eeaea27bf0d60ffe1f8272573c36891ce6
 
 # Story ops-6: LLM inference tracing via Arize Phoenix behind a separate `LlmTracing` port
 
-Status: review
+Status: done
 
 <!-- Post-roadmap operational item (ops-N convention, outside the epic sequence). -->
 <!-- Approved via sprint-change-proposal-2026-07-16-llm-tracing-phoenix.md (Proposals A-D, -->
@@ -715,3 +715,144 @@ claude-opus-4-8 (Opus 4.8) via bmad-dev-story.
   distilled into 15 ACs; codebase analysis (observability pattern, DI seams, compose/eslint
   footguns) and version research (Phoenix 18.0.0, OpenInference 4.0.14 w/ LangChain-1.x support
   confirmed, OTel SDK 2.9.0 matched set) baked into Dev Notes. Status: ready-for-dev.
+
+## Review Findings
+
+_Code review 2026-07-16 (bmad-code-review, Opus 4.8) — 3-layer adversarial (Blind Hunter /_
+_Edge Case Hunter / Acceptance Auditor). Net: 6 patch, 0 decision-needed, 0 defer, 7 dismissed._
+_All architectural invariants (D1, AD-2, AD-8, AD-12, S-5, D3, SNF-9/SNF-18, never-throw) verified_
+_PASS; no hard AC failure. The one High is a runtime provider-collision, not an AC violation._
+
+### Decision-needed
+
+_(none)_
+
+### Patch
+
+- [x] [Review][Patch][High] OpenInference auto-instrumentation binds to the GLOBAL OTel tracer,
+  which `@sentry/node` (ops-5) claims first — so with Sentry enabled (the normal prod posture) the
+  auto-instrumented LLM spans (`reason`/`respond`/`compress`/`enrich`) never reach Phoenix; only the
+  3 manual `withSpan` spans do. Confirmed against SDK source: `Sentry.init()` runs `initOpenTelemetry`
+  unconditionally (no `skipOpenTelemetrySetup`) → `setupOtel()` calls `trace.setGlobalTracerProvider`;
+  boot order (AD-8) puts Sentry before Phoenix, and OTel's `setGlobalTracerProvider` no-ops when a
+  global is already registered, so Phoenix's `provider.register()` is ignored. Fix (D1-preserving):
+  bind the instrumentation to Phoenix's own provider — `new LangChainInstrumentation({ tracerProvider:
+  provider })` (or `inst.setTracerProvider(provider)` before `manuallyInstrument`). MUST be confirmed
+  with the deferred AC12 live smoke (Sentry + Phoenix both on) before merge. [packages/shared/src/tracing/phoenix.ts:131-138]
+- [x] [Review][Patch][Medium] Tracing endpoint accepts any parseable scheme and is not normalized:
+  the Zod refine is `v === '' || URL.canParse(v)`, so `redis://…` passes and `http://phoenix:6006/`
+  (trailing slash) yields `…//v1/traces`; export failures are silent (best-effort), so the feature
+  looks "on" but exports nothing. Fix: tighten the refine to `v === '' || isHttpUrl(v)` (reuse the
+  shared helper, as `guest_access.invite_url` does) and normalize the base (`new URL('/v1/traces',
+  endpoint)` or strip a trailing `/`). [packages/shared/src/config/index.ts:169, packages/shared/src/tracing/phoenix.ts:128]
+- [x] [Review][Patch][Medium] `llmTracing.shutdown()`/`flush()` are awaited with NO outer timeout in
+  the shutdown/fatal paths, unlike `redis.quit()`/`db.$client.end()` which are each `Promise.race`d
+  with a `setTimeout`. The port contract guarantees never-reject, not never-hang; the current Phoenix
+  adapter self-bounds (2s), so this is latent — but a future adapter (the whole point of the port)
+  that hangs would wedge `exit(0)`/`exit(1)`. Fix: wrap the tracing teardown in the same outer
+  `Promise.race([…, setTimeout])` bound for parity. [packages/backend/src/lifecycle.ts:147, packages/workers/src/main.ts:212, packages/backend/src/main.ts:86-98]
+- [x] [Review][Patch][Low] `NoopLlmTracing.withSpan` is `(_n,_a,fn) => fn()`, so a SYNCHRONOUS throw
+  in `fn` propagates synchronously under Noop (tests/tracing-off), whereas the Phoenix adapter routes
+  it through `async runInSpan` → a rejected promise. The port declares `Promise<T>`. Fix: make Noop
+  `async (_n,_a,fn) => fn()` so both paths reject identically. [packages/shared/src/tracing/tracing.ts:50]
+- [x] [Review][Patch][Low] `bounded()` leaves the race `setTimeout` uncancelled and not `unref`'d on
+  the fast path; benign today (every caller is immediately followed by `process.exit`) but the helper
+  would keep the event loop alive up to `timeoutMs` if ever called off an exit path. Fix:
+  `clearTimeout`/`unref` the timer. [packages/shared/src/tracing/phoenix.ts:89-101]
+- [x] [Review][Patch][Low] Factory empty-endpoint guard uses exact `opts.endpoint === ''`, so a
+  whitespace-only endpoint falls through to the live adapter (config Zod already rejects `' '` at
+  load, so this only bites a non-config caller — defense-in-depth). Fix: `opts.endpoint.trim() === ''`.
+  [packages/shared/src/tracing/index.ts:46]
+
+### Defer
+
+_(none)_
+
+### Dismissed (recorded, not acted on)
+
+- Crash-path +≤2s tracing flush before `exit(1)` — intentional (ship buffered spans), bounded, mirrors `observability.flush()`.
+- `@opentelemetry/api ^1.9.1` "may not exist" — verified installed `1.9.1` (single copy), resolves cleanly.
+- Dead-defensive `.catch` on `shutdown()` + hard-coded 2s shutdown bound — intentional, comment-acknowledged.
+- Example config `${PHOENIX_ENDPOINT}` "breaks existing dev boot" — existing `Share2Brain.config.yml` is untouched (optional `tracing` block absent ⇒ Noop); fresh setups get the updated `.env.example`.
+- Enrichment (AC10) auto-span unverified — same root cause as the High patch above (merged), not a separate defect.
+- ARCHITECTURE-SPINE note in Spanish vs AC14 literal English — the spine doc is entirely Spanish (like PRD/TD); an English note would be the inconsistent choice.
+- `/api/search` also emits spans (beyond the literal AC9 retriever scope) — additive, transparent, off the SSE hot path; an improvement, not a violation.
+
+### Resolution (2026-07-16, patches applied)
+
+All 6 patches applied and the verification gate re-run green (lint 0 / 1145 pass · 1 skip / build 5 pkgs):
+
+- **High — provider collision:** `packages/shared/src/tracing/phoenix.ts` now constructs
+  `new LangChainInstrumentation({ tracerProvider: provider })`, binding OpenInference's span-emitting
+  `OITracer` to Phoenix's own provider instead of the Sentry-owned OTel global. Verified against the
+  installed SDK source: `OITracer` is built at construction from `tracerProvider.getTracer(...)`, so the
+  constructor arg (not a later `setTracerProvider`) is the correct seam.
+- **Medium — endpoint:** config refine tightened to `isHttpUrl`; exporter URL built via
+  `new URL('/v1/traces', endpoint)` (scheme-checked + slash/path-normalized).
+- **Medium — teardown bound:** `llmTracing.shutdown()` now outer-raced with a 3s timeout in
+  `lifecycle.ts` and `workers/main.ts`, matching redis/db.
+- **Low ×3:** `NoopLlmTracing.withSpan` is `async` (sync-throw ⇒ rejection parity); `bounded()`
+  `clearTimeout`s its race timer; factory empty-endpoint guard `trim()`s.
+
+> ⚠️ **Mandatory follow-up (carries the pre-existing AC12/AC13 deferral):** the High fix changes which
+> tracer the auto-instrumented LLM spans use at runtime. It is source-verified + unit/gate-green, but the
+> live end-to-end smoke — **Sentry + Phoenix both enabled**, confirm `reason`/`respond`/`compress`/`enrich`
+> spans actually land in the Phoenix UI — is still deferred (no full stack in this env). Run the deferred
+> AC12/AC13 smoke before trusting tracing in production; this is the exact gap that let the bug ship unseen.
+
+### Delta re-review (2026-07-16)
+
+Adversarial verification of the 6 patches (Opus, refute-the-fix). Patch 1 (the High fix) **CONFIRMED
+correct** against installed SDK source — the binding routes auto-spans to Phoenix's provider, leaves the
+manual tracer and the Sentry seam (D1) untouched, and preserves context nesting. Two follow-ups it
+surfaced, both fixed:
+
+- **Patch 3 over-normalized** — `new URL('/v1/traces', endpoint)` discarded a *deliberate* subpath
+  (`http://host/phoenix` → dropped `/phoenix`), diverging from standard OTLP append semantics. Changed to
+  `` `${endpoint.replace(/\/+$/, '')}/v1/traces` `` — still fixes the trailing-slash double-slash, now
+  preserves a reverse-proxy subpath.
+- **Test-coverage gap on the critical line** — added a `phoenix.test.ts` assertion pinning
+  `LangChainInstrumentation` is constructed with `{ tracerProvider: <our provider> }`, so a refactor can't
+  silently re-break routing to Sentry's dropped tracer.
+
+Patches 2/4/5/6 verified clean. Gate re-run green (lint 0 / 1145 pass · 1 skip / build 5 pkgs).
+
+### Full-sweep re-review (2026-07-16)
+
+Final holistic 3-layer sweep (Blind / Edge Case / Acceptance, Opus) over the COMPLETE branch diff
+with the 6 fixes integrated. **No Critical/High, no hard AC failure; all invariants (D1, AD-2, AD-8,
+AD-12, S-5, D3, SNF-9/18, never-throw) PASS.** The High provider-binding fix re-confirmed present +
+correct by all three layers. Net: 3 patch (1 Medium consistency, 2 Low correctness), 0 decision-needed,
+0 defer, 5 dismissed.
+
+Patch:
+
+- [x] [Review][Patch][Medium] Crash-path `llmTracing.flush()` is NOT outer-bounded, unlike the
+  graceful-path `shutdown()` (which round 2 wrapped in `Promise.race([…, setTimeout(3s)])`). The
+  `uncaughtException`/`unhandledRejection` handlers chain `.finally(() => llmTracing.flush())` with no
+  outer timeout, so a future adapter whose `flush()` hangs would wedge `process.exit(1)`. Apply the same
+  outer race for consistency with the shutdown hardening. [packages/backend/src/main.ts:86,97, packages/workers/src/main.ts:133,144]
+- [x] [Review][Patch][Low] `withSpan` catch-fallback (`catch { return fn() }`) re-invokes `fn` if
+  `startActiveSpan` ever throws AFTER entering the callback (runInSpan already ran `fn`) — a duplicate
+  embedding/pgvector call, not just a duplicate span. Practically unreachable with conforming OTel
+  (startActiveSpan throws only pre-callback), but the transparency contract should be airtight: capture
+  the `runInSpan` promise and return it in the catch instead of re-calling `fn`. [packages/shared/src/tracing/phoenix.ts:175-184]
+- [x] [Review][Patch][Low] Endpoint that already contains `/v1/traces` or carries a query/fragment
+  passes `isHttpUrl` and is silently mis-appended (`…/v1/traces/v1/traces`), so the exporter POSTs to a
+  404 the best-effort layer swallows — a silent-dead-tracing footgun (the exact failure class this review
+  exists to catch). Add a fail-loud config refine rejecting a query/fragment or an already-appended
+  `/v1/traces` path (preserves the supported reverse-proxy subpath). [packages/shared/src/config/index.ts:169]
+
+Dismissed:
+
+- Unverified SDK assumptions / silent failure (Blind Hunter Medium) — maps to the already-documented AC12/AC13 deferred live smoke; assumption (a) source-verified (OITracer built from the passed provider), (b) single `@opentelemetry/api` copy verified (`npm ls` → one `1.9.1`). Not a new defect.
+- Unset `PHOENIX_ENDPOINT` aborts `loadConfig` (Edge Case Medium, re-raise of round 1) — fail-loud-by-design (AD-8, like every `${VAR}`); mitigated by compose `${PHOENIX_ENDPOINT:-}` defaults + updated `.env.example`; a non-compose deploy that references the var without setting it is a self-inflicted misconfig that SHOULD fail loud.
+- Serial fatal-handler flushes (~4s crash latency, Blind Hunter Low) — cosmetic; parallelizing would touch the ops-5 observability chain (D1, out of scope).
+- `toOtelAttributes` stringifies objects (Blind Hunter Low) — call sites are controlled and carry counts only; a generic coercer cannot distinguish "content", and the SNF-18 boundary is enforced at the call sites by design.
+- ESLint bare `@opentelemetry`/`@arizeai` patterns are dead (Blind Hunter Low) — harmless redundancy; the effective ban is the `/**` globs, which do match real imports.
+
+**Full-sweep patches applied (2026-07-16):** all 3 applied; gate re-run green (lint 0 / **1147 pass · 1 skip** — +2 new config tests pinning the endpoint refine / build 5 pkgs).
+
+- Crash-path flush now routed through a `boundedTracingFlush()` (`Promise.race` w/ 3s) in both services' fatal handlers — parity with the graceful `shutdown()` bound.
+- `withSpan` captures the `runInSpan` promise and returns it in the catch (no duplicate `fn` on a post-callback tracing fault).
+- Config `endpoint` gains a second refine rejecting a query/fragment or an already-appended `/v1/traces` (fail loud; reverse-proxy subpath still accepted). The gate caught a chained-refine ordering bug during this (second refine's `new URL` threw on the value the first refine already rejected) — fixed by guarding on `isHttpUrl`; +2 tests pin both the rejection and the subpath-accept.

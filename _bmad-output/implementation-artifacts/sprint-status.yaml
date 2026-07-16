@@ -1,5 +1,24 @@
 # generated: 2026-06-30
-# last_updated: 2026-07-16 (ops-6 backlog → ready-for-dev, bmad-create-story): story file
+# last_updated: 2026-07-16 (ops-6 full-sweep re-review → done, bmad-code-review): final 3-layer
+# adversarial sweep (Opus) over the complete branch diff with all fixes integrated. No Crit/High, no
+# hard AC failure, all invariants PASS; High provider-binding fix re-confirmed + test-pinned. 3 more
+# hardening patches applied: bounded crash-path tracing flush (parity w/ shutdown); withSpan captures
+# runInSpan promise (no duplicate fn on post-callback fault); endpoint refine rejects query/fragment +
+# already-appended /v1/traces (fail loud, subpath still ok, +2 tests). Gate green (lint 0 / 1147 pass 1
+# skip / build 5). ⚠ Deferred (unchanged): live Sentry+Phoenix smoke (AC12/AC13). Next: PR + checkpoint.
+# || (prior) last_updated: 2026-07-16 (ops-6 review → done, bmad-code-review): 3-layer adversarial (Opus:
+# Blind Hunter / Edge Case Hunter / Acceptance Auditor) on the full diff. All invariants PASS (D1,
+# AD-2, AD-8, AD-12, S-5, D3, SNF-9/SNF-18, never-throw); no hard AC failure. Net: 6 patch applied,
+# 0 decision-needed, 0 defer, 7 dismissed. HIGH (source-verified, NOT an AC violation): OpenInference
+# auto-instrumentation bound to the OTel GLOBAL tracer, which @sentry/node claims first (AD-8 order) —
+# so with Sentry ON (normal prod) the auto LLM spans (reason/respond/compress/enrich) never reached
+# Phoenix; only the 3 manual withSpan spans did. Fixed by binding the instrumentation to Phoenix's own
+# provider via constructor tracerProvider (OITracer is built at construction). Also: endpoint isHttpUrl
+# + URL-normalized exporter path; outer-timeout on shutdown teardown; Noop async sync-throw parity;
+# bounded() timer clearTimeout; factory endpoint trim(). Gate re-run green (lint 0 / 1145 pass 1 skip /
+# build 5 pkgs). ⚠ Deferred (carries pre-existing AC12/AC13): live Sentry+Phoenix smoke to confirm the
+# HIGH fix end-to-end — run before trusting tracing in prod. Next: PR + bmad-checkpoint-preview.
+# || (prior) last_updated: 2026-07-16 (ops-6 backlog → ready-for-dev, bmad-create-story): story file
 # ops-6-llm-tracing-phoenix.md created from the SCP (15 ACs, 8 tasks). Versions resolved and pinned:
 # arizephoenix/phoenix:18.0.0; @arizeai/openinference-instrumentation-langchain ^4.0.14 (LangChain-1.x
 # support CONFIRMED — peer @langchain/core ^1.0.0, patches CallbackManager so LangGraph 1.4 nodes are
@@ -929,7 +948,7 @@ development_status:
   # OTel + OpenInference LangChain auto-instrumentation + manual withSpan (embeddings, pgvector); config
   # observability.tracing (empty endpoint ⇒ Noop, S-5); compose service `phoenix` (pinned tag, internal-only);
   # backend+workers only (bot has no LLM calls). Content in spans ONLY to self-hosted collectors (SNF-18).
-  ops-6-llm-tracing-phoenix: review
+  ops-6-llm-tracing-phoenix: done
 
 action_items:
   - epic: 1
