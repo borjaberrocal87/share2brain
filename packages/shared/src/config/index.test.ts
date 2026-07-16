@@ -401,6 +401,42 @@ describe('loadConfig', () => {
     expect(() => loadConfig(bad)).toThrow(/sentry_dsn/i);
   });
 
+  // Story ops-6: the optional observability.tracing sub-block (AC6). Absent ⇒ Noop
+  // (consumers resolve endpoint ''); empty endpoint OK (S-5 feature flag); a
+  // malformed endpoint fails loud at load; provider defaults to 'phoenix'.
+  it('should accept an ABSENT tracing block (VALID_YAML has none) — resolves to undefined', () => {
+    const config = loadConfig(writeFixture('tracing-absent.yml', VALID_YAML));
+    expect(config.observability.tracing).toBeUndefined();
+  });
+
+  it('should accept an empty tracing endpoint and default the provider to "phoenix" (S-5)', () => {
+    const yaml = VALID_YAML.replace(
+      'observability:\n  sentry_dsn: ""',
+      'observability:\n  tracing:\n    endpoint: ""\n  sentry_dsn: ""',
+    );
+    const config = loadConfig(writeFixture('tracing-empty.yml', yaml));
+    expect(config.observability.tracing?.endpoint).toBe('');
+    expect(config.observability.tracing?.provider).toBe('phoenix');
+  });
+
+  it('should reject a malformed tracing endpoint, naming the field', () => {
+    const yaml = VALID_YAML.replace(
+      'observability:\n  sentry_dsn: ""',
+      'observability:\n  tracing:\n    endpoint: "not a url"\n  sentry_dsn: ""',
+    );
+    expect(() => loadConfig(writeFixture('tracing-bad.yml', yaml))).toThrow(/tracing\.endpoint/i);
+  });
+
+  it('should accept a valid tracing endpoint with an explicit provider', () => {
+    const yaml = VALID_YAML.replace(
+      'observability:\n  sentry_dsn: ""',
+      'observability:\n  tracing:\n    provider: "phoenix"\n    endpoint: "http://phoenix:6006"\n  sentry_dsn: ""',
+    );
+    const config = loadConfig(writeFixture('tracing-valid.yml', yaml));
+    expect(config.observability.tracing?.endpoint).toBe('http://phoenix:6006');
+    expect(config.observability.tracing?.provider).toBe('phoenix');
+  });
+
   it('should reject a non-HTTPS slack webhook_url when notifications are enabled (S-5)', () => {
     const yaml = `${VALID_YAML}notifications:\n  enabled: true\n  provider: "slack"\n  slack:\n    webhook_url: "http://hooks.example.com/x"\n`;
     expect(() => loadConfig(writeFixture('slack-http.yml', yaml))).toThrow(/webhook_url|HTTPS/i);

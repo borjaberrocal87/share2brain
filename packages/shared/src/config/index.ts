@@ -153,6 +153,24 @@ export const Share2BrainConfigSchema = z.object({
     // one factory branch + a new adapter file; NO service/web edit (AC10). Keep
     // the enum members in sync with `ObservabilityProvider` in observability.ts.
     provider: z.enum(['sentry']).default('sentry'),
+    // Story ops-6: LLM inference tracing via the SEPARATE `LlmTracing` port
+    // (D1 — NOT the Sentry seam above). The whole block is OPTIONAL and has NO
+    // `.default()` (streams/ui precedent): an absent block ⇒ consumers resolve
+    // `endpoint` to '' ⇒ `NoopLlmTracing` (S-5, the feature flag — no OTel object
+    // is ever constructed). Behavior only; the collector endpoint is a URL, not a
+    // secret, but is supplied via ${PHOENIX_ENDPOINT} so deploys vary it per env.
+    // `provider` keeps a fail-safe `phoenix` default (mirrors `provider` above);
+    // keep the enum in sync with `LlmTracingProvider` in tracing/tracing.ts.
+    // `endpoint`: empty disables (S-5); otherwise a valid URL — a typo should fail
+    // at load, not silently drop traces (mirrors `sentry_dsn`).
+    tracing: z
+      .object({
+        provider: z.enum(['phoenix']).default('phoenix'),
+        endpoint: z.string().refine((v) => v === '' || URL.canParse(v), {
+          message: 'observability.tracing.endpoint must be empty or a valid URL',
+        }),
+      })
+      .optional(),
   }),
   security: z.object({
     rate_limit: z.object({
