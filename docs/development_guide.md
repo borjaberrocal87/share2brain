@@ -146,31 +146,46 @@ npx playwright install chromium  # one-time: download the browser (chromium only
 npm run test:e2e -w @share2brain/web   # Playwright end-to-end (needs test Postgres+Redis + fake-OAuth session)
 ```
 
-## 🔭 Observability (Sentry)
+## 🔭 Observability (vendor-neutral port + adapter)
 
 The three Node services (`backend`, `bot`, `workers`) ship their errors **and every
-structured log line** to [Sentry](https://sentry.io) so you never have to `docker logs`
-the VPS. It is **opt-in and off by default**.
+structured log line** off-box so you never have to `docker logs` the VPS. Observability is
+a **vendor-neutral port** (`Observability`) with [Sentry](https://sentry.io) as the one
+shipped adapter (Story ops-5). It is **opt-in and off by default**.
 
 - **Enable it:** set `SENTRY_DSN` in `.env` to your project's DSN. That value flows into
   `Share2Brain.config.yml`'s `observability.sentry_dsn: "${SENTRY_DSN}"`, which
   `docker-compose.yml` already passes to all three services.
-- **Disable it:** leave `SENTRY_DSN` empty (the default). `initSentry` is then a genuine
-  no-op — `Sentry.init` is never called and logs go to `stdout` exactly as before.
+- **Disable it:** leave `SENTRY_DSN` empty (the default). `createObservability` then returns
+  a `NoopObservability` — the vendor SDK is never initialized and logs go to `stdout`
+  exactly as before.
 - **What is captured** when enabled:
   - **Errors** — `uncaughtException` / `unhandledRejection` in every service, plus unhandled
-    HTTP 5xx in the backend (via `Sentry.setupExpressErrorHandler`), with full stack traces.
-  - **Logs** — *all* levels at or above `observability.log_level`, forwarded to Sentry
-    Structured Logs alongside `stdout` (dual sink). Lower the log level to reduce volume.
+    HTTP 5xx in the backend (via the port's `setupExpressErrorHandler`), with full stack traces.
+  - **Logs** — *all* levels at or above `observability.log_level`, forwarded to the adapter's
+    structured-log sink alongside `stdout` (dual sink). Lower the log level to reduce volume.
   - Every event/log is **tagged with the emitting `service`** (`backend` | `bot` | `workers`).
   - Backend errors also carry **user context**: the internal user id + Discord role ids only.
 - **Never sent:** secrets (DB/Redis connection-string credentials are scrubbed by
   `redactSecrets`), Discord message `content`, emails, or IPs (`sendDefaultPii` stays off).
-- **Volume note:** because *all* logs ship (not only errors), watch your Sentry quota and
+- **Volume note:** because *all* logs ship (not only errors), watch your provider quota and
   keep `observability.log_level` at `info` (or higher) in production.
-- `@sentry/node` is a dependency of `@share2brain/shared` **only** — the services inherit it
-  transitively (AD-2). The single integration point is
-  `packages/shared/src/observability/`.
+- **Architecture:** services depend on the `Observability` **port**, never on `@sentry/node`.
+  `@sentry/node` is imported in **exactly one file** — `packages/shared/src/observability/sentry.ts`
+  (a dependency of `@share2brain/shared` only, AD-2). The shared logger takes an injected
+  `StructuredLogSink` and does not import any vendor SDK.
+
+### Adding another provider (OpenTelemetry, Datadog, Grafana, …)
+
+The port exists so a second provider is **config-only** for the services — three steps, with
+**zero edits** to `backend`/`bot`/`workers`/`web`:
+
+1. **New adapter file** `packages/shared/src/observability/<provider>.ts` exporting
+   `create<Provider>Observability(opts): Observability` (mirror `sentry.ts`).
+2. **One factory branch** in `createObservability` (`observability/index.ts`), plus the new
+   literal in `ObservabilityProvider` (`observability.ts`) and the `observability.provider`
+   Zod enum (`config/index.ts`).
+3. **Set the config value** `observability.provider: <provider>` in `Share2Brain.config.yml`.
 
 ## Updating a running deployment
 
