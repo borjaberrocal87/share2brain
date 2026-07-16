@@ -47,6 +47,10 @@
     "./observability": {
       "types": "./src/observability/index.ts",
       "default": "./src/observability/index.ts"
+    },
+    "./tracing": {
+      "types": "./src/tracing/index.ts",
+      "default": "./src/tracing/index.ts"
     }
   },
   "main": "./src/index.ts",
@@ -56,9 +60,15 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
+    "@arizeai/openinference-instrumentation-langchain": "^4.0.14",
+    "@arizeai/openinference-semantic-conventions": "^2.5.0",
     "@langchain/anthropic": "^1.5.1",
     "@langchain/core": "^1.2.1",
     "@langchain/openai": "^1.5.3",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-trace-otlp-proto": "^0.220.0",
+    "@opentelemetry/resources": "^2.9.0",
+    "@opentelemetry/sdk-trace-node": "^2.9.0",
     "@sentry/node": "^9.41.0",
     "drizzle-orm": "^0.45.0",
     "pg": "^8.13.0",
