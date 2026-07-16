@@ -1,5 +1,13 @@
 # generated: 2026-06-30
-# last_updated: 2026-07-15 (story 2-6 backlog → ready-for-dev, bmad-create-story): login demo
+# last_updated: 2026-07-16 (ops-5 review → done, bmad-code-review): 3-layer adversarial review (Opus). All 11 ACs PASS. Follow-up: findings #2 (port non-throw contract + adapter guards) and #6 (coverage tests: unknown-provider fallthrough, e2e logger→logSink→service, 4 never-throw) promoted to patches, applied + delta re-reviewed clean. Gate re-run green (lint / 1123 pass 1 skip / build). Net: 2 patched, 4 defer (see deferred-work.md), 9 dismissed. Full 3-layer re-sweep on complete diff: 11/11 ACs PASS, no regression, no Crit/High; 3 micro-fixes to the delta (guard doc precision, redact degraded-path console.error, honest test naming). Gate green. || (prior) last_updated: 2026-07-16 (ops-5 in-progress → review, bmad-dev-story): Observability port + Sentry adapter
+# behind createObservability; NoopObservability (S-5); logger decoupled from @sentry/node via injected
+# StructuredLogSink; all 3 services + backend app.ts/lifecycle.ts re-wired through the port; optional
+# observability.provider selector (AC10, default sentry). @sentry/node now in ONE file. Gate green:
+# lint 0 / 1116 unit+web pass (1 skip) / build clean (5 pkgs). Empty-DSN boot smoke byte-identical (AC3).
+# Real-DSN smoke deferred (no scratch DSN) — covered by empty-DSN path + migrated redaction tests (AC11).
+# Next: PR + bmad-code-review (different LLM). || (prior) last_updated: 2026-07-16 (ops-5 new → ready-for-dev, bmad-create-story): observability port+adapter
+# refactor of ops-4 (vendor-neutral Observability port; Sentry as one adapter; add-a-provider = config-only).
+# || (prior) last_updated: 2026-07-15 (story 2-6 backlog → ready-for-dev, bmad-create-story): login demo
 # Discord invite link (SCP 2026-07-15); epic-2 re-opened to in-progress to append the story.
 # || (prior) last_updated: 2026-07-12 (story 10-2 review → done, bmad-code-review): 3 adversarial layers
 # (Blind/Edge/Auditor). Auditor confirmed all 7 ACs + D1–D10 SATISFIED, zero violations. Blind/Edge
@@ -881,6 +889,16 @@ development_status:
   # (stdout + Sentry.logger[level]); beforeSend/beforeSendLog reuse redactSecrets, never PII/content (NFR13).
   # Scaffolding already existed (config sentry_dsn, .env, compose wiring on all 3). Story: ops-4-sentry-observability.md.
   ops-4-sentry-observability: done
+  # Added 2026-07-16 via bmad-create-story (architecture review, Amelia; operational-backlog P1.4):
+  # behavior-preserving refactor of ops-4 to a vendor-neutral port + adapter (hexagonal / DIP). ops-4
+  # isolated the @sentry/node DEPENDENCY to shared (AD-2) but left the public surface vendor-named
+  # (initSentry/captureException/setSentryUser/...) — adding a 2nd provider would touch all 3 services.
+  # This introduces an Observability port (mirrors the Notifier port), Sentry as one adapter behind
+  # createObservability(dsn, service), a NoopObservability for empty DSN (S-5), and removes the hard-wired
+  # `import * as Sentry` from logger.ts via an injected StructuredLogSink. Goal: add a future provider =
+  # new adapter + 1 factory branch + 1 config value, zero service/web edits. Optional observability.provider
+  # config selector (default sentry, fail-safe). No behavior/output change. Story: ops-5-observability-port-adapter.md.
+  ops-5-observability-port-adapter: done
 
 action_items:
   - epic: 1

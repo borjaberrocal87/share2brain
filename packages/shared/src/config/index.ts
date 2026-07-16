@@ -141,12 +141,18 @@ export const Share2BrainConfigSchema = z.object({
     auto_mark_read_on_click: z.boolean(),
   }),
   observability: z.object({
-    // Empty disables Sentry; otherwise it must be a valid URL (S-5) — a typo'd DSN
-    // should fail at load, not silently drop crash reports.
+    // Empty disables the provider (S-5); otherwise the DSN must be a valid URL — a
+    // typo'd DSN should fail at load, not silently drop crash reports.
     sentry_dsn: z.string().refine((v) => v === '' || URL.canParse(v), {
       message: 'observability.sentry_dsn must be empty or a valid URL',
     }),
     log_level: z.enum(['debug', 'info', 'warn', 'error']),
+    // Story ops-5: which Observability adapter `createObservability` selects.
+    // OPTIONAL with a fail-safe `sentry` default — an existing config with no
+    // `provider` behaves exactly as before. Adding a provider extends this enum +
+    // one factory branch + a new adapter file; NO service/web edit (AC10). Keep
+    // the enum members in sync with `ObservabilityProvider` in observability.ts.
+    provider: z.enum(['sentry']).default('sentry'),
   }),
   security: z.object({
     rate_limit: z.object({

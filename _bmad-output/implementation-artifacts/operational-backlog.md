@@ -58,6 +58,28 @@
   no secret/PII/`content` in any Sentry event; single logger in `shared`; verification gate green.
 - **Caveat:** Sentry Logs is a relatively recent feature and full-log volume is high — watch quota.
 
+### P1.4 — Refactor observability to a vendor-neutral port + adapter
+> **Promoted to story 2026-07-16** (`ops-5-observability-port-adapter.md`, `bmad-create-story`) from an
+> architecture review (Amelia). Behavior-preserving follow-on to P1.3/ops-4.
+- **Why now:** ops-4 correctly isolated the `@sentry/node` **dependency** to `packages/shared` (AD-2), but it
+  did **not invert** it. The public surface is vendor-named (`initSentry`, `captureException`, `flushSentry`,
+  `setSentryUser`, `setupSentryErrorHandler`) and leaks "Sentry" to ~10 call sites across all three services;
+  `packages/shared/src/logger.ts` hard-imports `@sentry/node` and calls `Sentry.logger[level]` directly
+  (the console sink is injectable, the Sentry sink is not). Adding a second provider (OpenTelemetry, Datadog,
+  Grafana) today would force edits across `backend`/`bot`/`workers` + the logger — violating the stated goal of
+  swapping providers without touching the application (DIP / Open–Closed). The sibling `notifier` module already
+  ships the correct pattern (`interface Notifier` + `createNotifier` + `NOOP_NOTIFIER`); ops-4 copied its barrel
+  but not its port.
+- **Scope:** introduce an `Observability` port; make Sentry one adapter behind `createObservability(dsn,
+  service)`; add a `NoopObservability` for the empty-DSN case (S-5); inject a vendor-neutral `StructuredLogSink`
+  into `createLogger` so `logger.ts` no longer imports `@sentry/node`; thread the port through the services via
+  DI (main.ts / app.ts / lifecycle.ts); migrate the ops-4 tests to drive the port (no coverage loss); optional
+  `observability.provider` config selector (default `sentry`, fail-safe). **Behavior-preserving** — same
+  errors/logs, same redaction, same tags. `@sentry/node` ends up imported in exactly one file.
+- **Green when:** `grep @sentry/node` over `packages/**` hits only `observability/sentry.ts` (+ its test); no
+  vendor name in any service or the logger; empty-DSN boot byte-identical to today; gate green with no net test
+  loss; adding a future provider is a new adapter + one factory branch + one config value, zero service/web edits.
+
 ## Priority 2 — correctness hardening (low live-path risk today)
 
 ### P2.1 — Transactional outbox for the XADD-before-COMMIT producer race

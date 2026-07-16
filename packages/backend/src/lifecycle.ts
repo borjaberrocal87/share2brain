@@ -7,7 +7,7 @@
 // shutdown() closures, just pulled out for DI.
 import type { Logger } from '@share2brain/shared/logger';
 import type { Notifier } from '@share2brain/shared/notifier';
-import { flushSentry } from '@share2brain/shared/observability';
+import { NoopObservability, type Observability } from '@share2brain/shared/observability';
 
 /** The subset of http.Server this module needs. */
 export interface ShutdownServer {
@@ -44,11 +44,12 @@ export interface GracefulShutdownDeps {
   /** Injectable for tests; defaults to `process.exit`. */
   exit?: (code: number) => void;
   /**
-   * Story ops-4: drain Sentry's queue before exit so the shutdown's tail logs
-   * ship (background transport). Injectable for tests; defaults to the shared
-   * `flushSentry`, a no-op that resolves immediately when Sentry is unarmed.
+   * Story ops-5: the Observability port, drained before exit so the shutdown's
+   * tail logs ship (background transport). Optional — defaults to
+   * `NoopObservability`, whose `flush()` resolves immediately; `main.ts` injects
+   * the real (possibly no-op) adapter.
    */
-  flushSentry?: () => Promise<void>;
+  observability?: Pick<Observability, 'flush'>;
 }
 
 const DEFAULT_SERVER_CLOSE_TIMEOUT_MS = 10_000;
@@ -74,7 +75,7 @@ export interface GracefulShutdown {
 export function createGracefulShutdown(deps: GracefulShutdownDeps): GracefulShutdown {
   const timeoutMs = deps.timeoutMs ?? DEFAULT_SERVER_CLOSE_TIMEOUT_MS;
   const exit = deps.exit ?? ((code: number) => process.exit(code));
-  const flush = deps.flushSentry ?? flushSentry;
+  const observability = deps.observability ?? NoopObservability;
   let shuttingDown = false;
 
   const handler = ((signal: string): void => {
@@ -127,9 +128,9 @@ export function createGracefulShutdown(deps: GracefulShutdownDeps): GracefulShut
           timestamp: new Date().toISOString(),
         });
       } finally {
-        // Story ops-4: drain Sentry's queue so the shutdown's tail logs ship
-        // before exit (background transport; a no-op when Sentry is unarmed).
-        await flush();
+        // Story ops-4: drain the transport queue so the shutdown's tail logs ship
+        // before exit (background transport; a no-op under NoopObservability).
+        await observability.flush();
         exit(0);
       }
     })();

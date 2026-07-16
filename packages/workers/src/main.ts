@@ -12,7 +12,7 @@ import { loadConfig } from '@share2brain/shared';
 import { createDatabase, type Database } from '@share2brain/shared/db';
 import { createLogger, type Logger } from '@share2brain/shared/logger';
 import { createNotifier } from '@share2brain/shared/notifier';
-import { captureException, flushSentry, initSentry } from '@share2brain/shared/observability';
+import { createObservability } from '@share2brain/shared/observability';
 import { createChatModel, createEmbeddingsModel } from '@share2brain/shared/providers';
 import { createRedisClient, type RedisClient } from '@share2brain/shared/redis';
 
@@ -81,11 +81,21 @@ async function main(): Promise<void> {
   // AD-8: validate behavior config before opening ANY connection. Invalid YAML or
   // an unset ${VAR} throws ConfigError here and aborts the process (caught below).
   const config = loadConfig();
-  // Story ops-4: arm Sentry immediately after loadConfig() and before any network
-  // I/O (AD-8). A no-op when observability.sentry_dsn is empty (S-5). Placed before
-  // createLogger so the logger's dual sink can forward from the very first line.
-  initSentry(config.observability.sentry_dsn, 'workers');
-  const logger = createLogger(config.observability.log_level, 'workers');
+  // Story ops-5: build the Observability port immediately after loadConfig() and
+  // before any network I/O (AD-8). A NoopObservability when observability.sentry_dsn
+  // is empty (S-5). Built before createLogger so its structured-log sink can forward
+  // from the very first line. config.observability.provider selects the adapter.
+  const observability = createObservability({
+    dsn: config.observability.sentry_dsn,
+    service: 'workers',
+    provider: config.observability.provider,
+  });
+  const logger = createLogger(
+    config.observability.log_level,
+    'workers',
+    undefined,
+    observability.logSink,
+  );
   // FR21 (Story 6.4): a no-op when notifications.enabled is false/absent — the
   // workers process behaves exactly as before this story (AC-1).
   const notifier = createNotifier(config.notifications, logger);
@@ -98,25 +108,25 @@ async function main(): Promise<void> {
   // An uncaught error/rejection is fatal → exit(1); Compose restarts the container.
   process.on('uncaughtException', (error) => {
     if (shuttingDown) return;
-    // Story ops-4: capture the real Error (stack preserved) to Sentry alongside
+    // Story ops-4: capture the real Error (stack preserved) via the port alongside
     // the existing structured log + crash notifier.
-    captureException(error);
+    observability.captureException(error);
     logger.error('uncaughtException', { reason: error.message, stack: error.stack });
-    // Story ops-4: drain Sentry's queue before the hard exit so the captured
+    // Story ops-4: drain the transport queue before the hard exit so the captured
     // Error + buffered logs actually ship (the transport sends asynchronously).
     void notifier
       .notify({ service: 'workers', message: error.message, timestamp: new Date().toISOString() })
-      .finally(() => flushSentry())
+      .finally(() => observability.flush())
       .finally(() => process.exit(1));
   });
   process.on('unhandledRejection', (reason) => {
     if (shuttingDown) return;
     const error = reason instanceof Error ? reason : new Error(String(reason));
-    captureException(error);
+    observability.captureException(error);
     logger.error('unhandledRejection', { reason: error.message, stack: error.stack });
     void notifier
       .notify({ service: 'workers', message: error.message, timestamp: new Date().toISOString() })
-      .finally(() => flushSentry())
+      .finally(() => observability.flush())
       .finally(() => process.exit(1));
   });
 
@@ -178,9 +188,9 @@ async function main(): Promise<void> {
         // throws, so awaiting it here can't hang the exit below indefinitely.
         await notifier.notify({ service: 'workers', message, timestamp: new Date().toISOString() });
       } finally {
-        // Story ops-4: drain Sentry's queue so the shutdown's tail logs ship
-        // before exit (background transport; a no-op when Sentry is unarmed).
-        await flushSentry();
+        // Story ops-4: drain the transport queue so the shutdown's tail logs ship
+        // before exit (background transport; a no-op under NoopObservability).
+        await observability.flush();
         process.exit(0);
       }
     })();
