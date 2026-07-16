@@ -437,6 +437,23 @@ describe('loadConfig', () => {
     expect(config.observability.tracing?.provider).toBe('phoenix');
   });
 
+  it('should reject a tracing endpoint that already includes /v1/traces (root-only, adapter appends it)', () => {
+    const yaml = VALID_YAML.replace(
+      'observability:\n  sentry_dsn: ""',
+      'observability:\n  tracing:\n    endpoint: "http://phoenix:6006/v1/traces"\n  sentry_dsn: ""',
+    );
+    expect(() => loadConfig(writeFixture('tracing-appended.yml', yaml))).toThrow(/tracing\.endpoint/i);
+  });
+
+  it('should accept a reverse-proxy subpath tracing endpoint (adapter appends /v1/traces to it)', () => {
+    const yaml = VALID_YAML.replace(
+      'observability:\n  sentry_dsn: ""',
+      'observability:\n  tracing:\n    endpoint: "http://gateway/phoenix"\n  sentry_dsn: ""',
+    );
+    const config = loadConfig(writeFixture('tracing-subpath.yml', yaml));
+    expect(config.observability.tracing?.endpoint).toBe('http://gateway/phoenix');
+  });
+
   it('should reject a non-HTTPS slack webhook_url when notifications are enabled (S-5)', () => {
     const yaml = `${VALID_YAML}notifications:\n  enabled: true\n  provider: "slack"\n  slack:\n    webhook_url: "http://hooks.example.com/x"\n`;
     expect(() => loadConfig(writeFixture('slack-http.yml', yaml))).toThrow(/webhook_url|HTTPS/i);

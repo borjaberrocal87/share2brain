@@ -41,13 +41,19 @@ export interface LlmTracing {
 
 /**
  * Shared no-op adapter — the S-5 empty-endpoint behavior (mirrors
- * `NoopObservability`). `withSpan` just runs and returns `fn()` (so it is byte-for-byte
- * transparent — no span object is ever created), and `flush`/`shutdown` resolve
- * immediately. A service booted without a tracing endpoint behaves exactly as it did
- * before any tracing existed: no OTel object, no instrumentation patch, zero network.
+ * `NoopObservability`). `withSpan` just runs and returns `fn()` (transparent — no span
+ * object is ever created), and `flush`/`shutdown` resolve immediately. A service booted
+ * without a tracing endpoint behaves exactly as it did before any tracing existed: no
+ * OTel object, no instrumentation patch, zero network.
+ *
+ * `withSpan` is `async` so a SYNCHRONOUS throw in `fn` surfaces as a rejected promise —
+ * identical to the Phoenix adapter (which routes `fn` through `async runInSpan`) and to
+ * the port's `Promise<T>` contract. A bare `fn()` would throw synchronously here while the
+ * real adapter rejects, so a caller that does `.catch(...)` without `await` (or
+ * `Promise.all([...])`) would diverge between tracing-off and tracing-on.
  */
 export const NoopLlmTracing: LlmTracing = {
-  withSpan: (_name, _attrs, fn) => fn(),
+  withSpan: async (_name, _attrs, fn) => fn(),
   flush: async () => undefined,
   shutdown: async () => undefined,
 };

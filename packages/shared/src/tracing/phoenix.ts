@@ -87,16 +87,24 @@ function guardSpan(fn: () => void): void {
  * mask the reason we are flushing/exiting.
  */
 async function bounded(op: () => Promise<unknown>, timeoutMs: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     await Promise.race([
       Promise.resolve()
         .then(op)
         .then(() => undefined)
         .catch(() => undefined),
-      new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, timeoutMs);
+      }),
     ]);
   } catch {
     // Never let tracing teardown throw.
+  } finally {
+    // Clear the race timer on the fast path (op won): the helper must not keep the event
+    // loop alive on its own, so it stays correct even if a caller ever invokes flush/
+    // shutdown outside an immediate-exit path.
+    if (timer !== undefined) clearTimeout(timer);
   }
 }
 
@@ -125,7 +133,15 @@ export function createPhoenixLlmTracing(opts: { endpoint: string; service: strin
     // asynchronously off the hot path, so the SSE first-chunk latency (SNF-3) is
     // never blocked by a synchronous per-span/per-token export.
     spanProcessors: [
-      new BatchSpanProcessor(new OTLPTraceExporter({ url: `${endpoint}/v1/traces` })),
+      // Append `/v1/traces` to the collector root, stripping only a trailing slash so a
+      // slash in the endpoint can't produce `…//v1/traces` (a silent 404 the best-effort
+      // exporter would swallow). APPEND (not `new URL('/v1/traces', endpoint)`, which would
+      // discard a deliberate subpath): this mirrors the standard OTLP
+      // `OTEL_EXPORTER_OTLP_ENDPOINT` semantics, so Phoenix behind a reverse-proxy subpath
+      // (`http://host/phoenix`) resolves to `http://host/phoenix/v1/traces`.
+      new BatchSpanProcessor(
+        new OTLPTraceExporter({ url: `${endpoint.replace(/\/+$/, '')}/v1/traces` }),
+      ),
     ],
   });
   provider.register();
@@ -135,7 +151,18 @@ export function createPhoenixLlmTracing(opts: { endpoint: string; service: strin
   // it — the RAG `reason` node, `respond` streaming, `compress.ts`, workers `enrich.ts`
   // — is auto-traced with prompt/completion/token/latency attributes (D2), with NO
   // edit to any business module.
-  new LangChainInstrumentation().manuallyInstrument(CallbackManagerModule);
+  //
+  // Bind the instrumentation to OUR `provider` explicitly (constructor `tracerProvider`),
+  // never the OTel GLOBAL tracer. The ops-5 Sentry adapter (@sentry/node) runs first in
+  // the AD-8 boot slot and unconditionally registers its own TracerProvider as the OTel
+  // global, so our `provider.register()` above no-ops (OTel refuses to overwrite an
+  // already-registered global) — leaving the global pointing at Sentry's tracer. Without
+  // this binding the auto-instrumented spans would be created by Sentry's tracer and
+  // dropped (Sentry has no tracesSampleRate), never reaching Phoenix. OpenInference builds
+  // its span-emitting OITracer from `tracerProvider.getTracer(...)` AT CONSTRUCTION, so the
+  // provider MUST be passed to the constructor (a later `setTracerProvider` would not
+  // rebuild that tracer). Keeps D1 intact — no edit to the Sentry seam.
+  new LangChainInstrumentation({ tracerProvider: provider }).manuallyInstrument(CallbackManagerModule);
 
   const tracer = provider.getTracer(TRACER_SCOPE);
 
@@ -146,13 +173,19 @@ export function createPhoenixLlmTracing(opts: { endpoint: string; service: strin
     // ends. Every tracing-side call is guarded so a broken tracer never alters the
     // wrapped operation.
     withSpan: <T>(name: string, attributes: Record<string, unknown>, fn: () => Promise<T>): Promise<T> => {
+      // Capture runInSpan's promise as we enter the callback. If startActiveSpan faults
+      // (tracing-side) BEFORE the callback runs, `started` stays undefined and we run `fn`
+      // transparently. If it ever faults AFTER the callback ran, `fn` has already been
+      // invoked once — return that in-flight promise instead of re-invoking `fn` (which
+      // would fire a duplicate embedding/pgvector call, breaking transparency).
+      let started: Promise<T> | undefined;
       try {
-        return tracer.startActiveSpan(name, { attributes: toOtelAttributes(attributes) }, (span: Span) =>
-          runInSpan(span, fn),
-        );
+        return tracer.startActiveSpan(name, { attributes: toOtelAttributes(attributes) }, (span: Span) => {
+          started = runInSpan(span, fn);
+          return started;
+        });
       } catch {
-        // startActiveSpan itself faulted (tracing-side) — run fn transparently.
-        return fn();
+        return started ?? fn();
       }
     },
     // Force-flush buffered spans before a fatal exit, bounded + never rejects.

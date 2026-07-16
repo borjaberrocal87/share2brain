@@ -166,9 +166,33 @@ export const Share2BrainConfigSchema = z.object({
     tracing: z
       .object({
         provider: z.enum(['phoenix']).default('phoenix'),
-        endpoint: z.string().refine((v) => v === '' || URL.canParse(v), {
-          message: 'observability.tracing.endpoint must be empty or a valid URL',
-        }),
+        // Empty disables (S-5); otherwise an http(s) URL. `isHttpUrl` (the repo's
+        // parse-based convention, not the loose `URL.canParse` which admits any scheme):
+        // a `redis://`/`file:` endpoint would build a live-looking exporter whose export
+        // silently fails, so reject a non-http(s) scheme at load — fail loud (AD-8).
+        endpoint: z
+          .string()
+          .refine((v) => v === '' || isHttpUrl(v), {
+            message: 'observability.tracing.endpoint must be empty or a valid HTTP(S) URL',
+          })
+          // The endpoint is the collector ROOT — the adapter appends `/v1/traces`. Reject
+          // a query/fragment or an already-appended `/v1/traces` path so a pasted full OTLP
+          // URL fails loud (AD-8) instead of silently POSTing to `…/v1/traces/v1/traces`
+          // (a 404 the best-effort exporter swallows). A reverse-proxy subpath is still ok.
+          .refine(
+            (v) => {
+              // Let the first refine own the empty / non-http(s) cases (Zod runs every
+              // chained refine even after one fails, so guard against `new URL` throwing
+              // on the value that refine already rejected).
+              if (v === '' || !isHttpUrl(v)) return true;
+              const url = new URL(v);
+              return url.search === '' && url.hash === '' && !/\/v1\/traces\/?$/.test(url.pathname);
+            },
+            {
+              message:
+                'observability.tracing.endpoint must be the collector root — no query/fragment and no trailing /v1/traces (the adapter appends /v1/traces)',
+            },
+          ),
       })
       .optional(),
   }),

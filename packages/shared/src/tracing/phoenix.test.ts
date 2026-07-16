@@ -140,6 +140,13 @@ describe('createPhoenixLlmTracing (adapter construction, AC3)', () => {
     createPhoenixLlmTracing({ endpoint: ENDPOINT, service: 'workers' });
 
     expect(h.LangChainInstrumentation).toHaveBeenCalledTimes(1);
+    // ops-6 review fix (the story's single most important line): the instrumentation MUST
+    // be bound to OUR provider via the constructor `tracerProvider`, NOT the OTel global
+    // (which @sentry/node registers first in the AD-8 boot slot). Pin it — without this
+    // arg the OpenInference OITracer would emit through Sentry's tracer and the auto-spans
+    // would be dropped, never reaching Phoenix.
+    const providerInstance = h.NodeTracerProvider.mock.results[0]!.value as unknown;
+    expect(h.LangChainInstrumentation).toHaveBeenCalledWith({ tracerProvider: providerInstance });
     expect(h.manuallyInstrument).toHaveBeenCalledTimes(1);
     const arg = h.manuallyInstrument.mock.calls[0]![0] as Record<string, unknown>;
     expect(arg).toBeDefined();

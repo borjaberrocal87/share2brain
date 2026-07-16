@@ -43,7 +43,7 @@ export function createLlmTracing(opts: {
   service: string;
   provider?: LlmTracingProvider;
 }): LlmTracing {
-  if (opts.endpoint === '') return NoopLlmTracing; // S-5 — the feature flag
+  if (opts.endpoint.trim() === '') return NoopLlmTracing; // S-5 — the feature flag (also treats whitespace-only as off)
 
   const provider = opts.provider ?? 'phoenix';
   if (provider === 'phoenix') {
