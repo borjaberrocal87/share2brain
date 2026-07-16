@@ -109,6 +109,15 @@ async function main(): Promise<void> {
     service: 'workers',
     provider: config.observability.tracing?.provider,
   });
+  // Story ops-6 (review): bound the crash-path tracing flush with an OUTER timeout, the
+  // same hardening the graceful shutdown applies to shutdown() below. The port guarantees
+  // flush() never rejects, not that it never hangs — a future adapter whose flush wedges
+  // must not block the process.exit(1) in the fatal handlers.
+  const boundedTracingFlush = (): Promise<void> =>
+    Promise.race([
+      llmTracing.flush().catch(() => undefined),
+      new Promise<void>((resolve) => setTimeout(resolve, 3_000)),
+    ]);
   // FR21 (Story 6.4): a no-op when notifications.enabled is false/absent — the
   // workers process behaves exactly as before this story (AC-1).
   const notifier = createNotifier(config.notifications, logger);
@@ -130,7 +139,7 @@ async function main(): Promise<void> {
     void notifier
       .notify({ service: 'workers', message: error.message, timestamp: new Date().toISOString() })
       .finally(() => observability.flush())
-      .finally(() => llmTracing.flush())
+      .finally(() => boundedTracingFlush())
       .finally(() => process.exit(1));
   });
   process.on('unhandledRejection', (reason) => {
@@ -141,7 +150,7 @@ async function main(): Promise<void> {
     void notifier
       .notify({ service: 'workers', message: error.message, timestamp: new Date().toISOString() })
       .finally(() => observability.flush())
-      .finally(() => llmTracing.flush())
+      .finally(() => boundedTracingFlush())
       .finally(() => process.exit(1));
   });
 
@@ -207,9 +216,14 @@ async function main(): Promise<void> {
         // before exit (background transport; a no-op under NoopObservability).
         await observability.flush();
         // Story ops-6: tear down the tracing exporter so buffered spans ship before
-        // exit (a no-op under NoopLlmTracing). Guarded — like the redis.quit/db.end
-        // above — so a misbehaving adapter can never block the exit below.
-        await llmTracing.shutdown().catch(() => undefined);
+        // exit (a no-op under NoopLlmTracing). Outer-bounded like the redis.quit/db.end
+        // above — the port only guarantees never-reject, not never-hang, so a future
+        // adapter that wedges can never block the exit below. `.catch` neutralises a late
+        // rejection losing the race.
+        await Promise.race([
+          llmTracing.shutdown().catch(() => undefined),
+          new Promise<void>((resolve) => setTimeout(resolve, 3_000)),
+        ]);
         process.exit(0);
       }
     })();
