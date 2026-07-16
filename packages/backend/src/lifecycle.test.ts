@@ -36,23 +36,30 @@ describe('createGracefulShutdown', () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 
-  it('flushes Sentry after the drain and before exit(0), so shutdown tail logs ship (ops-4)', async () => {
+  it('flushes the observability port after the drain and before exit(0), so shutdown tail logs ship (ops-5)', async () => {
     const calls: string[] = [];
     const server: ShutdownServer = { close: (cb) => (calls.push('server.close'), cb?.()) };
     const redis: ShutdownRedis = { quit: async () => (calls.push('redis.quit'), 'OK') };
     const db: ShutdownDatabase = { $client: { end: async () => void calls.push('db.end') } };
     const logger = fakeLogger();
-    const flushSentry = vi.fn(async () => void calls.push('flushSentry'));
+    const flush = vi.fn(async () => void calls.push('flush'));
     const exit = vi.fn(() => void calls.push('exit'));
-    const shutdown = createGracefulShutdown({ server, redis, db, logger, exit, flushSentry });
+    const shutdown = createGracefulShutdown({
+      server,
+      redis,
+      db,
+      logger,
+      exit,
+      observability: { flush },
+    });
 
     shutdown('SIGTERM');
 
     await vi.waitFor(() => expect(exit).toHaveBeenCalledWith(0));
 
-    expect(flushSentry).toHaveBeenCalledTimes(1);
+    expect(flush).toHaveBeenCalledTimes(1);
     // Flush drains AFTER the connection drain and immediately BEFORE exit.
-    expect(calls).toEqual(['server.close', 'redis.quit', 'db.end', 'flushSentry', 'exit']);
+    expect(calls).toEqual(['server.close', 'redis.quit', 'db.end', 'flush', 'exit']);
   });
 
   it('force-closes remaining connections when the server does not close within timeoutMs', async () => {

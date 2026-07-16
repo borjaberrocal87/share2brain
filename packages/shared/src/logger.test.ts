@@ -1,15 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Story ops-4: the logger now forwards to Sentry Structured Logs alongside the
-// console sink. Mock the SDK so unit tests can assert the forward without a real
-// client (Sentry.logger.* are safe no-ops in prod before initSentry runs).
-vi.mock('@sentry/node', () => ({
-  logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-}));
-
-import * as Sentry from '@sentry/node';
-
-import { createLogger, redactSecrets } from './logger.js';
+// Story ops-5: the logger forwards to an injected vendor-neutral StructuredLogSink
+// (no vendor SDK import here anymore — that is the proof of decoupling, AC4).
+// Tests inject a fake sink and assert the forward.
+import { createLogger, redactSecrets, type LogLevel, type StructuredLogSink } from './logger.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -24,6 +18,13 @@ function fakeSink(): Record<'debug' | 'info' | 'warn' | 'error', ReturnType<type
     warn: vi.fn<SinkMethod>(),
     error: vi.fn<SinkMethod>(),
   };
+}
+
+type StructuredLogFn = (level: LogLevel, message: string, attributes?: Record<string, unknown>) => void;
+
+/** A fake structured sink recording every forwarded line. */
+function fakeStructuredSink(): StructuredLogSink & { log: ReturnType<typeof vi.fn<StructuredLogFn>> } {
+  return { log: vi.fn<StructuredLogFn>() };
 }
 
 describe('createLogger', () => {
@@ -112,10 +113,11 @@ describe('createLogger', () => {
   });
 });
 
-describe('Sentry Logs dual sink (Story ops-4, AC5)', () => {
-  it('forwards an emitted line to Sentry.logger[level] with the SAME redaction as stdout', () => {
+describe('structured-log sink dual forward (Story ops-4/ops-5, AC4/AC5)', () => {
+  it('forwards an emitted line to sink.log(level, message, attrs) with the SAME redaction as stdout', () => {
     const sink = fakeSink();
-    const logger = createLogger('debug', 'backend', sink);
+    const structured = fakeStructuredSink();
+    const logger = createLogger('debug', 'backend', sink, structured);
 
     logger.info('connecting to redis://user:pass@cache:6379', {
       url: 'redis://user:pass@cache:6379',
@@ -123,30 +125,40 @@ describe('Sentry Logs dual sink (Story ops-4, AC5)', () => {
     });
 
     // Message is the raw (redacted) line — the `[service]` prefix is a stdout
-    // formatting concern; in Sentry the service rides as a tag/attribute.
-    expect(vi.mocked(Sentry.logger.info)).toHaveBeenCalledWith(
-      'connecting to redis://***@cache:6379',
-      { url: 'redis://***@cache:6379', count: 2 },
-    );
+    // formatting concern; off-box the service rides as an attribute.
+    expect(structured.log).toHaveBeenCalledWith('info', 'connecting to redis://***@cache:6379', {
+      url: 'redis://***@cache:6379',
+      count: 2,
+    });
   });
 
   it('maps each level 1:1 and passes undefined attributes when context is absent', () => {
     const sink = fakeSink();
-    const logger = createLogger('debug', 'workers', sink);
+    const structured = fakeStructuredSink();
+    const logger = createLogger('debug', 'workers', sink, structured);
 
     logger.error('boom');
 
-    expect(vi.mocked(Sentry.logger.error)).toHaveBeenCalledWith('boom', undefined);
+    expect(structured.log).toHaveBeenCalledWith('error', 'boom', undefined);
   });
 
-  it('forwards a line below the threshold to NEITHER sink (Sentry volume respects log_level)', () => {
+  it('forwards a line below the threshold to NEITHER sink (off-box volume respects log_level)', () => {
     const sink = fakeSink();
-    const logger = createLogger('warn', 'backend', sink);
+    const structured = fakeStructuredSink();
+    const logger = createLogger('warn', 'backend', sink, structured);
 
     logger.info('below threshold — dropped');
 
     expect(sink.info).not.toHaveBeenCalled();
-    expect(vi.mocked(Sentry.logger.info)).not.toHaveBeenCalled();
+    expect(structured.log).not.toHaveBeenCalled();
+  });
+
+  it('defaults to a no-op structured sink — a logger built without one never throws (AC4)', () => {
+    const sink = fakeSink();
+    const logger = createLogger('debug', 'backend', sink);
+
+    expect(() => logger.info('no structured sink injected')).not.toThrow();
+    expect(sink.info).toHaveBeenCalledWith('[backend] info no structured sink injected');
   });
 });
 

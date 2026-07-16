@@ -5,17 +5,19 @@
 // deleted. It honors the operator's `observability.log_level` and emits
 // `[${service}] <level> <msg> <ctx-json>` to stdout.
 //
-// Story ops-4 — DUAL SINK: every line at or above the threshold is ALSO forwarded
-// to Sentry Structured Logs (`Sentry.logger[level]`) so the operator never has to
-// open `docker logs`. The Sentry methods are safe no-ops until `initSentry` runs
-// (and stay no-ops when the DSN is empty, S-5), so this adds nothing to a service
-// booted without a DSN. The SAME `redactSecrets` output that guards stdout is what
-// is forwarded — a secret never reaches either sink.
+// DUAL SINK: every line at or above the threshold is ALSO forwarded to an
+// injected `StructuredLogSink` (Story ops-4 shipped this; Story ops-5 made it
+// vendor-neutral). The sink is the Observability port's `logSink` — a Sentry
+// adapter forwards to Sentry Structured Logs; the empty-DSN Noop drops the line.
+// The default sink is a no-op, so a logger built without one adds nothing. The
+// SAME `redactSecrets` output that guards stdout is what is forwarded — a secret
+// never reaches either sink. This module MUST NOT import any vendor SDK (AC4) nor
+// anything from `observability/` — the dependency direction is observability →
+// logger (the adapter imports `redactSecrets`/`StructuredLogSink` from here).
 //
 // SECURITY: callers must never pass secrets (tokens, DATABASE_URL, REDIS_URL,
 // API keys) or full message `content` in the context object — log
 // `content.length`, counts, or ids instead (see project-context §anti-patterns).
-import * as Sentry from '@sentry/node';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -52,25 +54,45 @@ export interface LogSink {
 }
 
 /**
+ * Vendor-neutral structured-log sink (Story ops-5). The logger forwards every
+ * line at/above the threshold to `log(level, message, attributes)` — the SAME
+ * redacted output already written to stdout. Defined HERE (not in
+ * `observability/`) so the dependency direction stays observability → logger:
+ * the Sentry adapter implements this and maps it onto `Sentry.logger[level]`.
+ */
+export interface StructuredLogSink {
+  log(level: LogLevel, message: string, attributes?: Record<string, unknown>): void;
+}
+
+/** Drops every line — the default sink and the empty-DSN (S-5) behavior. */
+export const NOOP_STRUCTURED_SINK: StructuredLogSink = { log: () => undefined };
+
+/**
  * Create a logger gated at `level`, prefixed with `service`. Levels below the
  * threshold are dropped. `sink` defaults to the global console; tests inject a
- * fake to assert output.
+ * fake to assert output. `structuredSink` defaults to a no-op; `main.ts` passes
+ * the Observability port's `logSink` so lines are also forwarded off-box.
  */
-export function createLogger(level: LogLevel, service: string, sink: LogSink = console): Logger {
+export function createLogger(
+  level: LogLevel,
+  service: string,
+  sink: LogSink = console,
+  structuredSink: StructuredLogSink = NOOP_STRUCTURED_SINK,
+): Logger {
   const threshold = LEVEL_ORDER[level];
 
   const emit = (msgLevel: LogLevel, message: string, context?: Record<string, unknown>): void => {
     if (LEVEL_ORDER[msgLevel] < threshold) return;
     // Redact ONCE and feed the same scrubbed output to both sinks (AC5): stdout
-    // (unchanged) and Sentry Logs. Below-threshold lines return above, so they
-    // reach neither sink — Sentry log volume respects `log_level`.
+    // (unchanged) and the structured sink. Below-threshold lines return above, so
+    // they reach neither sink — the off-box log volume respects `log_level`.
     const redactedMessage = redactSecrets(message);
     const prefix = `[${service}] ${msgLevel} ${redactedMessage}`;
     const hasContext = context !== undefined && Object.keys(context).length > 0;
     // The console path serializes+redacts the context to a trailing JSON string;
-    // round-trip that exact redacted JSON back to an object for Sentry's log
-    // attributes, so both sinks carry byte-identical redaction (no raw context
-    // object ever leaves this function).
+    // round-trip that exact redacted JSON back to an object for the structured
+    // sink's attributes, so both sinks carry byte-identical redaction (no raw
+    // context object ever leaves this function).
     const redactedContextJson = hasContext ? redactSecrets(JSON.stringify(context)) : undefined;
 
     if (redactedContextJson !== undefined) {
@@ -79,13 +101,16 @@ export function createLogger(level: LogLevel, service: string, sink: LogSink = c
       sink[msgLevel](prefix);
     }
 
-    // Sentry Structured Logs sink (Story ops-4). No-op until initSentry runs.
-    // `debug/info/warn/error` map 1:1 to Sentry.logger's same-named methods.
+    // Structured-log sink (Story ops-4, vendor-neutral since ops-5). A no-op by
+    // default; the Sentry adapter maps `log(level, msg, attrs)` 1:1 onto
+    // `Sentry.logger[level]`. The message is the redacted line WITHOUT the
+    // `[service]` prefix — that prefix is a stdout concern; off-box the service
+    // rides as an attribute stamped by the adapter.
     const attributes =
       redactedContextJson !== undefined
         ? (JSON.parse(redactedContextJson) as Record<string, unknown>)
         : undefined;
-    Sentry.logger[msgLevel](redactedMessage, attributes);
+    structuredSink.log(msgLevel, redactedMessage, attributes);
   };
 
   return {
