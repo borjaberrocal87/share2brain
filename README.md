@@ -8,6 +8,7 @@ Share2Brain indexes the resources shared in your Discord server and answers natu
 
 | I want to… | Go to |
 |---|---|
+| **See it explained (landing)** | [share2brain.app](https://share2brain.app) |
 | **See what it does & why** | [Why Share2Brain?](#why-share2brain) |
 | **Run it on my server** | [Quick start](#quick-start) → full guide in [docs/self-hosting.md](docs/self-hosting.md) |
 | **Understand the design** | [Architecture](#architecture) → invariants in [ARCHITECTURE-SPINE.md](docs/context/ARCHITECTURE-SPINE.md) |
@@ -123,6 +124,8 @@ Authoritative docs live in `docs/` — go straight to what you need:
 | [development_guide.md](docs/development_guide.md) | Setup, running, and testing |
 | [self-hosting.md](docs/self-hosting.md) | Deployment and operations guide |
 | [base-standards.md](docs/base-standards.md) | Standards and way of working |
+
+> The public landing page lives at **[share2brain.app](https://share2brain.app)** — source in [borjaberrocal87/share2brain-landing](https://github.com/borjaberrocal87/share2brain-landing).
 
 ## Contributing
 
